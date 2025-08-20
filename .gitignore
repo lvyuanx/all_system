@@ -1,0 +1,117 @@
+# ================================
+# OS / 系统文件
+# ================================
+.DS_Store
+Thumbs.db
+ehthumbs.db
+desktop.ini
+$RECYCLE.BIN/
+
+# ================================
+# IDE / 编辑器
+# ================================
+# VSCode
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# JetBrains (PyCharm, IntelliJ, WebStorm, etc.)
+.idea/
+*.iml
+
+# Eclipse
+.project
+.classpath
+.settings/
+
+# ================================
+# Python
+# ================================
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtualenv
+.venv/
+venv/
+env/
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# ================================
+# Node.js
+# ================================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+package-lock.json
+yarn.lock
+
+# ================================
+# Java / JVM
+# ================================
+*.class
+*.jar
+*.war
+*.ear
+*.log
+*.tmp
+hs_err_pid*
+
+# Gradle
+.gradle/
+build/
+
+# Maven
+target/
+
+# ================================
+# Django
+# ================================
+# 忽略所有迁移文件，但保留 __init__.py
+**/migrations/*
+!**/migrations/__init__.py
+
+# Django 常见文件
+db.sqlite3
+
+
+# ================================
+# Logs & Temp
+# ================================
+*.log
+*.tmp
+*.swp
+*.swo
+
+# ================================
+# Environment / Secrets
+# ================================
+.env
+.env.*
+!.env.example
+*.secret
+*.key
+
+# ================================
+# Others
+# ================================
+coverage/
+.cache/
+tmp/
+
+
+# ================================
+# 项目自定义
+# ================================
+oss/media/*
+!oss/media/system/
+!oss/media/system/**

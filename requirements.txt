@@ -1,0 +1,12 @@
+Django~=5.2.4
+django-ninja~=1.4.3
+pycryptodome~=3.23.0
+orjson~=3.11.1
+PyJWT~=2.10.1
+pytz~=2025.2
+pillow~=11.3.0
+django-simpleui~=2025.6.24
+Jinja2~=3.1.6
+pdfkit~=1.0.0
+django-guardian~=3.0.3
+

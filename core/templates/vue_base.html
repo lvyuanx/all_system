@@ -1,0 +1,40 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>{% block title %}Django + Vue + Element Plus{% endblock %}</title>
+
+  <link rel="stylesheet" href="{% static 'element-plus/css/element-plus.css' %}" />
+  <link rel="stylesheet" href="{% static 'vue/css/custom.css' %}" />
+  {% block extra_css %}{% endblock %}
+</head>
+<body>
+  {% block content %}{% endblock %}
+
+  <script src="{% static 'vue/js/vue3.js' %}"></script>
+  <script src="{% static 'vue/js/axios.js' %}"></script>
+  <script src="{% static 'element-plus/js/simpleui-helper.js' %}"></script>
+  <script src="{% static 'element-plus/js/element-plus.js' %}"></script>
+  <script src="{% static 'element-plus/js/element-plus-icon.js' %}"></script>
+  <script src="{% static 'vue/js/request.js' %}"></script>
+
+  <script>
+    window.initVueApp = function(options) {
+        const app = Vue.createApp(options);
+        app.use(ElementPlus);
+        // 批量注册所有图标
+        for (const iconName in window.ElementPlusIconsVue) {
+        app.component(iconName, window.ElementPlusIconsVue[iconName]);
+        }
+        // 全局配置自定义分隔符
+        app.config.compilerOptions = {
+        delimiters: ['[[', ']]']  // 将插值符号改为 [[ ]]
+        };
+      app.mount("#app");
+    };
+  </script>
+
+  {% block extra_js %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,233 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>PDF Preview - 宽度撑满 & 高清缩放（动态滚动条宽度检测）</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      width: 100%;
+      background: #eee;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      overflow: hidden;
+      user-select: none;
+      font-family: Arial, sans-serif;
+    }
+
+    #print-container {
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+      height: 100%;
+      background: white;
+      overflow: hidden;
+    }
+
+    #canvas-container {
+      flex: 1 1 auto;
+      position: relative;
+      overflow: auto;
+      background: #ccc;
+      display: flex;
+      justify-content: flex-start;
+      align-items: flex-start;
+      cursor: grab;
+      box-sizing: border-box;
+    }
+
+    #pdf-canvas {
+      display: block;
+      background: white;
+      user-select: none;
+      pointer-events: auto;
+    }
+
+    #bottom-btns {
+      flex-shrink: 0;
+      padding: 12px 20px;
+      background: #f9f9f9;
+      border-top: 1px solid #ddd;
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      gap: 10px;
+    }
+
+    button {
+      padding: 8px 18px;
+      font-size: 16px;
+      cursor: pointer;
+      background-color: #007bff;
+      border: none;
+      border-radius: 4px;
+      color: white;
+      user-select: none;
+      transition: background-color 0.3s ease;
+    }
+
+    button:hover {
+      background-color: #0056b3;
+    }
+
+    #print-iframe {
+      display: none;
+    }
+  </style>
+
+  <script src="{% static 'admin/js/pdf/pdf.min.js' %}"></script>
+</head>
+<body>
+
+  <div id="print-container">
+    <div id="canvas-container">
+      <canvas id="pdf-canvas"></canvas>
+    </div>
+    <div id="bottom-btns">
+      <button id="print-btn">打印 PDF</button>
+      <button id="fullscreen-btn">全屏显示</button>
+    </div>
+  </div>
+
+  <iframe id="print-iframe" src="" style="display:none;"></iframe>
+
+  <script>
+    pdfjsLib.GlobalWorkerOptions.workerSrc = "{% static 'admin/js/pdf/pdf.worker.min.js' %}";
+
+    const url = "{{ pdf_url|escapejs }}";
+    const container = document.getElementById('canvas-container');
+    const canvas = document.getElementById('pdf-canvas');
+    const ctx = canvas.getContext('2d');
+
+    let pdfDoc = null;
+    let currentPage = 1;
+    let visualScale = 1;
+
+    // 动态测量滚动条宽度函数
+    function getScrollbarWidth() {
+      const outer = document.createElement('div');
+      outer.style.visibility = 'hidden';
+      outer.style.width = '100px';
+      outer.style.msOverflowStyle = 'scrollbar'; // IE11+
+      document.body.appendChild(outer);
+
+      const widthNoScroll = outer.offsetWidth;
+      outer.style.overflow = 'scroll';
+
+      const inner = document.createElement('div');
+      inner.style.width = '100%';
+      outer.appendChild(inner);
+
+      const widthWithScroll = inner.offsetWidth;
+
+      document.body.removeChild(outer);
+      return widthNoScroll - widthWithScroll;
+    }
+
+    function renderPage(pageNum) {
+      return pdfDoc.getPage(pageNum).then(page => {
+        const dpiScale = window.devicePixelRatio || 1;
+        const scale = visualScale * dpiScale;
+        const viewport = page.getViewport({ scale });
+
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+
+        canvas.style.width = `${viewport.width / dpiScale}px`;
+        canvas.style.height = `${viewport.height / dpiScale}px`;
+
+        const renderContext = {
+          canvasContext: ctx,
+          viewport: viewport,
+        };
+
+        return page.render(renderContext).promise;
+      });
+    }
+
+    // 滚轮缩放
+    container.addEventListener('wheel', e => {
+      e.preventDefault();
+      const zoomStep = 0.1;
+
+      if (e.deltaY < 0) {
+        visualScale = Math.min(visualScale + zoomStep, 5);
+      } else {
+        visualScale = Math.max(visualScale - zoomStep, 0.2);
+      }
+
+      renderPage(currentPage);
+    });
+
+    // 拖拽功能
+    let isDragging = false;
+    let startX, startY, scrollLeft, scrollTop;
+
+    container.addEventListener('mousedown', e => {
+      isDragging = true;
+      container.style.cursor = 'grabbing';
+      startX = e.pageX - container.offsetLeft;
+      startY = e.pageY - container.offsetTop;
+      scrollLeft = container.scrollLeft;
+      scrollTop = container.scrollTop;
+    });
+
+    container.addEventListener('mouseup', () => {
+      isDragging = false;
+      container.style.cursor = 'grab';
+    });
+
+    container.addEventListener('mouseleave', () => {
+      isDragging = false;
+      container.style.cursor = 'grab';
+    });
+
+    container.addEventListener('mousemove', e => {
+      if (!isDragging) return;
+      e.preventDefault();
+      const x = e.pageX - container.offsetLeft;
+      const y = e.pageY - container.offsetTop;
+      const walkX = x - startX;
+      const walkY = y - startY;
+      container.scrollLeft = scrollLeft - walkX;
+      container.scrollTop = scrollTop - walkY;
+    });
+
+    // 加载PDF并自动计算缩放比例
+    pdfjsLib.getDocument(url).promise.then(pdf => {
+      pdfDoc = pdf;
+
+      return pdf.getPage(currentPage).then(page => {
+        const unscaled = page.getViewport({ scale: 1 });
+        const scrollbarWidth = getScrollbarWidth();
+        const effectiveWidth = container.clientWidth - scrollbarWidth;
+        visualScale = effectiveWidth / unscaled.width;
+        return renderPage(currentPage);
+      });
+    }).catch(err => {
+      console.error('加载PDF失败:', err);
+      alert('加载PDF失败，请稍后重试。');
+    });
+
+    // 打印
+    document.getElementById('print-btn').addEventListener('click', () => {
+      const iframe = document.getElementById('print-iframe');
+      iframe.src = url;
+      iframe.onload = () => {
+        iframe.contentWindow.focus();
+        iframe.contentWindow.print();
+      };
+    });
+
+    // 全屏
+    document.getElementById('fullscreen-btn').addEventListener('click', () => {
+      window.open(url, '_blank');
+    });
+  </script>
+</body>
+</html>

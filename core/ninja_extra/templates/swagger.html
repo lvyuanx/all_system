@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>pis-plus-api</title>
+    <link rel="stylesheet" href="/static/swagger-ui/swagger-ui.css">
+    <link rel="shortcut icon" href="/static/favicon.ico">
+    <style>
+        html { box-sizing: border-box; }
+        body { margin: 0; background: #fafafa; }
+
+        /* ✅ 隐藏 swagger 顶部导航栏 */
+        .topbar { display: none !important; }
+    </style>
+</head>
+<body>
+    <div id="swagger-ui"></div>
+
+    <script src="/static/swagger-ui/swagger-ui-bundle.js"></script>
+    <script src="/static/swagger-ui/swagger-ui-standalone-preset.js"></script>
+    <script>
+    window.onload = () => {
+        const ui = SwaggerUIBundle({
+            url: "{{openapi_url}}",  // 自动生成的OpenAPI schema路径
+            dom_id: '#swagger-ui',
+            presets: [
+                SwaggerUIBundle.presets.apis,
+                SwaggerUIStandalonePreset
+            ],
+            layout: "StandaloneLayout",
+            deepLinking: true,
+            docExpansion: "none",
+            defaultModelsExpandDepth: -1,
+            displayRequestDuration: true,
+        });
+
+        // 本地开发时允许尝试在线校验（可选）
+        window.ui = ui;
+    };
+    </script>
+</body>
+</html>

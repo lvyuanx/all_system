@@ -1,0 +1,110 @@
+{% extends "vue_base.html" %}
+{% block title %} {{ title }}{% endblock %}
+{% block extra_css %}
+<style>
+    .el-form {
+        width: 70%;
+        margin: 0 auto;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div id="app">
+    <div class="page-container">
+        <div class="page-container-header">
+            <div class="header-left">
+                <el-button size="small" @click="handleBack"><el-icon>
+                        <Back />
+                    </el-icon> 返回</el-button> <span class="title">{{ title}} </span>
+            </div>
+        </div>
+        <div class="page-container-main">
+            <div class="page-container-main-container">
+
+                <el-form ref="ruleFormRef" :model="formData" :rules="rules" label-width="auto">
+                    <el-form-item label="角色名称" prop="name">
+                        <el-input v-model="formData.name" disabled/>
+                    </el-form-item>
+                    <el-form-item label="角色权限" prop="packs">
+                        <el-transfer v-model="formData.packs" :data="allPacks" :titles="['可选权限', '已选权限']"
+                            :button-texts="['移除', '选择']">
+                            <template #left-empty>
+                                <el-empty :image-size="60" description="暂无数据" />
+                            </template>
+                            <template #right-empty>
+                                <el-empty :image-size="60" description="暂无数据" />
+                            </template>
+                        </el-transfer>
+                    </el-form-item>
+                </el-form>
+
+            </div>
+        </div>
+        <div class="page-container-footer">
+            <el-button type="primary" @click="handleClick">提交</el-button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const { ElMessage, goBack } = SimpleUIExtra;  // 引入父页面的组件
+    window.initVueApp({
+        data() {
+            return {
+                formData: {
+                    name: "{{gname}}",
+                    packs: [],
+                },
+                allPacks: [],
+                rules: {
+                    name: [
+                        { required: true, message: '请输入角色名称', trigger: 'blur' },
+                        { min: 2, max: 20, message: '长度在 2 到 20 个字符', trigger: 'blur' }
+                    ],
+                    packs: [
+                        { type: 'array', required: true, message: '请选择至少一个权限', trigger: 'change' }
+                    ]
+                },
+            };
+        },
+        created() {
+            this.init();
+        },
+        methods: {
+            async init() {
+                const all_packs = await request.get("/auth/prem/pack/all/");
+                all_packs.forEach(element => {
+                    this.allPacks.push({ key: element.pack_code, label: element.pack_name, disabled: false });
+                });
+                const group_packs = await request.get("/auth/prem/pack/list_by_group/", {
+                    "gid": "{{ gid }}",
+                });
+                group_packs.forEach(element => {
+                    this.formData.packs.push(element.pack_code);
+                });
+            },
+            async createGroupApi() {
+                await request.post("/auth/group/update/", this.formData);
+                ElMessage.success("操作成功");
+                this.handleBack()
+            },
+            async handleClick() {
+                try {
+                    await this.$refs.ruleFormRef.validate();
+                } catch (error) {
+                    console.log(error);
+                    ElMessage.error('请完善表单后再提交');
+                    return;
+                }
+                await this.createGroupApi();
+            },
+            handleBack() {
+                goBack();
+            }
+        }
+    });
+</script>
+{% endblock %}

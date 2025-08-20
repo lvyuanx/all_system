@@ -1,0 +1,7 @@
+/* 在自定义 CSS 文件中添加 */
+.simpleui-menu .el-submenu__title, 
+.simpleui-menu .el-menu-item {
+  padding: 0 20px !important;  /* 增加左右内边距 */
+  height: auto !important;     /* 允许高度自适应 */
+  line-height: 1.8 !important; /* 增加行高 */
+}
