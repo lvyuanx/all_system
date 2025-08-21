@@ -31,9 +31,11 @@ class UserAdmin(admin_util.OperateBtnAdminMixin, admin_util.AdminListImagePrevie
     image_preview = {"avatar": "头像"}
     # 定制哪些字段需要展示
     list_display = (
-        "avatar_preview", "staff_code_link", "username","last_name", "first_name", "email", "is_superuser", 
+        "avatar_preview", "staff_code_link", "username","full_name", "email", "is_superuser", 
         "is_active", "last_login", "phone", "operator_buttons"
     )
+    
+
     def staff_code_link(self, obj):
         if hasattr(obj, "staff"):
             staff = obj.staff

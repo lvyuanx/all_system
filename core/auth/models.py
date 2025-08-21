@@ -1,6 +1,7 @@
 # accounts/models.py
 from django.contrib.auth.models import AbstractUser, Group, Permission
 from django.db import models
+from django.db.models import functions
 from asgiref.sync import sync_to_async
 from core.utils import time_util, model_util
 from core.conf import settings
@@ -21,9 +22,15 @@ class User(model_util.PermissionHelperMixin, AbstractUser):
     phone = models.CharField(max_length=20, unique=True, verbose_name="手机号")
     sex = models.CharField(max_length=1, choices=Gender.choices, default=Gender.UNKNOWN, verbose_name="性别")
     age = models.IntegerField(blank=True, null=True, verbose_name="年龄")
-    date_joined = models.DateTimeField("注册时间", default=time_util.now())
+    date_joined = models.DateTimeField("注册时间", default=time_util.now)
     avatar = models.ImageField(upload_to=model_util.user_avatar_path, blank=True, 
                                null=True, default=settings.DEFAULT_AVATAR, verbose_name="头像")
+    full_name = models.GeneratedField(
+        expression=functions.Concat("last_name", "first_name"),
+        output_field=models.CharField(max_length=255, null=True, blank=True),
+        db_persist=False,
+        verbose_name="姓名"
+    )
     
 
     class Meta:
