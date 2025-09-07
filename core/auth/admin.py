@@ -16,7 +16,7 @@ from core.conf import settings
 
 
 @admin.register(User)
-class UserAdmin(admin_util.OperateBtnAdminMixin, admin_util.AdminListImagePreviewMixin, admin.ModelAdmin):
+class UserAdmin(admin_util.AdminListImagePreviewMixin, admin.ModelAdmin):
     
     class UserAdminForm(admin_util.AdminFormImageUpload):
         upload_image_fields = ("avatar",)
@@ -32,7 +32,7 @@ class UserAdmin(admin_util.OperateBtnAdminMixin, admin_util.AdminListImagePrevie
     # 定制哪些字段需要展示
     list_display = (
         "avatar_preview", "staff_code_link", "username","full_name", "email", "is_superuser", 
-        "is_active", "last_login", "phone", "operator_buttons"
+        "is_active", "last_login", "phone",
     )
     
 

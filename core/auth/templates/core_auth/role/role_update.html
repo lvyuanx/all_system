@@ -1,5 +1,6 @@
 {% extends "vue_base.html" %}
 {% block title %} {{ title }}{% endblock %}
+{% load simpletags %}
 {% block extra_css %}
 <style>
     .el-form {
@@ -11,46 +12,37 @@
 
 {% block content %}
 <div id="app">
+    <div class="page-header">
+        <el-page-header title="返回" @back="goBack" content="{{title}}" />
+    </div>
     <div class="page-container">
-        <div class="page-container-header">
-            <div class="header-left">
-                <el-button size="small" @click="handleBack"><el-icon>
-                        <Back />
-                    </el-icon> 返回</el-button> <span class="title">{{ title}} </span>
-            </div>
-        </div>
-        <div class="page-container-main">
-            <div class="page-container-main-container">
 
-                <el-form ref="ruleFormRef" :model="formData" :rules="rules" label-width="auto">
-                    <el-form-item label="角色名称" prop="name">
-                        <el-input v-model="formData.name" disabled/>
-                    </el-form-item>
-                    <el-form-item label="角色权限" prop="packs">
-                        <el-transfer v-model="formData.packs" :data="allPacks" :titles="['可选权限', '已选权限']"
-                            :button-texts="['移除', '选择']">
-                            <template #left-empty>
-                                <el-empty :image-size="60" description="暂无数据" />
-                            </template>
-                            <template #right-empty>
-                                <el-empty :image-size="60" description="暂无数据" />
-                            </template>
-                        </el-transfer>
-                    </el-form-item>
-                </el-form>
 
-            </div>
-        </div>
-        <div class="page-container-footer">
-            <el-button type="primary" @click="handleClick">提交</el-button>
-        </div>
+        <el-form ref="ruleFormRef" :model="formData" :rules="rules" label-width="auto">
+            <el-form-item label="角色名称" prop="name">
+                <el-input v-model="formData.name" disabled />
+            </el-form-item>
+            <el-form-item label="角色权限" prop="packs">
+                <el-transfer v-model="formData.packs" :data="allPacks" :titles="['可选权限', '已选权限']"
+                    :button-texts="['移除', '选择']">
+                    <template #left-empty>
+                        <el-empty :image-size="60" description="暂无数据" />
+                    </template>
+                    <template #right-empty>
+                        <el-empty :image-size="60" description="暂无数据" />
+                    </template>
+                </el-transfer>
+            </el-form-item>
+        </el-form>
+    </div>
+    <div class="page-footer">
+        <el-button type="primary" @click="handleClick">提交</el-button>
     </div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-    const { ElMessage, goBack } = SimpleUIExtra;  // 引入父页面的组件
     window.initVueApp({
         data() {
             return {
@@ -88,7 +80,7 @@
             },
             async createGroupApi() {
                 await request.post("/auth/group/update/", this.formData);
-                ElMessage.success("操作成功");
+                this.$ElMessage.success("操作成功");
                 this.handleBack()
             },
             async handleClick() {
@@ -96,13 +88,13 @@
                     await this.$refs.ruleFormRef.validate();
                 } catch (error) {
                     console.log(error);
-                    ElMessage.error('请完善表单后再提交');
+                    this.$ElMessage.error('请完善表单后再提交');
                     return;
                 }
                 await this.createGroupApi();
             },
-            handleBack() {
-                goBack();
+            goBack: function () {
+                window.location.href = '{% get_previous_url %}'
             }
         }
     });

@@ -4,7 +4,7 @@ from core.utils import admin_util
 from .models import Client
 
 @admin.register(Client)
-class UserAdmin(admin_util.OperateBtnAdminMixin, admin_util.AdminListImagePreviewMixin, admin.ModelAdmin):
+class UserAdmin(admin_util.AdminListImagePreviewMixin, admin.ModelAdmin):
 
     class UserAdminForm(admin_util.AdminFormImageUpload):
         upload_image_fields = ("company_logo",)

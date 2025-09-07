@@ -1,0 +1,178 @@
+{% extends "vue_base.html" %}
+{% load static %}
+{% load simpletags %}
+
+{% block title %} {{ title }}{% endblock %}
+
+{% block extra_css %}
+<style>
+
+</style>
+{% endblock %}
+
+{% block content %}
+<div id="app">
+    <div class="page-header">
+        <el-page-header title="返回" @back="goBack" content="{{title}}"></el-page-header>
+        <div class="header-right">
+            <el-button type="default" @click="refreshPage"><el-icon>
+                    <Refresh />
+                </el-icon>重置</el-button>
+            <el-button type="default"
+                @click="batchDisbursementHandle">批量发放</el-button>
+            <el-button type="default"
+                @click="batchModifyDecimalField('actual_disbursement', 'sub', selectRows)">批量减少</el-button>
+            <el-button type="default"
+                @click="batchModifyDecimalField('actual_disbursement', 'add', selectRows)">批量增加</el-button>
+            <el-button type="danger" @click="batchRemoveHandle">批量移除</el-button>
+        </div>
+    </div>
+    <div class="page-container">
+        <common-table :data="tableData" :columns="columns" :loading="loading" :selectable="true"
+            @selection-change="onSelectionChange" @row-click="onRowClick">
+            <template #actions="{ row }">
+                <el-button type="success" size="small">发放</el-button>
+                <el-button type="danger" size="small" @click="removeItems([row])">移除</el-button>
+            </template>
+        </common-table>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script type="module">
+    import CommonTable from "{% static 'vue/js/CommonTable.js' %}"
+
+    window.initVueApp({
+        components: { CommonTable },
+        data() {
+            return {
+                loading: false,
+                tableData: [
+                    { staff_code: "A001", full_name: "张三", phone: "17300000000", basic_salary: "5000.00", actual_disbursement: "5000.00", memo: "" },
+                    { staff_code: "A002", full_name: "李四", phone: "17300000001", basic_salary: "5000.00", actual_disbursement: "5000.00", memo: "" },
+                ],
+                columns: [
+                    { prop: "staff_code", label: "工号", align: "center", width: 120 },
+                    { prop: "full_name", label: "姓名", align: "center", width: 120 },
+                    { prop: "phone", label: "手机号", align: "center", width: 180 },
+                    { prop: "basic_salary", label: "基本工资（元）", align: "center", width: 200 },
+                    { prop: "actual_disbursement", label: "实发工资（元）", align: "center", type: "input", width: 220 },
+                    { prop: "memo", label: "备注", align: "center", type: "input" },
+                ],
+                selectRows: [],
+            }
+        },
+        methods: {
+            // 初始化页面
+            initPage: async function () {
+                this.loading = true;
+                try {
+                    // 清空列表
+                    this.tableData = [];
+                } catch (e) {
+                    this.$ElMessage.error("页面数据加载失败！")
+                    throw e;
+                } finally {
+                    this.loading = false;
+                }
+            },
+
+            // 刷新页面数据
+            refreshPage: async function () {
+                await this.initPage();
+                this.$ElMessage.success("刷新成功！")
+            },
+
+
+            // 返回上一页
+            goBack: function () {
+                window.location.href = '{% get_previous_url %}'
+            },
+
+            // 移除项
+            removeItems: function (rows) {
+                if (rows.length == 0) {
+                    this.$ElMessage.warning("请选择要删除的项！")
+                } else {
+                    for (const row of rows) {
+                        this.tableData.splice(this.tableData.indexOf(row), 1)
+                    }
+
+                }
+            },
+
+            // 批量移除
+            batchRemoveHandle: function () {
+                this.removeItems(this.selectRows)
+            },
+
+            // 批量发放
+            batchDisbursementHandle: function () {
+
+            },
+
+            /**
+             * 批量修改选中行的 Decimal 字段
+             * @param {String} field - 需要修改的字段名，例如 'actual_disbursement'
+             * @param {String} action - 'add' 或 'sub'
+             * @param {Array} rows - 选中行数组
+            */
+            batchModifyDecimalField: async function (field, action, rows) {
+                if(rows.length < 1) {
+                    this.$ElMessage.warning('请选择要修改的行');
+                    return;
+                }
+                try {
+                    const { value } = await this.$ElMessageBox.prompt(
+                        '请输入金额：',
+                        action === 'add' ? '批量增加金额' : '批量减少金额',
+                        {
+                            confirmButtonText: '提交',
+                            cancelButtonText: '取消',
+                            inputPattern: /^[0-9]+(\.[0-9]+)?$/, // 只允许数字
+                            inputErrorMessage: '请输入合法数字',
+                        }
+                    );
+
+                    if (!value || isNaN(value)) {
+                        this.$ElMessage.error('请输入有效金额');
+                        return;
+                    }
+
+                    const modifyVal = new Decimal(value.trim());
+
+                    rows.forEach(row => {
+                        const currentVal = new Decimal(row[field] || 0);
+                        let newVal;
+                        if (action === 'add') newVal = currentVal.plus(modifyVal);
+                        else if (action === 'sub') newVal = currentVal.minus(modifyVal);
+                        else throw new Error('未知操作类型: ' + action);
+
+                        // 保留两位小数
+                        row[field] = newVal.toFixed(2);
+                    });
+
+                    this.$ElMessage.success(
+                        action === 'add'
+                            ? `已批量增加 ${modifyVal.toFixed(2)}`
+                            : `已批量减少 ${modifyVal.toFixed(2)}`
+                    );
+                } catch (err) {
+                    console.log('操作取消或异常:', err);
+                }
+            },
+
+
+
+
+            onSelectionChange: function (val) {
+                this.selectRows = val
+            },
+            onRowClick(row) {
+                console.log("点击行：", row);
+            }
+        }
+    });
+</script>
+{% endblock %}

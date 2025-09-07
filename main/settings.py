@@ -15,7 +15,7 @@ DEBUG = True
 
 # 允许访问该 Django 项目的主机列表
 # 在生产环境中需要设置具体的域名或 IP 地址
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["*"]
 
 # 已安装的应用列表
 # Django 会自动在这些应用中查找模型、视图、模板等
@@ -30,6 +30,7 @@ INSTALLED_APPS = [
     "ninja",                         # ninja 框架
     "core.auth",                     # 认证系统
     "core.ninja_extra",              # ninja 框架扩展
+    "core.common",                   # 公共模块
     "staff",                         # 员工管理
     "bill",                          # 票据管理
     "client_mgmt",                   # 客户管理
@@ -230,6 +231,12 @@ PERM_PAKC = {
         "name": "员工管理权限",
         "models": {
             "staff.staff": ["add", "change", "view"]
+        }
+    },
+    "FINANCE_MANAGE": {
+        "name": "财务管理权限",
+        "models": {
+            "staff.staffsalary": ["add", "change", "view"]
         }
     },
     "BILL_MANAGE": {

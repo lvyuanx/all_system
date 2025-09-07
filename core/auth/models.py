@@ -36,6 +36,9 @@ class User(model_util.PermissionHelperMixin, AbstractUser):
     class Meta:
         verbose_name = "用户列表"
         verbose_name_plural = verbose_name
+    
+    def __str__(self) -> str:
+        return f"{self.full_name}:{self.phone if self.phone else '-'}"
 
 
 class SimpleuiMenus(model_util.PermissionHelperMixin, models.Model):
@@ -60,8 +63,8 @@ class SimpleuiMenus(model_util.PermissionHelperMixin, models.Model):
 
 class PermissionPack(model_util.PermissionHelperMixin, models.Model):
 
-    permissions = models.ManyToManyField("auth.Permission",  blank=True, null=True, default=None, verbose_name="权限")
-    groups = models.ManyToManyField("auth.Group", blank=True, null=True, default=None, verbose_name="权限组", related_name="permission_packs")
+    permissions = models.ManyToManyField("auth.Permission",  blank=True, default=None, verbose_name="权限")
+    groups = models.ManyToManyField("auth.Group", blank=True, default=None, verbose_name="权限组", related_name="permission_packs")
     pack_name = models.CharField(max_length=255, verbose_name="权限包名称")
     pack_code = models.CharField(max_length=255, verbose_name="权限包编码")
 

@@ -9,4 +9,5 @@ django-simpleui~=2025.6.24
 Jinja2~=3.1.6
 pdfkit~=1.0.0
 django-guardian~=3.0.3
+transitions~=0.9.3
 

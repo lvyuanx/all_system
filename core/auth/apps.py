@@ -9,4 +9,4 @@ class CoreAuthConfig(AppConfig):
     
     
     def ready(self):
-        from . import signals
+        from .signals import receivers

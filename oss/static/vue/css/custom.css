@@ -1,76 +1,87 @@
-*{
+* {
     box-sizing: border-box;
 }
 
-html, body{
+html,
+body, 
+#app{
     margin: 0;
     padding: 0;
-    background-color: #fafafa;
+    background-color: #f1f1f1;
     width: 100%;
     height: 100%;
-    overflow: hidden;
+    overflow: auto;
 }
+
+
 
 #app {
     width: 100%;
-    height: 100%;
-    background-color: #fafafa;
+    min-height: 100%;
+    background-color: #eee;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 10px;
 }
 
+.page-header, .page-container, .page-footer { 
+    background-color: white;
+    border-radius: 8px;
+    padding: 8px;
+    width: 100%;
+    box-shadow: 0 0 8px rgba(10, 10, 10, 0.1);
+}
+
+.page-header {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+}
+
+.page-header .el-page-header {
+    display: flex;
+    align-items: center;
+}
 
 .page-container {
-    width: 100%;
-    height: 100%;
-    overflow: hidden;
-    display: flex;
-    justify-content: center; /* 水平 */
-    align-items: flex-start;     /* 垂直 */
-    flex-direction: column; /* 垂直布局 */
-}
-
-.page-container-header {
-    padding: 10px;
-    width: 100%;
-    background-color: white;
-    display: flex;
-    justify-content: flex-start; /* 水平 */
-    align-items: center;     /* 垂直 */
-    line-height: 24px;
-    font-weight: 500;
-}
-
-.header-left {
-    font-size: 14px !important;
-    font-weight: 400;
-}
-
-.header-left .title {
-    margin-left: 10px;
-    font-size: 14px !important;
-    font-weight: 400;
-}
-
-
-.page-container-main {
     flex: 1;
-    width: 100%;
-    padding: 20px;
-    padding-bottom: 2px;
-}
-
-.page-container-main-container {
-    width: 100%;
-    min-height: 100%;
-    background-color: white;
-    padding: 10px;
-}
-
-.page-container-footer {
-    padding: 10px;
-    width: calc(100% - 40px);
+    margin-top: 10px;
     display: flex;
-    justify-content: center; /* 水平居中 */
-    align-items: center;     /* 垂直居中 */
-    background-color: white;
-    margin: 0 20px;
+    flex-direction: column;
+}
+
+.page-footer {
+    margin-top: 10px;
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+}
+
+
+
+
+
+
+/* CommonTable */
+.common-table-wrapper {
+    flex: 1;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.common-table-wrapper {
+  flex: 1;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.common-table-header > th.el-table__cell {
+  background-color: #676b7a !important; 
+  font-weight: bold;
+  color: #fff !important;
 }

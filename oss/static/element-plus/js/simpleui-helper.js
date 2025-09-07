@@ -1,27 +1,43 @@
 (function (global) {
-
+    // ---------------------------
+    // 获取父 Vue 实例
+    // ---------------------------
     function getParentVueApp() {
         try {
             if (window.parent && window.parent !== window) {
-                if (window.parent.app) {
-                    return window.parent.app; // simpleui 根 Vue 实例
-                }
+                if (window.parent.app) return window.parent.app;
             }
         } catch (e) {
-            console.warn('无法访问父页面', e);
+            console.warn("无法访问父页面", e);
         }
         return null;
     }
 
-    function getParentElementPlus() {
+    // ---------------------------
+    // 关闭模态框
+    // ---------------------------
+    function closeParentModal () {
         try {
             if (window.parent && window.parent !== window) {
-                if (window.parent.ElementPlus) {
-                    return window.parent.ElementPlus;
+                if (window.parent.closeCustomModal){
+                    window.parent.closeCustomModal();
                 }
             }
         } catch (e) {
-            console.warn('无法访问父页面 ElementPlus', e);
+            console.warn("无法访问父页面", e);
+        }
+    }
+
+    // ---------------------------
+    // 获取父页面的 ElementPlus
+    // ---------------------------
+    function getParentElementPlus() {
+        try {
+            if (window.parent && window.parent !== window) {
+                if (window.parent.ElementPlus) return window.parent.ElementPlus;
+            }
+        } catch (e) {
+            console.warn("无法访问父页面 ElementPlus", e);
         }
         return global.ElementPlus || null;
     }
@@ -31,19 +47,13 @@
     // ---------------------------
     const ElMessage = (options) => {
         const parentApp = getParentVueApp();
-        if (parentApp?.$message) {
-            return parentApp.$message(options);
-        } else if (getParentElementPlus()?.ElMessage) {
-            return getParentElementPlus().ElMessage(options);
-        } else {
-            alert(typeof options === 'string' ? options : options.message);
-        }
+        if (parentApp?.$message) return parentApp.$message(options);
+        if (getParentElementPlus()?.ElMessage) return getParentElementPlus().ElMessage(options);
+        alert(typeof options === "string" ? options : options.message);
     };
 
     ['success', 'warning', 'info', 'error'].forEach(type => {
-        ElMessage[type] = (message, opts = {}) => {
-            return ElMessage(Object.assign({}, opts, { message, type }));
-        };
+        ElMessage[type] = (message, opts = {}) => ElMessage(Object.assign({}, opts, { message, type }));
     });
 
     // ---------------------------
@@ -72,52 +82,59 @@
     };
 
     // ---------------------------
-    // 额外工具方法
+    // 页面导航工具
     // ---------------------------
     function goBack() {
         const parentApp = getParentVueApp();
-        if (parentApp?.$router) {
-            parentApp.$router.back();
-        } else {
-            window.history.back();
-        }
+        if (parentApp?.$router) parentApp.$router.back();
+        else window.history.back();
     }
 
-    function refreshParentTab() {
-        const parentApp = getParentVueApp();
-        if (parentApp?.reload) {
-            parentApp.reload();
-        } else {
-            window.location.reload();
-        }
-    }
 
-    function closeParentTab() {
+    // ---------------------------
+    // 打开父页面 Tab / 新标签 / 当前 Tab 跳转
+    // ---------------------------
+    function openParentTab(url, title = '', mode = 'tab') {
         const parentApp = getParentVueApp();
-        if (parentApp?.closeCurrentTab) {
-            parentApp.closeCurrentTab();
-        } else {
-            console.warn('父页面不支持关闭标签页功能');
-        }
-    }
+        const finalTitle = title || document.title || url;
 
-    function openParentTab(url, title) {
-        const parentApp = getParentVueApp();
-        if (parentApp?.openTab) {
-            parentApp.openTab(url, title);
-        } else {
+        if (mode === 'tab') {
+            if (parentApp?.openTab) {
+                parentApp.openTab({
+                    url: url,
+                    name: finalTitle,
+                    eid: new Date().getTime() + "" + Math.random()
+                });
+            } else {
+                window.open(url, '_blank');
+            }
+        } else if (mode === 'new') {
             window.open(url, '_blank');
+        } else if (mode === 'self') {
+            if (parentApp?.$router) parentApp.$router.push(url);
+            else window.location.href = url;
+        } else {
+            console.warn(`未知的跳转模式: ${mode}`);
         }
     }
 
+    // ---------------------------
+    // navigate 封装
+    // ---------------------------
+    function navigate(url, title = '', mode = 'tab') {
+        openParentTab(url, title, mode);
+    }
+
+    // ---------------------------
     // 挂载到全局
+    // ---------------------------
     global.SimpleUIExtra = {
         ElMessage,
         ElMessageBox,
+        closeParentModal,
         goBack,
-        refreshParentTab,
-        closeParentTab,
-        openParentTab
+        openParentTab,
+        navigate,
     };
 
 })(window);

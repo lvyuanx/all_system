@@ -1,40 +1,59 @@
 {% load static %}
 <!DOCTYPE html>
 <html lang="zh-CN">
+
 <head>
-  <meta charset="UTF-8" />
-  <title>{% block title %}Django + Vue + Element Plus{% endblock %}</title>
+    <meta charset="UTF-8" />
+    <title>{% block title %}Django + Vue + Element Plus{% endblock %}</title>
 
-  <link rel="stylesheet" href="{% static 'element-plus/css/element-plus.css' %}" />
-  <link rel="stylesheet" href="{% static 'vue/css/custom.css' %}" />
-  {% block extra_css %}{% endblock %}
+    <link rel="stylesheet" href="{% static 'element-plus/css/element-plus.css' %}" />
+    <link rel="stylesheet" href="{% static 'vue/css/custom.css' %}" />
+    {% block extra_css %}{% endblock %}
 </head>
+
 <body>
-  {% block content %}{% endblock %}
+    {% block content %}{% endblock %}
 
-  <script src="{% static 'vue/js/vue3.js' %}"></script>
-  <script src="{% static 'vue/js/axios.js' %}"></script>
-  <script src="{% static 'element-plus/js/simpleui-helper.js' %}"></script>
-  <script src="{% static 'element-plus/js/element-plus.js' %}"></script>
-  <script src="{% static 'element-plus/js/element-plus-icon.js' %}"></script>
-  <script src="{% static 'vue/js/request.js' %}"></script>
+    <script src="{% static 'vue/js/loadingPage.js' %}"></script>
+    <script src="{% static 'element-plus/js/simpleui-helper.js' %}"></script>
+    <script src="{% static 'vue/js/vue3.js' %}"></script>
+    <script src="{% static 'vue/js/axios.js' %}"></script>
+    <script src="{% static 'element-plus/js/element-plus.js' %}"></script>
+    <script src="{% static 'element-plus/js/element-plus-icon.js' %}"></script>
+    <script src="{% static 'element-plus/js/zh-cn.js' %}"></script>
+    <script src="{% static 'vue/js/request.js' %}"></script>
+    <script src="{% static 'vue/js/decimal.min.js' %}"></script>
+    <script src="{% static 'vue/js/showModal.js' %}"></script>
+    {% block extra_js_import %}{% endblock %}
 
-  <script>
-    window.initVueApp = function(options) {
-        const app = Vue.createApp(options);
-        app.use(ElementPlus);
-        // 批量注册所有图标
-        for (const iconName in window.ElementPlusIconsVue) {
-        app.component(iconName, window.ElementPlusIconsVue[iconName]);
-        }
-        // 全局配置自定义分隔符
-        app.config.compilerOptions = {
-        delimiters: ['[[', ']]']  // 将插值符号改为 [[ ]]
+    <script>
+        window.initVueApp = function (options) {
+            const app = Vue.createApp(options);
+            app.use(ElementPlus, {
+                locale: ElementPlusLocaleZhCn
+            });
+            // 批量注册所有图标
+            for (const iconName in window.ElementPlusIconsVue) {
+                app.component(iconName, window.ElementPlusIconsVue[iconName]);
+            }
+            // 全局配置自定义分隔符
+            app.config.compilerOptions = {
+                delimiters: ['[[', ']]']  // 将插值符号改为 [[ ]]
+            };
+            if (window.SimpleUIExtra) {
+                app.config.globalProperties.$SimpleUIExtra = window.SimpleUIExtra;
+                app.config.globalProperties.$ElMessage = window.SimpleUIExtra.ElMessage;
+                app.config.globalProperties.$ElMessageBox = window.SimpleUIExtra.ElMessageBox;
+                app.config.globalProperties.$goBack = window.SimpleUIExtra.goBack;
+                app.config.globalProperties.$openParentTab = window.SimpleUIExtra.openParentTab;
+                app.config.globalProperties.$navigate = window.SimpleUIExtra.navigate;
+                app.config.globalProperties.$closeParentModal = window.SimpleUIExtra.closeParentModal;
+            }
+            app.mount("#app");
         };
-      app.mount("#app");
-    };
-  </script>
+    </script>
 
-  {% block extra_js %}{% endblock %}
+    {% block extra_js %}{% endblock %}
 </body>
+
 </html>

@@ -8,4 +8,4 @@ class BillConfig(AppConfig):
     
     
     def ready(self):
-        from . import signals
+        from .signals import receivers
