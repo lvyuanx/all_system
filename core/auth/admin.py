@@ -7,15 +7,16 @@ from django.utils.html import format_html
 from django.utils.html import format_html_join
 from django.shortcuts import redirect
 
-from core.conf import settings
-from core.utils import admin_util
+from core.admin_extra import AdminBaseMixin
 from core.admin_extra.mixins import AdminListImagePreviewMixin
 from core.admin_extra.forms import AdminFormImageUploadForm
+from core.conf import settings
+from core.utils import admin_util
 from .models import User, SimpleuiMenus
 
 
 @admin.register(User)
-class UserAdmin(AdminListImagePreviewMixin, admin.ModelAdmin):
+class UserAdmin(AdminBaseMixin, AdminListImagePreviewMixin, admin.ModelAdmin):
 
     class UserAdminForm(AdminFormImageUploadForm):
         upload_image_fields = ("avatar",)
@@ -83,26 +84,12 @@ class UserAdmin(AdminListImagePreviewMixin, admin.ModelAdmin):
     """定义哪个字段可以编辑"""
     list_editable = ("is_active",)
 
-    """分页：每页10条"""
-    list_per_page = 10
-
-    """最大条目"""
-    list_max_show_all = 200  # default
-
-    """按日期分组"""
-    # date_hierarchy = "last_login"
-
-    """默认空值"""
-    empty_value_display = ""
-
     """过滤选项"""
     list_filter = (
         "is_superuser",
         "is_active",
     )
 
-    """动作"""
-    # actions = [deactivate_users]
 
     def formfield_for_manytomany(self, db_field, request, **kwargs):
         if db_field.name == "user_permissions":
@@ -143,7 +130,7 @@ class UserAdmin(AdminListImagePreviewMixin, admin.ModelAdmin):
 
 
 @admin.register(SimpleuiMenus)
-class UserAdmin(admin.ModelAdmin):
+class UserAdmin(AdminBaseMixin, admin.ModelAdmin):
     list_display = ("name", "url", "is_active")
     list_display_links = ("name",)
     """排序字段"""
@@ -152,24 +139,10 @@ class UserAdmin(admin.ModelAdmin):
     """定义哪个字段可以编辑"""
     list_editable = ("is_active",)
 
-    """分页：每页10条"""
-    list_per_page = 10
-
-    """最大条目"""
-    list_max_show_all = 200  # default
-
-    """按日期分组"""
-    # date_hierarchy = "last_login"
-
-    """默认空值"""
-    empty_value_display = ""
-
 
 admin.site.unregister(Group)
-
-
 @admin.register(Group)
-class GroupAdmin(admin.ModelAdmin):
+class GroupAdmin(AdminBaseMixin, admin.ModelAdmin):
     """分组管理"""
 
     list_display = ("name", "tagged_permissions")

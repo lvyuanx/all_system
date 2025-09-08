@@ -9,6 +9,7 @@ from django.urls import reverse
 from django.utils.html import format_html
 from simpleui.admin import AjaxAdmin
 
+from core.admin_extra import AdminBaseMixin
 from core.admin_extra.mixins import AuditAdminMixin, FilterChangeListMixin, OperateButtonsMixin, AdminListImagePreviewMixin
 from core.admin_extra.filters import CreateTimeQuickFilter
 from core.utils import admin_util
@@ -23,7 +24,7 @@ from .signals.signals import after_salary_audit_pass_signal
 
 
 @admin.register(Staff)
-class StaffAdmin(admin.ModelAdmin):
+class StaffAdmin(AdminBaseMixin, admin.ModelAdmin):
 
     list_display = ("user_avatar", "staff_code", "fullname_link")
 
@@ -55,6 +56,7 @@ class StaffAdmin(admin.ModelAdmin):
 
 @admin.register(StaffSalary)
 class StaffSalaryAdmin(
+    AdminBaseMixin,
     AdminFiltersMixin,
     AuditAdminMixin,
     OperateButtonsMixin,
@@ -192,22 +194,6 @@ class StaffSalaryAdmin(
         )
 
     status_tag.short_description = "状态"
-
-    # region ******************** 根据url传参筛选 start ******************** #
-    # skip_filter_fields = ["is_release"]
-    # def get_filter_queryset(self, qs, request: HttpRequest):
-    #     # 先调用父类方法，处理通用过滤
-    #     qs = super().get_filter_queryset(qs, request)
-    #     # is_release = request.GET.get("is_release")
-    #     # if is_release is not None:
-    #     #     if int(is_release):
-    #     #         qs = qs.filter(is_release=True)
-    #     #     else:
-    #     #         qs = qs.filter(
-    #     #             Q(is_release=False) | Q(is_release__isnull=True)
-    #     #         )
-    #     return qs
-    # endregion ****************** 根据url传参筛选 end ********************* #
 
     def get_list_display_links(self, request, list_display):
         # 获取 url 参数

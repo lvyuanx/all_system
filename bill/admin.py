@@ -2,11 +2,12 @@ from django.contrib import admin
 from django.urls import reverse
 from django.utils.html import format_html
 
+from core.admin_extra import AdminBaseMixin
 from core.admin_extra.mixins import AuditAdminMixin, OperateButtonsMixin
 from .models import Bill, BillTemplate
 
 @admin.register(Bill)
-class BillAdmin(OperateButtonsMixin, AuditAdminMixin, admin.ModelAdmin):
+class BillAdmin(AdminBaseMixin, OperateButtonsMixin, AuditAdminMixin, admin.ModelAdmin):
     
     list_display = ("name", "template_link", "operate_buttons")
 

@@ -1,12 +1,13 @@
 from django.contrib import admin
 
+from core.admin_extra import AdminBaseMixin
 from core.admin_extra.forms import AdminFormImageUploadForm
 from core.admin_extra.mixins import AdminListImagePreviewMixin
 from .models import Client
 
 
 @admin.register(Client)
-class UserAdmin(AdminListImagePreviewMixin, admin.ModelAdmin):
+class UserAdmin(AdminBaseMixin, AdminListImagePreviewMixin, admin.ModelAdmin):
 
     class UserAdminForm(AdminFormImageUploadForm):
         upload_image_fields = ("company_logo",)
