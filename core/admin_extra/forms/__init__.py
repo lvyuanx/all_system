@@ -1,0 +1,1 @@
+from .admin_form_image_upload import AdminFormImageUploadForm

@@ -1,16 +1,16 @@
+from adminfilters.mixin import AdminFiltersMixin
 from django import forms
 from django.contrib import admin, messages
-from django.db.models import Q
-from django.template.response import TemplateResponse
-from django.http import HttpRequest, HttpResponse, JsonResponse
-from django.urls import path, reverse
-from django.utils.html import format_html
-from .models import Staff, StaffSalary
-from adminfilters.filters import AutoCompleteFilter
-from adminfilters.mixin import AdminFiltersMixin
-from simpleui.admin import AjaxAdmin
 from django.db import transaction
+from django.db.models import Q
+from django.http import HttpRequest, JsonResponse
+from django.template.response import TemplateResponse
+from django.urls import reverse
+from django.utils.html import format_html
+from simpleui.admin import AjaxAdmin
 
+from core.admin_extra.mixins import AuditAdminMixin, FilterChangeListMixin, OperateButtonsMixin, AdminListImagePreviewMixin
+from core.admin_extra.filters import CreateTimeQuickFilter
 from core.utils import admin_util
 from .enums import (
     StaffSalaryStatusChoices,
@@ -18,6 +18,7 @@ from .enums import (
     StaffIncomeExpenseChoices,
 )
 from .machine import StaffSalaryStateMachine
+from .models import Staff, StaffSalary
 from .signals.signals import after_salary_audit_pass_signal
 
 
@@ -32,7 +33,7 @@ class StaffAdmin(admin.ModelAdmin):
     def user_avatar(self, obj):
         avatar = obj.user.avatar
         if avatar:
-            return admin_util.AdminListImagePreviewMixin.format_image_lightbox(
+            return AdminListImagePreviewMixin.format_image_lightbox(
                 avatar.url, "user_avatar"
             )
         else:
@@ -55,9 +56,9 @@ class StaffAdmin(admin.ModelAdmin):
 @admin.register(StaffSalary)
 class StaffSalaryAdmin(
     AdminFiltersMixin,
-    admin_util.AuditAdminMixin,
-    admin_util.OperateButtonsMixin,
-    admin_util.FilterChangeListMixin,
+    AuditAdminMixin,
+    OperateButtonsMixin,
+    FilterChangeListMixin,
     AjaxAdmin,
 ):
 
@@ -95,7 +96,7 @@ class StaffSalaryAdmin(
         "salary_type",
         "staff__user__full_name",
         "status",
-        admin_util.CreateTimeQuickFilter,
+        CreateTimeQuickFilter,
         ("create_time", admin.DateFieldListFilter),
     )
 

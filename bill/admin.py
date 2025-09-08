@@ -1,22 +1,12 @@
-import os
-import uuid
-from django.contrib import messages
 from django.contrib import admin
-from django.shortcuts import redirect
 from django.urls import reverse
-from django.conf import settings
 from django.utils.html import format_html
-from django.utils.encoding import smart_str
-from django.template.response import TemplateResponse
-from django.http.response import HttpResponse
 
-from bill.utils import pdf_util
-from core.utils import admin_util
+from core.admin_extra.mixins import AuditAdminMixin, OperateButtonsMixin
 from .models import Bill, BillTemplate
-from bill.utils import pdf_util
 
 @admin.register(Bill)
-class BillAdmin(admin_util.OperateButtonsMixin, admin_util.AuditAdminMixin, admin.ModelAdmin):
+class BillAdmin(OperateButtonsMixin, AuditAdminMixin, admin.ModelAdmin):
     
     list_display = ("name", "template_link", "operate_buttons")
 
