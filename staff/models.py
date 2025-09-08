@@ -191,6 +191,7 @@ class StaffSalaryCa(model_util.PermissionHelperMixin, models.Model):
     audit_full_name = models.CharField(max_length=50, verbose_name="审核人姓名")
     audit_user_phone = models.CharField(max_length=50, verbose_name="审核人手机号码")
     audit_time = models.DateTimeField(verbose_name="审核时间", null=True)
+    audit_memo = models.TextField(verbose_name="审核备注", null=True)
 
     class Meta:
         verbose_name = "工资收支情况审核"

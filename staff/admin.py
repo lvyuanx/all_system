@@ -87,7 +87,7 @@ class StaffSalaryAdmin(
             "icon": "fa-solid fa-magnifying-glass",
             "modal_width": "35vw",
             "modal_height": "80vh",
-            "url": lambda obj: reverse("admin:staff_staffsalary_change", args=[obj.pk]),
+            "url": lambda obj: reverse("staff_salary_autit_timeline", kwargs={"ssid": obj.pk}),
         }
     ]
 
@@ -362,9 +362,9 @@ class StaffSalaryAdmin(
         with transaction.atomic():
             # 分批迭代 queryset
             for obj in queryset.iterator(chunk_size=BATCH_SIZE):
-                sm = StaffSalaryStateMachine(obj, request.user)
+                sm = StaffSalaryStateMachine(obj, request.user, memo)
                 sm.audit_correction()
-                sm.save_state(memo)
+                sm.save_state()
                 count += 1
                 admin_util.log_custom_action(request, obj, "审批不通过")
 
@@ -418,9 +418,9 @@ class StaffSalaryAdmin(
         # 分批迭代 queryset
         with transaction.atomic():
             for obj in queryset.iterator(chunk_size=BATCH_SIZE):
-                sm = StaffSalaryStateMachine(obj, request.user)
+                sm = StaffSalaryStateMachine(obj, request.user, memo)
                 sm.audit_reject()
-                sm.save_state(memo)
+                sm.save_state()
                 count += 1
                 admin_util.log_custom_action(request, obj, "审批拒绝")
 
@@ -481,22 +481,3 @@ class StaffSalaryAdmin(
         if not status and request.user.has_perm("staff.delete_staffsalary"):
             return True
         return False
-
-    
-    operate_btn_dict = {
-        "view_pdf": {
-            "name": "",
-            "type": "primary",
-            "mode": "modal",  # 也可以改为 "normal"
-            "modal_width": "650px",
-            "modal_height": "700px",
-            "icon": "fa-solid fa-magnifying-glass",
-            "onclick":  lambda self, request, obj: self._view_pdf(request, obj),
-        },
-    }
-    
-    def _view_pdf(self, request, obj):
-        context = {
-            "pdf_url": f"", 
-        }
-        return TemplateResponse(request, "pdf/pdf_preview.html", context)

@@ -76,10 +76,10 @@ class StaffSalaryStateMachine:
         },
     ]
 
-    def __init__(self, salary_obj: StaffSalary, audit_user: AbstractUser = None):
+    def __init__(self, salary_obj: StaffSalary, audit_user: AbstractUser = None, audit_memo: str =None):
         self.salary = salary_obj
         self.audit_user = audit_user
-
+        self.audit_memo = audit_memo
         # 将整数初始状态转换成字符串 State
         initial_state = str(salary_obj.status)
 
@@ -92,13 +92,13 @@ class StaffSalaryStateMachine:
             after_state_change="log_transition",
         )
 
-    def save_state(self, audit_memo: str = None):
+    def save_state(self):
         """
         保存状态到工资单
         """
         self.salary.status = int(self.state)  # 转回整数枚举
-        if audit_memo:
-            self.salary.audit_memo = audit_memo
+        if self.audit_memo:
+            self.salary.audit_memo = self.audit_memo
         self.salary.save()
 
     def log_transition(self):
@@ -116,4 +116,5 @@ class StaffSalaryStateMachine:
             audit_full_name=getattr(self.audit_user, "full_name", None),
             audit_user_phone=getattr(self.audit_user, "phone", None),
             audit_time=timezone.now(),
+            audit_memo=self.audit_memo,
         )
