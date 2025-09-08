@@ -22,13 +22,14 @@ def staff_salary_basic_disbursement(request):
 
 
 audit_title_dict = {
-    StaffSalaryStatusChoices.AUDIT_PASS: "审核已通过",
-    StaffSalaryStatusChoices.PENDING_CORRECTION: "申请待修正",
-    StaffSalaryStatusChoices.CORRECTIONED: "修正申请已提交",
-    StaffSalaryStatusChoices.AUDIT_REJECT: "审核未通过",
-    StaffSalaryStatusChoices.CANCEL: "申请已取消",
-    StaffSalaryStatusChoices.ARCHIVED: "已归档",
+    StaffSalaryStatusChoices.AUDIT_PASS: "审核已通过，申请已被批准",
+    StaffSalaryStatusChoices.PENDING_CORRECTION: "申请需修正，等待修正后重新提交",
+    StaffSalaryStatusChoices.CORRECTIONED: "修正申请已提交，待审核",
+    StaffSalaryStatusChoices.AUDIT_REJECT: "审核未通过，申请被拒绝",
+    StaffSalaryStatusChoices.CANCEL: "申请已取消，流程终止",
+    StaffSalaryStatusChoices.ARCHIVED: "申请已归档，处理完毕",
 }
+
 
 
 

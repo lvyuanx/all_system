@@ -3,48 +3,70 @@
 {% if cl.search_fields or cl.has_filters %}
     <script type="text/javascript">
         function preSubmit() {
-            var $form = $('#changelist-search');
-            
-            // 移除空值的 input name
-            $form.find("input[name!='']").each(function () {
-                if ($(this).val() === '') {
-                    $(this).removeAttr('name');
-                }
-            });
+    var $form = $('#changelist-search');
+    
+    // 移除空值的 input name
+    $form.find("input[name!='']").each(function () {
+        if ($(this).val() === '') {
+            $(this).removeAttr('name');
+        }
+    });
 
-            // 清理已有的隐藏 input，避免重复
-            $form.find('input.dynamic-hidden').remove();
+    // 清理已有的隐藏 input，避免重复
+    $form.find('input.dynamic-hidden').remove();
 
-            // 获取父页面的查询参数
-            var parentUrlParams = new URLSearchParams(window.parent.location.search);
+    // 获取父页面的查询参数
+    var parentUrlParams = new URLSearchParams(window.parent.location.search);
 
-            // 获取父页面的哈希部分（#后的部分）
-            var hashPart = window.parent.location.hash.slice(1);
+    // 获取父页面的哈希部分（#后的部分）
+    var hashPart = window.parent.location.hash.slice(1);
 
-            // 如果哈希部分包含查询字符串（例如 ?status=6），提取出来
-            var hashParams = new URLSearchParams();
-            if (hashPart.includes('?')) {
-                var hashQuery = hashPart.split('?')[1];  // 提取 ? 之后的部分
-                hashParams = new URLSearchParams(hashQuery);  // 解析查询字符串
+    // 如果哈希部分包含查询字符串（例如 ?status=6），提取出来
+    var hashParams = new URLSearchParams();
+    if (hashPart.includes('?')) {
+        var hashQuery = hashPart.split('?')[1];  // 提取 ? 之后的部分
+        hashParams = new URLSearchParams(hashQuery);  // 解析查询字符串
+    }
+
+    // 将哈希中的查询参数合并到父页面的查询参数中
+    hashParams.forEach(function(value, key) {
+        // 使用 append 来保留重复的 key
+        parentUrlParams.append(key, value);
+    });
+
+    // 处理多个相同键的情况
+    var processedParams = {};
+
+    // 遍历合并后的查询参数
+    parentUrlParams.forEach(function(value, key) {
+        if (key !== 'q') {  // 排除 'q' 参数（如果需要）
+            if (processedParams[key]) {
+                // 如果该参数已经存在，合并成数组
+                processedParams[key].push(value);
+            } else {
+                processedParams[key] = [value];  // 创建一个新的数组
             }
+        }
+    });
 
-            // 将哈希中的查询参数合并到父页面的查询参数中
-            hashParams.forEach(function(value, key) {
-                parentUrlParams.set(key, value); // 将 hash 中的参数添加到查询参数中
-            });
-
-            // 遍历合并后的查询参数并将它们添加到表单中
-            parentUrlParams.forEach(function(value, key) {
-                if (key !== 'q') {  // 排除 'q' 参数（如果需要）
-                    var $hidden = $('<input>')
-                        .attr('type', 'hidden')
-                        .attr('name', key)
-                        .attr('value', value)
-                        .addClass('dynamic-hidden');
-                    $form.append($hidden);
-                }
+    // 将处理后的参数添加到表单中
+    for (var key in processedParams) {
+        if (processedParams.hasOwnProperty(key)) {
+            // 如果参数有多个值，使用逗号分隔，或者按你的需求来处理
+            var values = processedParams[key];
+            values.forEach(function(value) {
+                var $hidden = $('<input>')
+                    .attr('type', 'hidden')
+                    .attr('name', key)
+                    .attr('value', value)
+                    .addClass('dynamic-hidden');
+                $form.append($hidden);
             });
         }
+    }
+}
+
+
 
 
 
