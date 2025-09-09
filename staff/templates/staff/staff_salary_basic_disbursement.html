@@ -18,8 +18,7 @@
             <el-button type="default" @click="refreshPage"><el-icon>
                     <Refresh />
                 </el-icon>重置</el-button>
-            <el-button type="default"
-                @click="batchDisbursementHandle">批量发放</el-button>
+            <el-button type="default" @click="batchDisbursementHandle">批量发放</el-button>
             <el-button type="default"
                 @click="batchModifyDecimalField('actual_disbursement', 'sub', selectRows)">批量减少</el-button>
             <el-button type="default"
@@ -28,8 +27,10 @@
         </div>
     </div>
     <div class="page-container">
-        <common-table :data="tableData" :columns="columns" :loading="loading" :selectable="true"
-            @selection-change="onSelectionChange" @row-click="onRowClick">
+        <common-table :data="tableData.results" :columns="columns" :loading="loading" :selectable="true"
+            :is-paginated="true" v-model:current-page="tableData.current_page" v-model:page-size="tableData.page_size"
+            v-model:total-count="tableData.total_count" @selection-change="onSelectionChange" @row-click="onRowClick"
+            @page-change="pageChangeHandle">
             <template #actions="{ row }">
                 <el-button type="success" size="small">发放</el-button>
                 <el-button type="danger" size="small" @click="removeItems([row])">移除</el-button>
@@ -48,14 +49,20 @@
         data() {
             return {
                 loading: false,
-                tableData: [
-                    { staff_code: "A001", full_name: "张三", phone: "17300000000", basic_salary: "5000.00", actual_disbursement: "5000.00", memo: "" },
-                    { staff_code: "A002", full_name: "李四", phone: "17300000001", basic_salary: "5000.00", actual_disbursement: "5000.00", memo: "" },
-                ],
+                tableData: {
+                    current_page: 1,  // 当前页码
+                    page_size: 15, // 每页数量
+                    total_count: 100, // 总数量
+                    results: [
+                        { staff_code: "A001", full_name: "张三", phone: "17300000000", overspend: "100.00", basic_salary: "5000.00", actual_disbursement: "5000.00", memo: "" },
+                        { staff_code: "A002", full_name: "李四", phone: "17300000001", overspend: null, basic_salary: "5000.00", actual_disbursement: "5000.00", memo: "" },
+                    ]
+                },
                 columns: [
                     { prop: "staff_code", label: "工号", align: "center", width: 120 },
                     { prop: "full_name", label: "姓名", align: "center", width: 120 },
                     { prop: "phone", label: "手机号", align: "center", width: 180 },
+                    { prop: "overspend", label: "超支工资（元）", align: "center", width: 200 },
                     { prop: "basic_salary", label: "基本工资（元）", align: "center", width: 200 },
                     { prop: "actual_disbursement", label: "实发工资（元）", align: "center", type: "input", width: 220 },
                     { prop: "memo", label: "备注", align: "center", type: "input" },
@@ -112,6 +119,11 @@
 
             },
 
+            // 列表发生变化
+            pageChangeHandle: function (data) {
+                console.log(this.tableData)
+            },
+
             /**
              * 批量修改选中行的 Decimal 字段
              * @param {String} field - 需要修改的字段名，例如 'actual_disbursement'
@@ -119,7 +131,7 @@
              * @param {Array} rows - 选中行数组
             */
             batchModifyDecimalField: async function (field, action, rows) {
-                if(rows.length < 1) {
+                if (rows.length < 1) {
                     this.$ElMessage.warning('请选择要修改的行');
                     return;
                 }

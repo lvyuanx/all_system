@@ -85,3 +85,12 @@ body,
   font-weight: bold;
   color: #fff !important;
 }
+
+.common-table-pagination {
+    width: 100%;
+    height: auto;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+}
