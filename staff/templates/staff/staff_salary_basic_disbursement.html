@@ -28,12 +28,21 @@
     </div>
     <div class="page-container">
         <common-table :data="tableData.results" :columns="columns" :loading="loading" :selectable="true"
-            :is-paginated="true" v-model:current-page="tableData.current_page" v-model:page-size="tableData.page_size"
-            v-model:total-count="tableData.total_count" @selection-change="onSelectionChange" @row-click="onRowClick"
-            @page-change="pageChangeHandle">
+            v-model:filter-form="tableFilter" :is-paginated="true" v-model:current-page="tableData.current_page"
+            v-model:page-size="tableData.page_size" v-model:total-count="tableData.total_count"
+            @selection-change="onSelectionChange" @row-click="onRowClick" @page-change="pageChangeHandle">
             <template #actions="{ row }">
                 <el-button type="success" size="small">发放</el-button>
                 <el-button type="danger" size="small" @click="removeItems([row])">移除</el-button>
+            </template>
+
+            <template #filter="{ model }">
+                <el-form-item label="姓名">
+                    <el-input v-model="model.full_name" placeholder="请输入姓名" clearable />
+                </el-form-item>
+                <el-form-item label="手机号">
+                    <el-input v-model="model.phone" placeholder="请输入手机号" clearable />
+                </el-form-item>
             </template>
         </common-table>
     </div>
@@ -49,6 +58,10 @@
         data() {
             return {
                 loading: false,
+                tableFilter: {
+                    full_name: "",
+                    phone: "",                    
+                },
                 tableData: {
                     current_page: 1,  // 当前页码
                     page_size: 15, // 每页数量
@@ -122,6 +135,7 @@
             // 列表发生变化
             pageChangeHandle: function (data) {
                 console.log(this.tableData)
+                console.log(this.tableFilter)
             },
 
             /**

@@ -194,7 +194,7 @@
                                     </el-col>
                                     <el-col :span="18" v-if="isQuick"
                                         style="display: flex; align-items: center; justify-content: space-between;">
-                                        <el-button text :type="quickBtns[0] ? 'primary' : 'default'" @click="quickChange(0)"
+                                        <el-button :type="quickBtns[0] ? 'primary' : 'default'" @click="quickChange(0)"
                                             round>本月</el-button>
                                         <el-button :type="quickBtns[1] ? 'primary' : 'default'" @click="quickChange(1)"
                                             round>上个月</el-button>

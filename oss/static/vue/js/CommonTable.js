@@ -9,21 +9,17 @@ export default {
     isPaginated: { type: Boolean, default: false },
     currentPage: { type: Number, default: 1 },
     pageSize: { type: Number, default: 10 },
-    totalCount: { type: Number, default: 0 }
+    totalCount: { type: Number, default: 0 },
+    filterForm: { type: Object, default: () => ({}) } // 父组件传入
   },
   data() {
     return {
       isAllSelected: false,
       localCurrentPage: this.currentPage,
       localPageSize: this.pageSize,
-      localTotalCount: this.totalCount
+      localTotalCount: this.totalCount,
+      localFilterForm: { ...this.filterForm } // 内部可修改
     };
-  },
-  computed: {
-    paginatedData() {
-        
-      return this.data;
-    }
   },
   watch: {
     currentPage(val) {
@@ -35,6 +31,17 @@ export default {
     totalCount(val) {
       this.localTotalCount = val;
     },
+    filterForm: {
+      handler(val) {
+        this.localFilterForm = { ...val };
+      },
+      deep: true
+    }
+  },
+  computed: {
+    paginatedData() {
+      return this.data;
+    }
   },
   methods: {
     handleSelectAll(val) {
@@ -46,14 +53,32 @@ export default {
     },
     handlePageSizeChange(size) {
       this.localPageSize = size;
-      this.localCurrentPage = 1; // pageSize改变重置第一页
+      this.localCurrentPage = 1;
       this.emitPageChange();
     },
     emitPageChange() {
       this.$emit("update:currentPage", this.localCurrentPage);
       this.$emit("update:pageSize", this.localPageSize);
       this.$emit("update:totalCount", this.localTotalCount);
-      this.$emit("page-change");
+      this.$emit("update:filterForm", this.localFilterForm); // 双向绑定过滤条件
+      this.$emit("page-change", { 
+        page: this.localCurrentPage, 
+        size: this.localPageSize, 
+        filters: this.localFilterForm 
+      });
+    },
+    handleFilterSubmit() {
+      this.localCurrentPage = 1;
+      this.emitPageChange();
+    },
+    handleFilterReset() {
+      this.localFilterForm = {};
+      this.localCurrentPage = 1;
+      this.emitPageChange();
+    },
+    // 外部调用重置方法
+    resetFilters() {
+      this.handleFilterReset();
     }
   },
   mounted() {
@@ -65,6 +90,19 @@ export default {
   },
   template: `
     <div class="common-table-wrapper">
+
+      <!-- 过滤表单区域 -->
+      <div v-if="$slots.filter" class="common-table-filter">
+        <el-form :model="localFilterForm" size="small" inline>
+          <slot name="filter" :model="localFilterForm"></slot>
+          <el-form-item>
+            <el-button type="primary" @click="handleFilterSubmit" :disabled="loading"><el-icon><Search /></el-icon>搜索</el-button>
+            <el-button @click="handleFilterReset" :disabled="loading"><el-icon><Refresh /></el-icon>重置</el-button>
+          </el-form-item>
+        </el-form>
+      </div>
+
+      <!-- 表格 -->
       <el-table
         :data="paginatedData"
         stripe
@@ -112,6 +150,7 @@ export default {
         </el-table-column>
       </el-table>
 
+      <!-- 分页 -->
       <div class="common-table-pagination">
         <el-pagination
           v-if="isPaginated"
