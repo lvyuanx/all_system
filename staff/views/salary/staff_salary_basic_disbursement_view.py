@@ -21,16 +21,13 @@ from .. import schemas
 class Pagination(AsyncLimitOffsetPagination):
     async def aprocess_result(self, results):
         for item in results:
-            overspend = None
-            pending_salary = item.get("pending_salary", Decimal("0.00"))
             basic_salary = item.get("basic_salary", Decimal("0.00"))
+            account_balance = item.get("account_balance", Decimal("0.00"))
             max_salary = basic_salary
             actual_disbursement = basic_salary
-            if pending_salary < Decimal("0.00"):
-                overspend = pending_salary
-                actual_disbursement = basic_salary + overspend
+            if account_balance < Decimal("0.00"):
+                actual_disbursement = basic_salary + account_balance
                 max_salary = actual_disbursement
-            item["overspend"] = overspend
             item["actual_disbursement"] = actual_disbursement
             item["max_salary"] = max_salary
         return results
@@ -67,4 +64,4 @@ class View(BaseApi):
             ),
         ).filter(
             is_release_current_month=False
-        ).values("sid", "basic_salary", "staff_code", "full_name", "phone", "total_salary", "pending_salary")
+        ).values("sid", "basic_salary", "staff_code", "full_name", "phone", "account_balance")

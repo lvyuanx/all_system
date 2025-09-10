@@ -30,17 +30,14 @@ class Staff(model_util.PermissionHelperMixin, models.Model):
     hourly_wage = models.DecimalField(
         max_digits=10, decimal_places=2, default=Decimal("0.00"), verbose_name="时薪"
     )
-    total_salary = models.DecimalField(
-        max_digits=10, decimal_places=2, default=Decimal("0.00"), verbose_name="总工资"
+    account_balance = models.DecimalField(
+        max_digits=10, decimal_places=2, default=Decimal("0.00"), verbose_name="账户余额"
     )
-    pending_salary = models.DecimalField(
+    account_total_expenditure= models.DecimalField(
         max_digits=10,
         decimal_places=2,
         default=Decimal("0.00"),
-        verbose_name="待发工工资",
-    )
-    paid_salary = models.DecimalField(
-        max_digits=10, decimal_places=2, default=Decimal("0.00"), verbose_name="已发放工资"
+        verbose_name="账户总支出",
     )
 
 
@@ -66,7 +63,7 @@ class StaffSalary(
     staff_code = models.CharField(max_length=50, verbose_name="工号")
     full_name = models.CharField(max_length=50, verbose_name="姓名")
     phone = models.CharField(max_length=50, verbose_name="手机号码")
-    salary = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="金额")
+    salary = models.DecimalField(max_digits=10, decimal_places=2, blank=True, verbose_name="金额")
     income_expense = models.IntegerField(
         choices=StaffIncomeExpenseChoices.choices,
         default=StaffIncomeExpenseChoices.INCOME,
@@ -153,6 +150,8 @@ class StaffSalary(
     def save(self, *args, **kwargs):
         if not self.salary_serial_number:  # 只有保存时才生成
             self.salary_serial_number = self.get_sn()
+        if not self.salary:
+            self.salary = Decimal("0.00")
         super().save(*args, **kwargs)
 
     class Meta:

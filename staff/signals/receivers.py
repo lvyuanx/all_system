@@ -59,8 +59,17 @@ def staff_salary_save_signal_hendler(
 
         # 基础工资会保存当前时刻员工的基础工资
         if instance.salary_type == StaffSalaryTypeChoices.BASIC_SALARY:
-            data["basic_salary"] = staff.basic_salary
-            instance.basic_salary = data["basic_salary"]
+            basic_salary = staff.basic_salary
+            account_balance = staff.account_balance
+            max_salary = basic_salary
+            if account_balance < 0:  # 账户余额小于0
+                max_salary = basic_salary + account_balance # 最大可发工资 
+            instance_salary = basic_salary if instance.salary == Decimal("0.00") else instance.salary
+            salary = instance_salary if instance_salary > max_salary else max_salary
+            data["basic_salary"] = basic_salary
+            data["salary"] = salary
+            instance.basic_salary = basic_salary
+            instance.salary = salary
 
         # 如果是支出类型的工资，会设置为未发放（方便页面url过滤）
         if instance.income_expense == StaffIncomeExpenseChoices.EXPENSE:
@@ -102,11 +111,10 @@ def after_salary_audit_pass_signal_handler(sender, instance: StaffSalary, **kwar
     with transaction.atomic():
         if instance.income_expense == StaffIncomeExpenseChoices.INCOME:  # 收入
             Staff.objects.filter(pk=staff.pk).update(
-                total_salary=F('total_salary') + salary,
-                pending_salary=F('pending_salary') + salary
+                account_balance=F('account_balance') + salary
             )
         else:  # 支出
             Staff.objects.filter(pk=staff.pk).update(
-                pending_salary=F('pending_salary') - salary,
-                paid_salary=F('paid_salary') + salary
+                account_balance=F('account_balance') - salary,
+                account_total_expenditure=F('account_total_expenditure') + salary
             )
