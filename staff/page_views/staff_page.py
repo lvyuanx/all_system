@@ -27,7 +27,6 @@ audit_title_dict = {
     StaffSalaryStatusChoices.CORRECTIONED: "修正申请已提交，待审核",
     StaffSalaryStatusChoices.AUDIT_REJECT: "审核未通过，申请被拒绝",
     StaffSalaryStatusChoices.CANCEL: "申请已取消，流程终止",
-    StaffSalaryStatusChoices.ARCHIVED: "申请已归档，处理完毕",
 }
 
 

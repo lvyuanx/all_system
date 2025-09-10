@@ -7,30 +7,64 @@
 # version    : python 3.11
 # Description: 查询未发放工资信息
 """
-
 from decimal import Decimal
-from typing import List
+from typing import Any, List
+from django.db.models import Exists, OuterRef, F
 from core.ninja_extra.api_extra import BaseApi, HttpRequest
-from core.ninja_extra.base_pagination import AsyncCustomLimitOffsetPagination
-from staff.models import StaffSalary
-from ninja.pagination import paginate
+from core.ninja_extra.base_pagination import AsyncLimitOffsetPagination
+from core.utils import time_util
+from staff.enums import StaffSalaryTypeChoices, StaffSalaryStatusChoices
+from staff.models import Staff, StaffSalary
 from .. import schemas
 
 
-class Pagination(AsyncCustomLimitOffsetPagination):
-    def process_queryset(self, results):
+class Pagination(AsyncLimitOffsetPagination):
+    async def aprocess_result(self, results):
+        for item in results:
+            overspend = None
+            pending_salary = item.get("pending_salary", Decimal("0.00"))
+            basic_salary = item.get("basic_salary", Decimal("0.00"))
+            max_salary = basic_salary
+            actual_disbursement = basic_salary
+            if pending_salary < Decimal("0.00"):
+                overspend = pending_salary
+                actual_disbursement = basic_salary + overspend
+                max_salary = actual_disbursement
+            item["overspend"] = overspend
+            item["actual_disbursement"] = actual_disbursement
+            item["max_salary"] = max_salary
         return results
 
 
 class View(BaseApi):
     
     api_status = BaseApi.ApiStatus.DEV_IN_PROGRESS
-    methods = ["GET"]
+    methods = ["POST"]
     finally_code = "000", "查询未发放工资信息失败"
     response_schema = schemas.BasicSalaryListItemSchema
     error_codes = []
+    is_pagination = True
     pagination_class = Pagination
 
     @staticmethod
     async def api(request: HttpRequest):
-        return StaffSalary.objects.all()
+        cur_time = time_util.now()
+        year = cur_time.year
+        month = cur_time.month
+        return Staff.objects.filter(
+            user__is_active=True,
+        ).annotate(
+            sid=F("id"),
+            full_name=F("user__full_name"),
+            phone=F("user__phone"),
+            is_release_current_month=Exists(
+                StaffSalary.objects.filter(
+                    staff=OuterRef("pk"),
+                    month=month,
+                    year=year,
+                    salary_type=StaffSalaryTypeChoices.BASIC_SALARY,
+                ).exclude(status__in=[StaffSalaryStatusChoices.AUDIT_REJECT, StaffSalaryStatusChoices.CANCEL])
+            ),
+        ).filter(
+            is_release_current_month=False
+        ).values("sid", "basic_salary", "staff_code", "full_name", "phone", "total_salary", "pending_salary")

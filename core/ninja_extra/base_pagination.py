@@ -1,59 +1,119 @@
-from typing import TypeVar, Generic, List, Type, Any
-from ninja import Schema
-from ninja.pagination import AsyncPaginationBase
-from pydantic import Field
-from core.ninja_extra.response_schema import SuccessResponse
+from functools import wraps
+import json
+from typing import Callable, Generic, List, Type, TypeVar, Dict, Any, Union
+
 from django.db.models import QuerySet
+from django.http import HttpRequest
+from ninja import Query, Schema, Body, Form
+from ninja.errors import ConfigError
+from pydantic import Field
 
 T = TypeVar("T")
 
 
-class AsyncCustomLimitOffsetPagination(AsyncPaginationBase):
+class AsyncLimitOffsetPagination:
     """
-    自定义异步分页器
-    - 输入参数: page / page_size
-    - 输出参数: current_page / page_size / total_count / data
-    - 返回格式继承 SuccessResponse
+    通用异步分页器（支持 Django ORM 同步/异步）
+    支持自定义输入/输出字段映射
     """
+    
+    InputSource = Query
 
-    items_attribute = "data"
+    # 默认输出字段映射，可在子类中覆盖
+    output_field_map: Dict[str, str] = {
+        "current_page": "current_page",
+        "page_size": "page_size",
+        "total_count": "total_count",
+        "items": "items",
+    }
 
+    # 默认输入字段映射，可在子类中覆盖
+    input_field_map: Dict[str, str] = {
+        "page": "page",
+        "page_size": "page_size",
+    }
+
+    # ================= 输入/输出 Schema =================
     class Input(Schema):
         page: int = Field(default=1, ge=1, description="当前页，最小为1")
         page_size: int = Field(default=15, ge=1, le=500, description="每页数量，最大500")
 
-    class Output(SuccessResponse):
-        current_page: int = Field(default=1, description="当前页")
-        page_size: int = Field(default=15, description="每页数量")
-        total_count: int = Field(default=0, description="总数量")
-        data: List[T] = Field(default=[], description="分页数据")
+    class Output(Schema, Generic[T]):
+        current_page: int = Field(..., description="当前页")
+        page_size: int = Field(..., description="每页数量")
+        total_count: int = Field(..., description="总数量")
+        items: List[T] = Field(..., description="分页数据")
 
-    def paginate_queryset(self, *args, **kwargs):
-        """同步模式禁用"""
-        raise NotImplementedError("仅支持异步分页")
+    # ================= 可扩展的 hook =================
+    async def aprocess_result(self, results: List[T]) -> List[T]:
+        """分页后处理结果，比如序列化或数据脱敏"""
+        return results
 
+    async def _aitems_count(self, queryset: QuerySet) -> int:
+        """统计总数，可子类重写以优化性能"""
+        try:
+            return await queryset.acount()
+        except AttributeError:
+            return queryset.count() if hasattr(queryset, "count") else len(queryset)
+
+    # ================= 内部工具方法 =================
+    def _is_async_queryset(self, queryset: QuerySet) -> bool:
+        """判断是否异步 QuerySet"""
+        return hasattr(queryset, "aall") or hasattr(queryset, "__aiter__")
+
+    def output(
+        self,
+        current_page: int,
+        page_size: int,
+        total_count: int,
+        items: List[T],
+    ) -> Union[Schema, Dict[str, Any]]:
+        """构造输出，支持返回 Schema 或 dict"""
+        payload = {
+            self.output_field_map["current_page"]: current_page,
+            self.output_field_map["page_size"]: page_size,
+            self.output_field_map["total_count"]: total_count,
+            self.output_field_map["items"]: items,
+        }
+        return self.Output[T](**payload)
+
+    # ================= 主流程 =================
     async def apaginate_queryset(
         self,
         queryset: QuerySet,
-        pagination: Input,
-        **params: Any,
+        pagination_input: Input,
     ) -> Output[T]:
-        # ✅ page 从 1 开始，内部换算 offset
-        page = pagination.page
-        page_size = pagination.page_size
+        # 使用 input_field_map 获取分页参数
+        page = getattr(pagination_input, self.input_field_map["page"])
+        page_size = getattr(pagination_input, self.input_field_map["page_size"])
         offset = (page - 1) * page_size
         limit = page_size
 
         total_count = await self._aitems_count(queryset)
 
-        if hasattr(queryset, "__aiter__"):  # 异步 QuerySet
-            items = [obj async for obj in queryset[offset:offset + limit]]
-        else:  # 普通 Django ORM QuerySet
-            items = list(queryset[offset:offset + limit])
+        if self._is_async_queryset(queryset):
+            items = [obj async for obj in queryset[offset : offset + limit]]
+        else:
+            items = list(queryset[offset : offset + limit])
 
-        return self.Output(
-            current_page=page,
-            page_size=page_size,
-            total_count=total_count,
-            data=items,
-        )
+        items = await self.aprocess_result(items)
+
+        return self.output(page, page_size, total_count, items)
+
+def paginate(pagination_class: Type["AsyncLimitOffsetPagination"]):
+    def decorator(func: Callable):
+        @wraps(func)
+        async def wrapper(*args, ninja_pagination=None, **kwargs):
+            # ninja_pagination 已经是 Input 实例
+            pagination_input = ninja_pagination
+
+            # 执行原函数获取 queryset
+            queryset = await func(*args, **kwargs)
+
+            paginator = pagination_class()
+            return await paginator.apaginate_queryset(queryset, pagination_input)
+
+        return wrapper
+    return decorator
+  
+

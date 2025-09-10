@@ -27,7 +27,7 @@
         </div>
     </div>
     <div class="page-container">
-        <common-table :data="tableData.results" :columns="columns" :loading="loading" :selectable="true"
+        <common-table :data="tableData.items" :columns="columns" :loading="loading" :selectable="true"
             v-model:filter-form="tableFilter" :is-paginated="true" v-model:current-page="tableData.current_page"
             v-model:page-size="tableData.page_size" v-model:total-count="tableData.total_count"
             @selection-change="onSelectionChange" @row-click="onRowClick" @page-change="pageChangeHandle">
@@ -65,11 +65,8 @@
                 tableData: {
                     current_page: 1,  // 当前页码
                     page_size: 15, // 每页数量
-                    total_count: 100, // 总数量
-                    results: [
-                        { staff_code: "A001", full_name: "张三", phone: "17300000000", overspend: "100.00", basic_salary: "5000.00", actual_disbursement: "5000.00", memo: "" },
-                        { staff_code: "A002", full_name: "李四", phone: "17300000001", overspend: null, basic_salary: "5000.00", actual_disbursement: "5000.00", memo: "" },
-                    ]
+                    total_count: 0, // 总数量
+                    items: []
                 },
                 columns: [
                     { prop: "staff_code", label: "工号", align: "center", width: 120 },
@@ -77,19 +74,32 @@
                     { prop: "phone", label: "手机号", align: "center", width: 180 },
                     { prop: "overspend", label: "超支工资（元）", align: "center", width: 200 },
                     { prop: "basic_salary", label: "基本工资（元）", align: "center", width: 200 },
+                    { prop: "max_salary", label: "最大可发工资（元）", align: "center", width: 200 },
                     { prop: "actual_disbursement", label: "实发工资（元）", align: "center", type: "input", width: 220 },
                     { prop: "memo", label: "备注", align: "center", type: "input" },
                 ],
                 selectRows: [],
             }
         },
+        beforeMount() {
+            this.initPage();
+        },
         methods: {
+            tabelApi: async function() {
+                const data = {
+                    current_page: this.tableData.current_page,
+                    page_size: this.tableData.page_size,
+                }
+                const res = await request.post("/staff/salary/padding_salary", {}, data);
+                return this.tableData = res;                
+            },
             // 初始化页面
             initPage: async function () {
                 this.loading = true;
                 try {
                     // 清空列表
                     this.tableData = [];
+                    await this.tabelApi();
                 } catch (e) {
                     this.$ElMessage.error("页面数据加载失败！")
                     throw e;

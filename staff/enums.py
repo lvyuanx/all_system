@@ -13,7 +13,6 @@ class StaffSalaryStatusChoices(models.IntegerChoices):
     CORRECTIONED = 4, "已修正"
     AUDIT_REJECT = 5, "审核拒绝"
     CANCEL = 6, "取消"
-    ARCHIVED = 99, "归档"
         
 
 
