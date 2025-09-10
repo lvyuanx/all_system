@@ -142,6 +142,7 @@ TOKEN_EXPIRE = merge_config("TOKEN_EXPIRE", 7 * 24 * 60 * 60)
 
 # region ******************** Ninja 文档配置 start ******************** #
 NINJA_BASE_URL = merge_config("NINJA_BASE_URL", "api")
+NINJA_PAGINATION_CLASS = 'core.ninja_extra.base_pagination.AsyncCustomLimitOffsetPagination'
 # endregion ****************** Ninja 文档配置 end ********************* #
 
 

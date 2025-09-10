@@ -10,8 +10,9 @@
 from enum import StrEnum
 from functools import wraps
 import logging
-from typing import Dict, Tuple, cast
-from ninja import NinjaAPI, Router, Body, Query, Path
+from typing import Dict, List, Tuple, cast
+from ninja import NinjaAPI, Router, Body, Query, Path, Schema, Header
+from ninja.pagination import paginate
 from django.http.request import HttpRequest
 from core.exceptions.base_exceptions import SysException, BusinessException, NotRegisteredCodeException
 from core.conf import settings
@@ -28,6 +29,11 @@ from core.ninja_extra.response_schema import (
 )
 from core.utils import data_util, common_util
 from core.status_codes import code_dict
+from ninja.utils import (
+    contribute_operation_args,
+    contribute_operation_callback,
+    is_async_callable,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -53,6 +59,9 @@ class BaseApi:
     methods: list[str] = ["POST"]  # 接口方法类型
     api_status: str = ApiStatus.DEV_IN_PROGRESS  # 接口状态
     wrap_response: bool = True  # 是否包装响应
+
+    # 分页
+    pagination_class = None
     
 
     # 异常码
@@ -74,7 +83,7 @@ class BaseApi:
             @wraps(func)
             async def wrapper(*args, **kwargs):
                 response = await func(*args, **kwargs)
-                if cls.wrap_response:
+                if not cls.pagination_class and cls.wrap_response:
                     if isinstance(response, ResponseBaseSchema):
                         return response
                     return SuccessResponse(data=response)
@@ -263,14 +272,28 @@ class NinjaAPIExtra:
                         router_code=router_code
                     )
                     
+                    # 处理分页
+                    view_func = api_class.api
+                    response = SuccessResponse[api_class.response_schema]
+                    pagination_class = api_class.pagination_class
+                    if pagination_class:
+                        view_func = paginate(pagination_class)(view_func)
+                        response = List[api_class.response_schema]
+                        contribute_operation_args(
+                            view_func,
+                            "token",
+                            "str",
+                            Header(...),
+                        )
+                    
                     # 注册api到路由中
                     router_obj.add_api_operation(
                         path=interface_url,
                         methods=api_class.methods,
-                        view_func=api_class.api,
+                        view_func=view_func,
                         summary=f"{api_class.api_status} {api_desc} {interface_code}",
                         tags=api_conf.get("tags"),
-                        response=SuccessResponse[api_class.response_schema] | ErrorResponse[api_class.error_response_schema],
+                        response=response,
                         openapi_extra={
                             "responses": self.get_error_response(api_class)
                         }

@@ -11,7 +11,15 @@
 from decimal import Decimal
 from typing import List
 from core.ninja_extra.api_extra import BaseApi, HttpRequest
+from core.ninja_extra.base_pagination import AsyncCustomLimitOffsetPagination
+from staff.models import StaffSalary
+from ninja.pagination import paginate
 from .. import schemas
+
+
+class Pagination(AsyncCustomLimitOffsetPagination):
+    def process_queryset(self, results):
+        return results
 
 
 class View(BaseApi):
@@ -19,18 +27,10 @@ class View(BaseApi):
     api_status = BaseApi.ApiStatus.DEV_IN_PROGRESS
     methods = ["GET"]
     finally_code = "000", "查询未发放工资信息失败"
-    response_schema = List[schemas.BasicSalaryListItemSchema]
+    response_schema = schemas.BasicSalaryListItemSchema
     error_codes = []
+    pagination_class = Pagination
 
     @staticmethod
     async def api(request: HttpRequest):
-        return [
-            schemas.BasicSalaryListItemSchema(
-                staff_code="A01",
-                full_name="张三",
-                phone="12345678901",
-                basic_salary=Decimal("1000.00"),
-                actual_disbursement=Decimal("1000.00"),
-                memo="无"
-            )
-        ]
+        return StaffSalary.objects.all()
