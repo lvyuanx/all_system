@@ -1,7 +1,7 @@
 # -*-coding:utf-8 -*-
 
 """
-# File       : staff_salary_basic_disbursement_view.py
+# File       : staff_salary_basic_disbursement_list_view.py
 # Time       : 2025-09-02 14:31:49
 # Author     : lvyuanxiang
 # version    : python 3.11

@@ -11,7 +11,7 @@ from decimal import Decimal
 import logging
 from django.db import transaction
 from django.db.models import F
-from django.db.models.signals import post_save
+from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
 
 from staff.enums import (
@@ -94,7 +94,8 @@ def staff_salary_save_signal_hendler(
                 instance.salary = data["salary"]
                 data["title"] = salary_util.generate_title(instance)
     if data:  # 只有当特定数据改变才会触发修改
-        StaffSalary.objects.filter(pk=instance.pk).update(**data)
+        with transaction.atomic():
+            StaffSalary.objects.filter(pk=instance.pk).update(**data)
 
 
 @receiver(after_salary_audit_pass_signal, sender=StaffSalary)

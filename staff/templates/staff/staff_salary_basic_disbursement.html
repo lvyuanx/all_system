@@ -6,7 +6,9 @@
 
 {% block extra_css %}
 <style>
-
+    .table-row-red td {
+        background-color: var(--el-color-danger-light-7) !important;
+    }
 </style>
 {% endblock %}
 
@@ -18,7 +20,7 @@
             <el-button type="default" @click="refreshPage"><el-icon>
                     <Refresh />
                 </el-icon>重置</el-button>
-            <el-button type="default" @click="batchDisbursementHandle">批量发放</el-button>
+            <el-button type="default" @click="batchDisbursementHandle(this.selectRows)">批量发放</el-button>
             <el-button type="default"
                 @click="batchModifyDecimalField('actual_disbursement', 'sub', selectRows)">批量减少</el-button>
             <el-button type="default"
@@ -27,13 +29,15 @@
         </div>
     </div>
     <div class="page-container">
-        <common-table :data="tableData.items" :columns="columns" :loading="loading" :selectable="true"
-            v-model:filter-form="tableFilter" :is-paginated="true" v-model:current-page="tableData.current_page"
-            v-model:page-size="tableData.page_size" v-model:total-count="tableData.total_count"
-            @selection-change="onSelectionChange" @row-click="onRowClick" @page-change="pageChangeHandle">
+        <common-table ref="tableRef" :data="tableData.items" :columns="columns" :loading="loading"
+            :selectable-is-show="true" v-model:filter-form="tableFilter" :is-paginated="true"
+            v-model:current-page="tableData.current_page" v-model:page-size="tableData.page_size"
+            v-model:total-count="tableData.total_count" :row-class-name="rowClassName"
+            @selection-change="onSelectionChange" @row-click="onRowClick" :selectable="selectable"
+            @page-change="pageChangeHandle">
             <template #actions="{ row }">
-                <el-button type="success" size="small">发放</el-button>
-                <el-button type="danger" size="small" @click="removeItems([row])">移除</el-button>
+                <el-button type="success" size="small" @click="batchDisbursementHandle([row.staff_code])" :disabled="errorRows.includes(row.staff_code)">发放</el-button>
+                <el-button type="danger" size="small" @click="removeItem(row.staff_code)">移除</el-button>
             </template>
 
             <template #filter="{ model }">
@@ -60,7 +64,7 @@
                 loading: false,
                 tableFilter: {
                     full_name: "",
-                    phone: "",                    
+                    phone: "",
                 },
                 tableData: {
                     current_page: 1,  // 当前页码
@@ -79,19 +83,45 @@
                     { prop: "memo", label: "备注", align: "center", type: "input" },
                 ],
                 selectRows: [],
+                errorRows: [],
             }
         },
         beforeMount() {
             this.initPage();
         },
+        watch: {
+            "tableData.items": {
+                handler(newVal, oldVal) {
+                    newVal?.forEach(item => {
+                        const staff_code = item.staff_code;
+                        const actual_disbursement = new Decimal(item.actual_disbursement | 0)
+                        const max_salary = new Decimal(item.max_salary | 0)
+                        if (actual_disbursement.greaterThan(max_salary) || actual_disbursement.lessThan(0)) {
+                            this.errorRows.push(staff_code);
+                            this.unSelection(staff_code)
+                            console.log("add error row", staff_code)
+                            return;
+                        }
+
+                        const idx = this.errorRows.indexOf(staff_code);
+                        if (idx !== -1) {
+                            this.errorRows.splice(idx, 1);
+                            console.log("remove error row", staff_code)
+                        }
+                    })
+                },
+                immediate: true, // 立即执行一次
+                deep: true
+            }
+        },
         methods: {
-            tabelApi: async function() {
+            tabelApi: async function () {
                 const data = {
                     current_page: this.tableData.current_page,
                     page_size: this.tableData.page_size,
                 }
-                const res = await request.post("/staff/salary/padding_salary", {}, data);
-                return this.tableData = res;                
+                const res = await request.post("/staff/salary/basic_disbursement_list", {}, data);
+                return this.tableData = res;
             },
             // 初始化页面
             initPage: async function () {
@@ -108,10 +138,44 @@
                 }
             },
 
+            // 动态修改表格行样式
+            rowClassName: function ({ row, rowIdx }) {
+                if (this.errorRows.includes(row.staff_code)) {
+                    return "table-row-red";
+                }
+            },
+
+            // 是否可以选择
+            selectable: function (row, rowIdx) {
+                return !this.errorRows.includes(row.staff_code);
+            },
+
             // 刷新页面数据
             refreshPage: async function () {
                 await this.initPage();
                 this.$ElMessage.success("刷新成功！")
+            },
+
+            // 取消表格行选择
+            unSelection: function (staff_code) {
+                const tableRef = this.$refs.tableRef?.getTableRef()
+                if (staff_code) {
+                    const row = this.tableData.items.find(item => item.staff_code == staff_code)
+                    if (row) {
+                        tableRef?.toggleRowSelection(
+                            row,
+                            false
+                        )
+                    }
+                } else {
+                    tableRef?.clearSelection();
+                }
+            },
+
+            // 工资发放
+            batchDisbursementApi: async function (rows) {
+                await request.post("/staff/salary/batch_disbursement", rows);
+                this.$ElMessage.success('操作成功');
             },
 
 
@@ -121,25 +185,45 @@
             },
 
             // 移除项
-            removeItems: function (rows) {
-                if (rows.length == 0) {
-                    this.$ElMessage.warning("请选择要删除的项！")
-                } else {
-                    for (const row of rows) {
-                        this.tableData.splice(this.tableData.indexOf(row), 1)
+            removeItem: function (staff_code) {
+                let removeIdx = null;
+                this.tableData.items.forEach((item, idx) => {
+                    if (item.staff_code == staff_code) {
+                        removeIdx = idx;
                     }
-
+                })
+                if (removeIdx !== null) {
+                    this.tableData.items.splice(removeIdx, 1);
                 }
             },
 
             // 批量移除
             batchRemoveHandle: function () {
-                this.removeItems(this.selectRows)
+                for (const staff_code of this.selectRows) {
+                    this.removeItem(staff_code)
+                }
             },
 
             // 批量发放
-            batchDisbursementHandle: function () {
-
+            batchDisbursementHandle: async function (staff_codes) {
+                if (!staff_codes?.length) {
+                    this.$ElMessage.warning("请选择要发放的行！")
+                    return;
+                }
+                await this.$ElMessageBox.confirm("确定要发放吗？", "提示", {
+                    confirmButtonText: "确定",
+                    cancelButtonText: "取消",
+                    type: "primary",
+                })
+                const selectRows = []
+                for (const staff_code of staff_codes){
+                    const row = this.tableData.items.find(item => item.staff_code == staff_code)
+                    if (row) {
+                        selectRows.push(row)
+                    }
+                }
+                await this.batchDisbursementApi(selectRows)
+                await this.initPage()
             },
 
             // 列表发生变化
@@ -177,16 +261,18 @@
                     }
 
                     const modifyVal = new Decimal(value.trim());
+                    
+                    this.tableData.items.forEach(item => {
+                        if (rows.includes(item.staff_code)) {
+                           const currentVal = new Decimal(item[field] || 0);
+                           let newVal;
+                            if (action === 'add') newVal = currentVal.plus(modifyVal);
+                            else if (action === 'sub') newVal = currentVal.minus(modifyVal);
+                            else throw new Error('未知操作类型: ' + action);
 
-                    rows.forEach(row => {
-                        const currentVal = new Decimal(row[field] || 0);
-                        let newVal;
-                        if (action === 'add') newVal = currentVal.plus(modifyVal);
-                        else if (action === 'sub') newVal = currentVal.minus(modifyVal);
-                        else throw new Error('未知操作类型: ' + action);
-
-                        // 保留两位小数
-                        row[field] = newVal.toFixed(2);
+                            // 保留两位小数
+                            item[field] = newVal.toFixed(2);
+                        }
                     });
 
                     this.$ElMessage.success(
@@ -198,12 +284,11 @@
                     console.log('操作取消或异常:', err);
                 }
             },
-
-
-
-
             onSelectionChange: function (val) {
-                this.selectRows = val
+                this.selectRows = []
+                val.forEach(row => {
+                    this.selectRows.push(row.staff_code)
+                })
             },
             onRowClick(row) {
                 console.log("点击行：", row);

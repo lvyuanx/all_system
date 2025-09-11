@@ -4,13 +4,15 @@ export default {
     data: { type: Array, default: () => [] },
     columns: { type: Array, default: () => [] },
     loading: { type: Boolean, default: false },
-    selectable: { type: Boolean, default: false },
+    selectableIsShow: { type: Boolean, default: false },  // 是否显示多选按框
+    selectable : { type: Function, default: (row, rowIdx) => true },
     height: { type: [String, Number], default: "100%" },
     isPaginated: { type: Boolean, default: false },
     currentPage: { type: Number, default: 1 },
     pageSize: { type: Number, default: 10 },
     totalCount: { type: Number, default: 0 },
-    filterForm: { type: Object, default: () => ({}) } // 父组件传入
+    filterForm: { type: Object, default: () => ({}) }, // 父组件传入
+    rowClassName: { type: [String, Function], default: "" },
   },
   data() {
     return {
@@ -79,6 +81,10 @@ export default {
     // 外部调用重置方法
     resetFilters() {
       this.handleFilterReset();
+    },
+    // 获取表格实例
+    getTableRef() {
+      return this.$refs.innerTable;
     }
   },
   mounted() {
@@ -104,6 +110,7 @@ export default {
 
       <!-- 表格 -->
       <el-table
+        ref="innerTable"
         :data="paginatedData"
         stripe
         highlight-current-row
@@ -111,10 +118,11 @@ export default {
         :height="height"
         v-loading="loading"
         header-row-class-name="common-table-header"
+        :row-class-name="rowClassName"
         @selection-change="$emit('selection-change', $event)"
         @row-click="$emit('row-click', $event)"
       >
-        <el-table-column v-if="selectable" type="selection" width="55">
+        <el-table-column v-if="selectableIsShow" :selectable="selectable" type="selection" width="55">
           <template #header>
             <el-checkbox v-model="isAllSelected" @change="handleSelectAll" />
           </template>

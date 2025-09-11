@@ -70,14 +70,31 @@ class StaffSalaryAdmin(
         "title",
         "staff_code",
         "full_name",
-        "salary",
+        "staff_account_balance",
         "income_expense_str",
+        "salary",
         "status_tag",
         "salary_type",
         "memo",
         "create_time",
         "operate_buttons"
     )
+    
+    @admin.display(description="所属月份")
+    def salary_bind_month(self, obj):
+        return f"{obj.year}年{obj.month}月"
+    @admin.display(description="账户余额（元）")
+    
+    def staff_account_balance(self, obj):
+        return obj.staff.account_balance
+
+    
+    @admin.display(description="收入/支出")
+    def income_expense_str(self, obj):
+        if obj.income_expense == StaffIncomeExpenseChoices.INCOME:
+            return "收入"
+        else:
+            return f"支出({'已发放' if obj.is_release else '未发放'})"
 
     operate_buttons_config = [
         {
@@ -164,19 +181,7 @@ class StaffSalaryAdmin(
 
     form = StaffSalaryForm
 
-    def salary_bind_month(self, obj):
-        return f"{obj.year}年{obj.month}月"
-
-    salary_bind_month.short_description = "所属月份"
-
-    def income_expense_str(self, obj):
-        if obj.income_expense == StaffIncomeExpenseChoices.INCOME:
-            return "收入"
-        else:
-            return f"支出({'已发放' if obj.is_release else '未发放'})"
-
-    income_expense_str.short_description = "收入/支出"
-
+    
     def status_tag(self, obj):
         status_map = {
             StaffSalaryStatusChoices.UNAUDIT: "#E0CD1E",  # 浅黄色 - 未审核

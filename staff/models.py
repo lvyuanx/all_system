@@ -1,3 +1,4 @@
+from asgiref.sync import sync_to_async
 from datetime import date
 from decimal import Decimal
 from functools import partial
@@ -56,6 +57,7 @@ class StaffSalary(
     staff = models.ForeignKey(
         Staff,
         on_delete=models.SET_NULL,
+        db_constraint=False,
         null=True,
         related_name="salaries",
         verbose_name="员工",
@@ -144,8 +146,13 @@ class StaffSalary(
     )
     
     
-    def get_sn(self):
-        return sn_generator.next_id(prefix="GZ", used_for="staff.StaffSalary", letter_length=0)
+    @staticmethod
+    def get_sn(count=1):
+        return sn_generator.next_ids(count, prefix="GZ", used_for="staff.StaffSalary", letter_length=0)
+    
+    @staticmethod
+    async def aget_sn(count=1):
+        return sync_to_async(StaffSalary.get_sn)(count)
     
     def save(self, *args, **kwargs):
         if not self.salary_serial_number:  # 只有保存时才生成
@@ -168,6 +175,7 @@ class StaffSalaryCa(model_util.PermissionHelperMixin, models.Model):
     staff_salary = models.ForeignKey(
         StaffSalary,
         on_delete=models.CASCADE,
+        db_constraint=False,
         related_name="salary_ca",
         verbose_name="员工工资",
     )
@@ -185,6 +193,7 @@ class StaffSalaryCa(model_util.PermissionHelperMixin, models.Model):
         on_delete=models.SET_NULL,
         null=True,
         related_name="salary_audit_user",
+        db_constraint=False,
         verbose_name="审核人",
     )
     audit_full_name = models.CharField(max_length=50, verbose_name="审核人姓名")
