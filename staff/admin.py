@@ -63,7 +63,7 @@ class StaffSalaryAdmin(
     FilterChangeListMixin,
     AjaxAdmin,
 ):
-
+    skip_filter_fields = ["create_time_quick"]
     list_display = (
         "salary_serial_number",
         "salary_bind_month",
