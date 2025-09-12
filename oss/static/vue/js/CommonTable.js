@@ -80,7 +80,8 @@ export default {
     },
     // 外部调用重置方法
     resetFilters() {
-      this.handleFilterReset();
+        this.handleFilterReset();
+        this.$emit("page-change")
     },
     // 获取表格实例
     getTableRef() {
@@ -122,7 +123,7 @@ export default {
         @selection-change="$emit('selection-change', $event)"
         @row-click="$emit('row-click', $event)"
       >
-        <el-table-column v-if="selectableIsShow" :selectable="selectable" type="selection" width="55">
+        <el-table-column v-if="selectableIsShow" :selectable="selectable" type="selection" fixed="left" width="55">
           <template #header>
             <el-checkbox v-model="isAllSelected" @change="handleSelectAll" />
           </template>
@@ -135,6 +136,7 @@ export default {
           :label="col.label"
           :width="col.width"
           :align="col.align || 'left'"
+          :fixed="col.fixed ? col.fixed : false"
           show-overflow-tooltip
         >
           <template #header>

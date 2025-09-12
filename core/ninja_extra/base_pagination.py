@@ -1,6 +1,6 @@
 from functools import wraps
 import json
-from typing import Callable, Generic, List, Type, TypeVar, Dict, Any, Union
+from typing import Callable, Generic, List, Optional, Type, TypeVar, Dict, Any, Union
 
 from django.db.models import QuerySet
 from django.http import HttpRequest
@@ -37,6 +37,8 @@ class AsyncLimitOffsetPagination:
     class Input(Schema):
         page: int = Field(default=1, ge=1, description="当前页，最小为1")
         page_size: int = Field(default=15, ge=1, le=500, description="每页数量，最大500")
+        filter: Optional[str] = Field(None, description="筛选条件, json字符串")
+        sort: Optional[str] = Field(None, description="排序条件, json字符串")
 
     class Output(Schema, Generic[T]):
         current_page: int = Field(..., description="当前页")
@@ -55,6 +57,11 @@ class AsyncLimitOffsetPagination:
             return await queryset.acount()
         except AttributeError:
             return queryset.count() if hasattr(queryset, "count") else len(queryset)
+    
+    
+    async def afilter_queryset(self, queryset: QuerySet, input_filter: dict):
+        """过滤数据，根据前端传入的参数进行过滤"""
+        return queryset
 
     # ================= 内部工具方法 =================
     def _is_async_queryset(self, queryset: QuerySet) -> bool:
@@ -83,6 +90,17 @@ class AsyncLimitOffsetPagination:
         queryset: QuerySet,
         pagination_input: Input,
     ) -> Output[T]:
+        # 过滤条件
+        filter_json = pagination_input.filter
+        if filter_json:
+            filter_dict = json.loads(filter_json)
+            queryset = await self.afilter_queryset(queryset, filter_dict)
+        
+        sort_json = pagination_input.sort
+        if sort_json:
+            sort_list = json.loads(sort_json)
+            queryset = queryset.order_by(*sort_list)
+        
         # 使用 input_field_map 获取分页参数
         page = getattr(pagination_input, self.input_field_map["page"])
         page_size = getattr(pagination_input, self.input_field_map["page_size"])

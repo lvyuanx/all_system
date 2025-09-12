@@ -8,8 +8,8 @@
 # Description: 查询未发放工资信息
 """
 from decimal import Decimal
-from typing import Any, List
-from django.db.models import Exists, OuterRef, F
+from typing import Any, Dict, List
+from django.db.models import Exists, OuterRef, F, QuerySet
 from core.ninja_extra.api_extra import BaseApi, HttpRequest
 from core.ninja_extra.base_pagination import AsyncLimitOffsetPagination
 from core.utils import time_util
@@ -31,6 +31,15 @@ class Pagination(AsyncLimitOffsetPagination):
             item["actual_disbursement"] = actual_disbursement
             item["max_salary"] = max_salary
         return results
+
+    async def afilter_queryset(self, queryset: QuerySet[Staff, dict[str, Any]], input_filter: Dict):
+        full_name = input_filter.get("full_name")
+        if full_name:
+            queryset = queryset.filter(user__full_name__contains=full_name)
+        phone = input_filter.get("phone")
+        if phone:
+            queryset = queryset.filter(user__phone__contains=phone)
+        return queryset
 
 
 class View(BaseApi):

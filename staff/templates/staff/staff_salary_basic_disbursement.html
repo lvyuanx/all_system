@@ -36,7 +36,8 @@
             @selection-change="onSelectionChange" @row-click="onRowClick" :selectable="selectable"
             @page-change="pageChangeHandle">
             <template #actions="{ row }">
-                <el-button type="success" size="small" @click="batchDisbursementHandle([row.staff_code])" :disabled="errorRows.includes(row.staff_code)">发放</el-button>
+                <el-button type="success" size="small" @click="batchDisbursementHandle([row.staff_code])"
+                    :disabled="errorRows.includes(row.staff_code)">发放</el-button>
                 <el-button type="danger" size="small" @click="removeItem(row.staff_code)">移除</el-button>
             </template>
 
@@ -66,6 +67,7 @@
                     full_name: "",
                     phone: "",
                 },
+                sort: ["staff_code"],
                 tableData: {
                     current_page: 1,  // 当前页码
                     page_size: 15, // 每页数量
@@ -73,8 +75,8 @@
                     items: []
                 },
                 columns: [
-                    { prop: "staff_code", label: "工号", align: "center", width: 120 },
-                    { prop: "full_name", label: "姓名", align: "center", width: 120 },
+                    { prop: "staff_code", label: "工号", align: "center", fixed: "left", width: 120 },
+                    { prop: "full_name", label: "姓名", align: "center", fixed: "left", width: 120 },
                     { prop: "phone", label: "手机号", align: "center", width: 180 },
                     { prop: "account_balance", label: "账户余额（元）", align: "center", width: 200 },
                     { prop: "basic_salary", label: "基本工资（元）", align: "center", width: 200 },
@@ -116,26 +118,29 @@
         },
         methods: {
             tabelApi: async function () {
-                const data = {
-                    current_page: this.tableData.current_page,
-                    page_size: this.tableData.page_size,
-                }
-                const res = await request.post("/staff/salary/basic_disbursement_list", {}, data);
-                return this.tableData = res;
-            },
-            // 初始化页面
-            initPage: async function () {
                 this.loading = true;
                 try {
-                    // 清空列表
-                    this.tableData = [];
-                    await this.tabelApi();
+                    this.tableData.items = [];
+                    const data = {
+                        current_page: this.tableData.current_page,
+                        page_size: this.tableData.page_size,
+                        filter: JSON.stringify(this.tableFilter),
+                        sort: JSON.stringify(this.sort)
+                    }
+                    const res = await request.post("/staff/salary/basic_disbursement_list", {}, data);
+                    return this.tableData = res;
                 } catch (e) {
                     this.$ElMessage.error("页面数据加载失败！")
                     throw e;
                 } finally {
                     this.loading = false;
                 }
+            },
+            // 初始化页面
+            initPage: async function () {
+                this.tableData.current_page = 1;
+                this.tableData.page_size = 15;
+                await this.tabelApi();
             },
 
             // 动态修改表格行样式
@@ -216,7 +221,7 @@
                     type: "primary",
                 })
                 const selectRows = []
-                for (const staff_code of staff_codes){
+                for (const staff_code of staff_codes) {
                     const row = this.tableData.items.find(item => item.staff_code == staff_code)
                     if (row) {
                         selectRows.push(row)
@@ -228,8 +233,7 @@
 
             // 列表发生变化
             pageChangeHandle: function (data) {
-                console.log(this.tableData)
-                console.log(this.tableFilter)
+                this.tabelApi()
             },
 
             /**
@@ -261,11 +265,11 @@
                     }
 
                     const modifyVal = new Decimal(value.trim());
-                    
+
                     this.tableData.items.forEach(item => {
                         if (rows.includes(item.staff_code)) {
-                           const currentVal = new Decimal(item[field] || 0);
-                           let newVal;
+                            const currentVal = new Decimal(item[field] || 0);
+                            let newVal;
                             if (action === 'add') newVal = currentVal.plus(modifyVal);
                             else if (action === 'sub') newVal = currentVal.minus(modifyVal);
                             else throw new Error('未知操作类型: ' + action);
