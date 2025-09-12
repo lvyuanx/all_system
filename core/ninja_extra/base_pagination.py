@@ -1,9 +1,9 @@
 from functools import wraps
-import json
-from typing import Callable, Generic, List, Optional, Type, TypeVar, Dict, Any, Union
+from typing import Callable, Generic, List, Optional, Type, TypeVar, Dict, Any
 
 from django.db.models import QuerySet
 from ninja import Query, Schema, Field
+from core.utils.orjson_util import json
 
 T = TypeVar("T")
 

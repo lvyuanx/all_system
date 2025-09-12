@@ -1,9 +1,9 @@
 import functools
 import logging
 import traceback
-import json
 from django.forms.models import model_to_dict
 from core.common.models import SignalReceiverFail
+from core.utils.orjson_util import json
 
 logger = logging.getLogger(__name__)
 

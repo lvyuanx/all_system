@@ -1,4 +1,4 @@
-import json
+from core.utils.orjson_util import json
 from django.db import models
 
 
