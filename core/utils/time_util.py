@@ -204,5 +204,14 @@ def add_seconds(datetime: datetime, second: int, tz: pytz.timezone = default_tz)
     """
     return datetime.astimezone(tz) + dt.timedelta(seconds=second)
 
+def last_month(datetime: datetime, tz: pytz.timezone = default_tz) -> datetime:
+    """获取上一个月
+    
+    :param datetime: 要获取的上一个月
+    :param tz: 时区
+    :return: 上一个月
+    """
+    return datetime.astimezone(tz).replace(day=1) - dt.timedelta(days=1)
+
 
 

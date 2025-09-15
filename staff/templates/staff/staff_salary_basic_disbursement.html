@@ -42,6 +42,10 @@
             </template>
 
             <template #filter="{ model }">
+                <el-form-item label="月度">
+                    <el-date-picker v-model="model.month" type="month" placeholder="选择年月" format="YYYY年MM月"
+                        value-format="YYYY-MM" />
+                </el-form-item>
                 <el-form-item label="姓名">
                     <el-input v-model="model.full_name" placeholder="请输入姓名" clearable />
                 </el-form-item>
@@ -66,6 +70,7 @@
                 tableFilter: {
                     full_name: "",
                     phone: "",
+                    month: this.getLastMonth(),
                 },
                 sort: ["staff_code"],
                 tableData: {
@@ -215,7 +220,10 @@
                     this.$ElMessage.warning("请选择要发放的行！")
                     return;
                 }
-                await this.$ElMessageBox.confirm("确定要发放吗？", "提示", {
+                const monthStr = this.tableFilter.month; // "2025-09"
+                const [year, month] = monthStr.split("-");
+                const display = `${year}年${month}月`;
+                await this.$ElMessageBox.confirm(`确定要发放${display}的工资吗？`, "提示", {
                     confirmButtonText: "确定",
                     cancelButtonText: "取消",
                     type: "primary",
@@ -231,8 +239,18 @@
                 await this.initPage()
             },
 
+            // 获取上个月
+            getLastMonth: function () {
+                const date = new Date();
+                date.setMonth(date.getMonth() - 1);
+                return date.toISOString().slice(0, 7);
+            },
+
             // 列表发生变化
             pageChangeHandle: function (data) {
+                if (!this.tableFilter.month) {
+                    this.tableFilter.month = this.getLastMonth()
+                }
                 this.tabelApi()
             },
 
