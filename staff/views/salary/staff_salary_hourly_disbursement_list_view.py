@@ -30,12 +30,7 @@ class Pagination(AsyncLimitOffsetPagination):
             hourly_wage = staff_hourly_wage
             work_hours = 0
 
-            if account_balance < Decimal("0.00"):
-                actual_disbursement = account_balance
-            else:
-                actual_disbursement = Decimal("0.00")
-
-            item["actual_disbursement"] = actual_disbursement
+            item["actual_disbursement"] = Decimal("0.00")
             item["staff_hourly_wage"] = staff_hourly_wage
             item["work_hours"] = work_hours
             item["hourly_wage"] = hourly_wage

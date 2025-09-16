@@ -1,10 +1,10 @@
 # -*-coding:utf-8 -*-
 """
-# File       : staff_salary_basic_batch_disbursement_view.py
+# File       : staff_salary_hourly_batch_disbursement_view.py
 # Time       : 2025-09-11 21:26:06
 # Author     : lvyuanxiang
 # version    : python 3.11
-# Description: 发放基础工资
+# Description: 发放时薪工资
 """
 from asgiref.sync import sync_to_async
 from django.db import transaction
@@ -18,7 +18,7 @@ from .. import schemas
 class View(BaseApi):
     api_status = BaseApi.ApiStatus.DEV_IN_PROGRESS
     methods = ["POST"]
-    finally_code = "000", "发放基础工资失败"
+    finally_code = "000", "发放时薪工资失败"
     response_schema = None
     error_codes = [
         (
@@ -29,19 +29,45 @@ class View(BaseApi):
 
     @staticmethod
     async def api(
-        request: HttpRequest, data: schemas.BasicSalaryBatchDisbursementSchema = Body(...)
+        request: HttpRequest, data: list[schemas.HourlyStaffSalaryListItemSchema] = Body(...)
     ):
-        year = data.year
-        month = data.month
-        user = request.user
+        now = time_util.now()
+        sids = [item.sid for item in data]
+
+        # 获取员工信息
+        staff_arr = await sync_to_async(list)(
+            Staff.objects.filter(pk__in=sids).values(
+                "id", "account_balance", "basic_salary"
+            )
+        )
+        staff_max_salary_dict = {
+            item["id"]: (
+                item["basic_salary"]
+                if item["account_balance"] > 0
+                else item["basic_salary"] + item["account_balance"]
+            )
+            for item in staff_arr
+        }
+
         batch_lst = []
+        user = request.user
         # 在同步事务中同时生成流水号和插入工资
         def _create_salaries_and_sns():
             with transaction.atomic():
                 # 批量生成流水号，并写入 SerialNumber 表
-                serial_numbers = StaffSalary.get_sn(len(data.data))
+                serial_numbers = StaffSalary.get_sn(len(data))
 
-                for idx, item in enumerate(data.data):
+                for idx, item in enumerate(data):
+                    max_salary = staff_max_salary_dict.get(item.sid)
+                    if item.actual_disbursement < 0 or item.actual_disbursement > max_salary:
+                        raise BusinessException(
+                            "001",
+                            {
+                                "full_name": item.full_name,
+                                "max_salary": max_salary,
+                                "salary": item.actual_disbursement,
+                            },
+                        )
 
                     salary_data = {
                         "staff_id": item.sid,
@@ -51,11 +77,11 @@ class View(BaseApi):
                         "income_expense": StaffIncomeExpenseChoices.INCOME,
                         "memo": item.memo,
                         "salary_type": StaffSalaryTypeChoices.BASIC_SALARY,
-                        "year": year,
-                        "month": month,
+                        "year": now.year,
+                        "month": now.month,
                         "basic_salary": item.basic_salary,
                         "salary_serial_number": serial_numbers[idx],
-                        "create_time": time_util.now(),
+                        "create_time": now,
                         "create_user": user
                     }
                     salary_data["title"] = salary_util.generate_title(salary_data)

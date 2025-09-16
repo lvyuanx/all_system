@@ -10,13 +10,18 @@ class BasicSalaryListItemSchema(BaseModel):
     full_name: str = Field(..., description="姓名")
     phone: str = Field(..., description="手机号")
     basic_salary: Decimal = Field(..., description="基础工资")
-    account_balance: Decimal = Field(None, description="账户余额")
-    max_salary: Decimal = Field(..., description="最大可发工资")
     actual_disbursement: Decimal = Field(..., description="实发工资")
     memo: Optional[str] = Field(None, description="备注")
+    
+
+class BasicSalaryBatchDisbursementSchema(BaseModel):
+    data: list[BasicSalaryListItemSchema] = Field(..., description="发放基础工资列表")
+    year: int = Field(..., ge=2000, description="发放年份")
+    month: int = Field(..., ge=1, le=12, description="发放月份")
 
 
 class HourlyStaffSalaryListItemSchema(BaseModel):
+    sid: int = Field(..., description="员工id")
     staff_code: str = Field(..., description="工号")
     full_name: str = Field(..., description="姓名")
     phone: str = Field(..., description="手机号")

@@ -19,25 +19,6 @@ from .. import schemas
 
 
 class Pagination(AsyncLimitOffsetPagination):
-    async def aprocess_result(self, results):
-        """
-        在分页结果返回前，对每一条数据做二次加工
-        """
-        for item in results:
-            basic_salary = item.get("basic_salary", Decimal("0.00"))
-            account_balance = item.get("account_balance", Decimal("0.00"))
-
-            max_salary = basic_salary
-            actual_disbursement = basic_salary
-
-            if account_balance < Decimal("0.00"):
-                actual_disbursement = basic_salary + account_balance
-                max_salary = actual_disbursement
-
-            item["actual_disbursement"] = actual_disbursement
-            item["max_salary"] = max_salary
-        return results
-
     async def afilter_queryset(self, queryset: QuerySet[Staff, Dict[str, Any]], input_filter: Dict):
         """
         按前端传入的 filter 字典筛选
@@ -103,11 +84,12 @@ class View(BaseApi):
             sid=F("id"),
             full_name=F("user__full_name"),
             phone=F("user__phone"),
+            actual_disbursement=F("basic_salary")
         ).values(
             "sid",
             "basic_salary",
             "staff_code",
             "full_name",
             "phone",
-            "account_balance",
+            "actual_disbursement"
         )

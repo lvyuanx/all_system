@@ -9,6 +9,9 @@
 
 {% block extra_css %}
 <style>
+    .table-row-red td {
+        background-color: var(--el-color-danger-light-7) !important;
+    }
 </style>
 {% endblock %}
 
@@ -36,7 +39,7 @@
             :is-paginated="true" :row-class-name="rowClassName" :selectable="selectable"
             @selection-change="onSelectionChange" @row-click="onRowClick" @page-change="pageChangeHandle">
             <template #actions="{ row }">
-                <el-button type="success" size="small" @click="">发放</el-button>
+                <el-button type="success" size="small" @click="" :disabled="paginationData.errorRows.includes(row.staff_code)">发放</el-button>
                 <el-button type="danger" size="small" @click="removeItem(row.staff_code)">移除</el-button>
             </template>
 
@@ -60,7 +63,7 @@
 {% block extra_js %}
 <script type="module">
     import CommonTable from "{% static 'vue/js/CommonTable.js' %}";
-    const { reactive, inject, onMounted, watch } = Vue;
+    const { reactive, inject, onMounted, watch, ref } = Vue;
 
     window.createApp({
         components: { CommonTable },
@@ -69,6 +72,7 @@
             const goBack = inject("goBack");
             const ElMessage = inject("ElMessage");
             const ElMessageBox = inject("ElMessageBox");
+            const tableRef = ref(null);
 
             // 表格分页数据
             const paginationData = reactive({
@@ -97,6 +101,7 @@
                     { prop: "memo", label: "备注", align: "center", type: "input" },
                 ],
                 selectRows: [],
+                errorRows: []
             });
 
             /** 表格行选中事件 */
@@ -111,11 +116,11 @@
             const onRowClick = (row) => { console.log("点击行：", row); };
 
             /** 表格行是否可选 */
-            const selectable = (row) => true;
+            const selectable = (row) => !paginationData.errorRows.includes(row.staff_code);;
 
             /** 动态行样式 */
             const rowClassName = ({ row }) => {
-                // return errorRows.includes(row.staff_code) ? "table-row-red" : "";
+                return paginationData.errorRows.includes(row.staff_code) ? "table-row-red" : "";
             };
 
             /** 分页变化 */
@@ -227,7 +232,7 @@
             };
 
             /** 批量发放 */
-            const batchDisbursementHandler = async () => { 
+            const batchDisbursementHandler = async () => {
             };
 
             /** 移除项 */
@@ -243,10 +248,37 @@
                 }
             }
 
-             /** 批量移除 */
+            /** 批量移除 */
             const batchRemoveHandle = () => {
                 for (const staff_code of paginationData.selectRows) {
                     removeItem(staff_code)
+                }
+            }
+
+            const safeDecimal = (val) =>{
+                if (val === null || val === undefined || val === '' || isNaN(val)) {
+                    return new Decimal(0);
+                }
+                try {
+                    return new Decimal(val);
+                } catch {
+                    return new Decimal(0);
+                }
+            }
+
+             // 取消表格行选择
+            const unSelection = (staff_code) => {
+                const commTableRef = tableRef?.value.getTableRef()
+                if (staff_code) {
+                    const row = paginationData.tableData.items.find(item => item.staff_code == staff_code)
+                    if (row) {
+                        commTableRef?.toggleRowSelection(
+                            row,
+                            false
+                        )
+                    }
+                } else {
+                    commTableRef?.clearSelection();
                 }
             }
 
@@ -260,11 +292,23 @@
                 (newVal) => {
                     // 遍历原始 items，计算 actual_disbursement
                     paginationData.tableData.items.forEach((item, index) => {
-                        const account_balance = new Decimal(item.account_balance || 0);
-                        const hourly_wage = new Decimal(item.hourly_wage || 0);
-                        const work_hours = new Decimal(item.work_hours || 0);
-                        // ✅ 直接更新 item.actual_disbursement
-                        item.actual_disbursement = hourly_wage.times(work_hours).plus(account_balance).toString();
+                        const account_balance = safeDecimal(item.account_balance);
+                        const hourly_wage = safeDecimal(item.hourly_wage);
+                        const work_hours = safeDecimal(item.work_hours);
+                        const actual_disbursement = hourly_wage.times(work_hours).plus(account_balance);
+                        item.actual_disbursement = actual_disbursement.toString();
+                        const staff_code = item.staff_code;
+                        if (actual_disbursement.lessThan(0)) {
+                            ElMessage.error(`员工 ${staff_code} 的实发时薪小于0，请检查！`);
+                            paginationData.errorRows.push(staff_code);
+                            unSelection(staff_code)
+                            return;
+                        }
+
+                        const idx = paginationData.errorRows.indexOf(staff_code);
+                        if (idx !== -1) {
+                            paginationData.errorRows.splice(idx, 1);
+                        }
                     });
                 },
                 { deep: false, immediate: true }
@@ -292,7 +336,8 @@
                 refreshPage,
                 removeItem,
                 batchRemoveHandle,
-                goBack
+                goBack,
+                tableRef
             };
         }
     });
