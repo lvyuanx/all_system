@@ -16,3 +16,14 @@ class BasicSalaryListItemSchema(BaseModel):
     memo: Optional[str] = Field(None, description="备注")
 
 
+class HourlyStaffSalaryListItemSchema(BaseModel):
+    staff_code: str = Field(..., description="工号")
+    full_name: str = Field(..., description="姓名")
+    phone: str = Field(..., description="手机号")
+    account_balance: Decimal = Field(..., description="账户余额（元）")
+    staff_hourly_wage: Decimal = Field(..., description="员工时薪（元）")
+    hourly_wage: Decimal = Field(..., description="实发时薪（元）")
+    work_hours: Decimal = Field(..., description="总工时（天）")
+    actual_disbursement: Decimal = Field(..., description="实发工资（元）")
+    memo: Optional[str] = Field(None, description="备注")
+

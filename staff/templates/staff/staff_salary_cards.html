@@ -144,148 +144,149 @@
 <div id="app">
     <div class="page-container">
 
-            <!-- 快捷操作 START -->
-            <el-row>
-                <el-col :span="6">
-                    <div class="quick-action-item">
-                        <div class="container quick-card quick-card1">
-                            <div class="quick-title">本月基础工资待发放</div>
-                            <div class="quick-conut">0人</div>
-                        </div>
+        <!-- 快捷操作 START -->
+        <el-row>
+            <el-col :span="6">
+                <div class="quick-action-item">
+                    <div class="container quick-card quick-card1">
+                        <div class="quick-title">本月基础工资待发放</div>
+                        <div class="quick-conut">0人</div>
                     </div>
-                </el-col>
-                <el-col :span="6">
-                    <div class="quick-action-item">
-                        <div class="container quick-card quick-card2">
-                            <div class="quick-title">本月工时待发放</div>
-                            <div class="quick-conut">0人</div>
-                        </div>
+                </div>
+            </el-col>
+            <el-col :span="6">
+                <div class="quick-action-item">
+                    <div class="container quick-card quick-card2">
+                        <div class="quick-title">本月工时待发放</div>
+                        <div class="quick-conut">0人</div>
                     </div>
-                </el-col>
-                <el-col :span="6">
-                    <div class="quick-action-item">
-                        <div class="container quick-card quick-card3">
-                            <div class="quick-title">本月已发放奖金</div>
-                            <div class="quick-conut">0元</div>
-                        </div>
+                </div>
+            </el-col>
+            <el-col :span="6">
+                <div class="quick-action-item">
+                    <div class="container quick-card quick-card3">
+                        <div class="quick-title">本月已发放奖金</div>
+                        <div class="quick-conut">0元</div>
                     </div>
-                </el-col>
-                <el-col :span="6">
-                    <div class="quick-action-item">
-                        <div class="container quick-card quick-card4">
-                            <div class="quick-title">本月预支工资</div>
-                            <div class="quick-conut">0元</div>
-                        </div>
+                </div>
+            </el-col>
+            <el-col :span="6">
+                <div class="quick-action-item">
+                    <div class="container quick-card quick-card4">
+                        <div class="quick-title">本月预支工资</div>
+                        <div class="quick-conut">0元</div>
                     </div>
-                </el-col>
-            </el-row>
-            <!-- 快捷操作 END -->
+                </div>
+            </el-col>
+        </el-row>
+        <!-- 快捷操作 END -->
 
-            <!-- 数据看板 START -->
-            <el-row style="flex: 1;">
-                <el-col :span="12">
-                    <div class="data-card">
-                        <div class="container">
-                            <div class="card-header">
-                                <el-row>
-                                    <el-col :span="6">
-                                        <el-switch v-model="isQuick" size="large" active-text="快捷"
-                                            inactive-text="自定义" />
-                                    </el-col>
-                                    <el-col :span="18" v-if="isQuick"
-                                        style="display: flex; align-items: center; justify-content: space-between;">
-                                        <el-button :type="quickBtns[0] ? 'primary' : 'default'" @click="quickChange(0)"
-                                            round>本月</el-button>
-                                        <el-button :type="quickBtns[1] ? 'primary' : 'default'" @click="quickChange(1)"
-                                            round>上个月</el-button>
-                                        <el-button :type="quickBtns[2] ? 'primary' : 'default'" @click="quickChange(2)"
-                                            round>近三个月</el-button>
-                                        <el-button :type="quickBtns[3] ? 'primary' : 'default'" @click="quickChange(3)"
-                                            round>今年上半年</el-button>
-                                        <el-button :type="quickBtns[4] ? 'primary' : 'default'" @click="quickChange(4)"
-                                            round>今年下半年</el-button>
-                                        <el-button :type="quickBtns[5] ? 'primary' : 'default'" @click="quickChange(5)"
-                                            round>本年度</el-button>
-                                    </el-col>
-                                    <el-col :span="16" v-else
-                                        style="display: flex; align-items: center; justify-content: space-between;">
-                                        <el-date-picker v-model="customDate" type="daterange"
-                                            @change="customDatePickerChange" start-placeholder="开始日期"
-                                            end-placeholder="开始日期" :default-value="[startOfMonth, endOfMonth]" />
-                                    </el-col>
-                                </el-row>
-                            </div>
-                            <div class="card-chart"></div>
-                        </div>
-                    </div>
-                </el-col>
-                <el-col :span="12">
-                    <div class="data-card">
-                        <div class="container">
-                            <div class="title">快捷操作</div>
+        <!-- 数据看板 START -->
+        <el-row style="flex: 1;">
+            <el-col :span="12">
+                <div class="data-card">
+                    <div class="container">
+                        <div class="card-header">
                             <el-row>
-                                <el-col :span="6" class="quick-container">
-                                    <div class="quick-btn" @click="toBasicDisbursement">
-                                        <el-icon class="icon">
-                                            <Star />
-                                        </el-icon>
-                                        <span>基本工资发放</span>
-                                    </div>
+                                <el-col :span="6">
+                                    <el-switch v-model="isQuick" size="large" active-text="快捷" inactive-text="自定义" />
                                 </el-col>
-                                <el-col :span="6" class="quick-container" @click="handleQuickClick">
-                                    <div class="quick-btn">
-                                        <el-icon class="icon">
-                                            <Watch />
-                                        </el-icon>
-                                        <span>时薪发放</span>
-                                    </div>
+                                <el-col :span="18" v-if="isQuick"
+                                    style="display: flex; align-items: center; justify-content: space-between;">
+                                    <el-button :type="quickBtns[0] ? 'primary' : 'default'" @click="quickChange(0)"
+                                        round>本月</el-button>
+                                    <el-button :type="quickBtns[1] ? 'primary' : 'default'" @click="quickChange(1)"
+                                        round>上个月</el-button>
+                                    <el-button :type="quickBtns[2] ? 'primary' : 'default'" @click="quickChange(2)"
+                                        round>近三个月</el-button>
+                                    <el-button :type="quickBtns[3] ? 'primary' : 'default'" @click="quickChange(3)"
+                                        round>今年上半年</el-button>
+                                    <el-button :type="quickBtns[4] ? 'primary' : 'default'" @click="quickChange(4)"
+                                        round>今年下半年</el-button>
+                                    <el-button :type="quickBtns[5] ? 'primary' : 'default'" @click="quickChange(5)"
+                                        round>本年度</el-button>
                                 </el-col>
-                                <el-col :span="6" class="quick-container">
-                                    <div class="quick-btn">
-                                        <el-icon class="icon">
-                                            <Calendar />
-                                        </el-icon>
-                                        <span>加班工资发放</span>
-                                    </div>
-                                </el-col>
-                                <el-col :span="6" class="quick-container">
-                                    <div class="quick-btn">
-                                        <el-icon class="icon">
-                                            <Coin />
-                                        </el-icon>
-                                        <span>奖金发放</span>
-                                    </div>
-                                </el-col>
-                                <el-col :span="6" class="quick-container">
-                                    <div class="quick-btn">
-                                        <el-icon class="icon">
-                                            <Trophy />
-                                        </el-icon>
-                                        <span>绩效发放</span>
-                                    </div>
-                                </el-col>
-                                <el-col :span="6" class="quick-container">
-                                    <div class="quick-btn">
-                                        <el-icon class="icon">
-                                            <Present />
-                                        </el-icon>
-                                        <span>提成发放</span>
-                                    </div>
-                                </el-col>
-                                <el-col :span="6" class="quick-container">
-                                    <div class="quick-btn">
-                                        <el-icon class="icon">
-                                            <Avatar />
-                                        </el-icon>
-                                        <span>员工工资管理</span>
-                                    </div>
+                                <el-col :span="16" v-else
+                                    style="display: flex; align-items: center; justify-content: space-between;">
+                                    <el-date-picker v-model="customDate" type="daterange"
+                                        @change="customDatePickerChange" start-placeholder="开始日期" end-placeholder="开始日期"
+                                        :default-value="[startOfMonth, endOfMonth]" />
                                 </el-col>
                             </el-row>
                         </div>
+                        <div class="card-chart"></div>
                     </div>
-                </el-col>
-            </el-row>
-            <!-- 数据看板 END -->
+                </div>
+            </el-col>
+            <el-col :span="12">
+                <div class="data-card">
+                    <div class="container">
+                        <div class="title">快捷操作</div>
+                        <el-row>
+                            <el-col :span="6" class="quick-container">
+                                <div class="quick-btn"
+                                    @click="toPage('/admin/staff/staffsalary/basic_disbursement/', '基本工资发放')">
+                                    <el-icon class="icon">
+                                        <Star />
+                                    </el-icon>
+                                    <span>基本工资发放</span>
+                                </div>
+                            </el-col>
+                            <el-col :span="6" class="quick-container"
+                                @click="toPage('/admin/staff/staffsalary/staff_salary_hourly_disbursement/', '基本工资发放')">
+                                <div class="quick-btn">
+                                    <el-icon class="icon">
+                                        <Watch />
+                                    </el-icon>
+                                    <span>时薪发放</span>
+                                </div>
+                            </el-col>
+                            <el-col :span="6" class="quick-container">
+                                <div class="quick-btn">
+                                    <el-icon class="icon">
+                                        <Calendar />
+                                    </el-icon>
+                                    <span>加班工资发放</span>
+                                </div>
+                            </el-col>
+                            <el-col :span="6" class="quick-container">
+                                <div class="quick-btn">
+                                    <el-icon class="icon">
+                                        <Coin />
+                                    </el-icon>
+                                    <span>奖金发放</span>
+                                </div>
+                            </el-col>
+                            <el-col :span="6" class="quick-container">
+                                <div class="quick-btn">
+                                    <el-icon class="icon">
+                                        <Trophy />
+                                    </el-icon>
+                                    <span>绩效发放</span>
+                                </div>
+                            </el-col>
+                            <el-col :span="6" class="quick-container">
+                                <div class="quick-btn">
+                                    <el-icon class="icon">
+                                        <Present />
+                                    </el-icon>
+                                    <span>提成发放</span>
+                                </div>
+                            </el-col>
+                            <el-col :span="6" class="quick-container">
+                                <div class="quick-btn">
+                                    <el-icon class="icon">
+                                        <Avatar />
+                                    </el-icon>
+                                    <span>员工工资管理</span>
+                                </div>
+                            </el-col>
+                        </el-row>
+                    </div>
+                </div>
+            </el-col>
+        </el-row>
+        <!-- 数据看板 END -->
 
 
     </div>
@@ -410,12 +411,11 @@
             },
 
             // 跳转到工资发放页面
-            toBasicDisbursement() {
-                // showModal({url:'/admin/staff/staffsalary/basic_disbursement/'})
-                this.$navigate("/admin/staff/staffsalary/basic_disbursement/", "基本工资发放", "self");
+            toPage(url, title) {
+                this.$navigate(url, title, "self");
             },
             handleQuickClick() {
-                showModal({url:'https://www.baidu.com'})
+                showModal({ url: 'https://www.baidu.com' })
             }
         }
     });

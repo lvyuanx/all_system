@@ -1,0 +1,300 @@
+{% extends "vue_setup_base.html" %}
+{% load i18n %}
+{% load static %}
+{% load simpletags %}
+
+{% block title %}
+{{ title }}
+{% endblock %}
+
+{% block extra_css %}
+<style>
+</style>
+{% endblock %}
+
+{% block content %}
+<div id="app">
+    <div class="page-header">
+        <el-page-header title="{% trans 'Back' %}" @back="goBack" content="{{title}}"></el-page-header>
+        <!-- <div></div> -->
+        <div class="header-right">
+            <el-button type="default" @click="refreshPage"><el-icon>
+                    <Refresh />
+                </el-icon>重置</el-button>
+            <el-button type="default" @click="">批量发放</el-button>
+            <el-button type="default" @click="batchSetHourlyWageHandler">批量设置时薪</el-button>
+            <el-button type="default" @click="batchSetWorkHoursHandler">批量设置工时</el-button>
+            <el-button type="danger" @click="batchRemoveHandle">批量移除</el-button>
+        </div>
+    </div>
+    <div class="page-container">
+        <common-table ref="tableRef" v-model:filter-form="paginationData.tableFilter"
+            v-model:current-page="paginationData.tableData.current_page"
+            v-model:page-size="paginationData.tableData.page_size"
+            v-model:total-count="paginationData.tableData.total_count" :data="paginationData.tableData.items"
+            :columns="paginationData.columns" :loading="paginationData.loading" :selectable-is-show="true"
+            :is-paginated="true" :row-class-name="rowClassName" :selectable="selectable"
+            @selection-change="onSelectionChange" @row-click="onRowClick" @page-change="pageChangeHandle">
+            <template #actions="{ row }">
+                <el-button type="success" size="small" @click="">发放</el-button>
+                <el-button type="danger" size="small" @click="removeItem(row.staff_code)">移除</el-button>
+            </template>
+
+            <template #filter="{ model }">
+                <el-form-item label="月度">
+                    <el-date-picker v-model="model.month" type="month" placeholder="选择年月" format="YYYY年MM月"
+                        value-format="YYYY-MM" />
+                </el-form-item>
+                <el-form-item label="姓名">
+                    <el-input v-model="model.full_name" placeholder="请输入姓名" clearable />
+                </el-form-item>
+                <el-form-item label="手机号">
+                    <el-input v-model="model.phone" placeholder="请输入手机号" clearable />
+                </el-form-item>
+            </template>
+        </common-table>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script type="module">
+    import CommonTable from "{% static 'vue/js/CommonTable.js' %}";
+    const { reactive, inject, onMounted, watch } = Vue;
+
+    window.createApp({
+        components: { CommonTable },
+        setup() {
+            // inject 全局对象
+            const goBack = inject("goBack");
+            const ElMessage = inject("ElMessage");
+            const ElMessageBox = inject("ElMessageBox");
+
+            // 表格分页数据
+            const paginationData = reactive({
+                loading: false,
+                tableFilter: {
+                    full_name: "",
+                    phone: "",
+                    month: "",
+                },
+                sort: [],
+                tableData: {
+                    current_page: 1,
+                    page_size: 15,
+                    total_count: 0,
+                    items: []
+                },
+                columns: [
+                    { prop: "staff_code", label: "工号", align: "center", fixed: "left", width: 80 },
+                    { prop: "full_name", label: "姓名", align: "center", fixed: "left", width: 120 },
+                    { prop: "phone", label: "手机号", align: "center", width: 180 },
+                    { prop: "account_balance", label: "账户余额（元）", align: "center", width: 180 },
+                    { prop: "staff_hourly_wage", label: "员工时薪（元）", align: "center", width: 200 },
+                    { prop: "hourly_wage", label: "实发时薪（元）", align: "center", type: "input", width: 220 },
+                    { prop: "work_hours", label: "总工时（天）", align: "center", type: "input" },
+                    { prop: "actual_disbursement", label: "实发工资（元）", align: "center", width: 220 },
+                    { prop: "memo", label: "备注", align: "center", type: "input" },
+                ],
+                selectRows: [],
+            });
+
+            /** 表格行选中事件 */
+            const onSelectionChange = (val) => {
+                paginationData.selectRows = []
+                val.forEach(row => {
+                    paginationData.selectRows.push(row.staff_code)
+                })
+            };
+
+            /** 表格行点击事件 */
+            const onRowClick = (row) => { console.log("点击行：", row); };
+
+            /** 表格行是否可选 */
+            const selectable = (row) => true;
+
+            /** 动态行样式 */
+            const rowClassName = ({ row }) => {
+                // return errorRows.includes(row.staff_code) ? "table-row-red" : "";
+            };
+
+            /** 分页变化 */
+            const pageChangeHandle = async () => {
+                if (!paginationData.tableFilter.month) {
+                    paginationData.tableFilter.month = getLastMonth()
+                }
+                await fetchTableData();
+            };
+
+            /** 表格数据获取 */
+            const fetchTableData = async () => {
+                paginationData.loading = true;
+                try {
+                    paginationData.tableData.items = [];
+                    const data = {
+                        current_page: paginationData.tableData.current_page,
+                        page_size: paginationData.tableData.page_size,
+                        filter: JSON.stringify(paginationData.tableFilter),
+                        sort: JSON.stringify(paginationData.sort)
+                    };
+                    const res = await request.post("/staff/salary/hourly_disbursement_list", {}, data);
+                    paginationData.tableData = res;
+                } catch (e) {
+                    ElMessage.error("页面数据加载失败！");
+                    throw e;
+                } finally {
+                    paginationData.loading = false;
+                }
+            };
+
+            /** 初始化页面 */
+            const initPageData = async () => {
+                paginationData.tableData.current_page = 1;
+                paginationData.tableData.page_size = 15;
+                await fetchTableData();
+            };
+
+            onMounted(async () => {
+                paginationData.tableFilter.month = getLastMonth();
+                await initPageData();
+            });
+
+            /** 获取上个月 */
+            const getLastMonth = () => {
+                const date = new Date();
+                date.setMonth(date.getMonth() - 1);
+                return date.toISOString().slice(0, 7);
+            }
+
+            /** 批量设置工时 */
+            const batchSetWorkHoursHandler = async () => {
+                if (paginationData.selectRows.length === 0) {
+                    ElMessage.error("请选择要批量设置的行！");
+                    return;
+                }
+
+                const { value } = await ElMessageBox.prompt(
+                    '请输入工时：',
+                    "批量设置工时",
+                    {
+                        confirmButtonText: '提交',
+                        cancelButtonText: '取消',
+                        inputPattern: /^[0-9]+(\.[0-9]+)?$/, // 只允许数字
+                        inputErrorMessage: '请输入合法数字',
+                    }
+                );
+
+                if (!value || isNaN(value)) {
+                    ElMessage.error('请输入有效工时');
+                    return;
+                }
+
+                paginationData.tableData.items.forEach(row => {
+                    if (paginationData.selectRows.includes(row.staff_code)) {
+                        row.work_hours = value
+                    }
+                })
+            };
+
+            /** 批量设置实发时薪 */
+            const batchSetHourlyWageHandler = async () => {
+                if (paginationData.selectRows.length === 0) {
+                    ElMessage.error("请选择要批量设置的行！");
+                    return;
+                }
+
+                const { value } = await ElMessageBox.prompt(
+                    '请输入时薪：',
+                    "批量设置时薪",
+                    {
+                        confirmButtonText: '提交',
+                        cancelButtonText: '取消',
+                        inputPattern: /^[0-9]+(\.[0-9]+)?$/, // 只允许数字
+                        inputErrorMessage: '请输入合法数字',
+                    }
+                );
+
+                if (!value || isNaN(value)) {
+                    ElMessage.error('请输入有效金额');
+                    return;
+                }
+
+                paginationData.tableData.items.forEach(row => {
+                    if (paginationData.selectRows.includes(row.staff_code)) {
+                        row.hourly_wage = value
+                    }
+                })
+            };
+
+            /** 批量发放 */
+            const batchDisbursementHandler = async () => { 
+            };
+
+            /** 移除项 */
+            const removeItem = (staff_code) => {
+                let removeIdx = null;
+                paginationData.tableData.items.forEach((item, idx) => {
+                    if (item.staff_code == staff_code) {
+                        removeIdx = idx;
+                    }
+                })
+                if (removeIdx !== null) {
+                    paginationData.tableData.items.splice(removeIdx, 1);
+                }
+            }
+
+             /** 批量移除 */
+            const batchRemoveHandle = () => {
+                for (const staff_code of paginationData.selectRows) {
+                    removeItem(staff_code)
+                }
+            }
+
+            /** 监听数据变化 */
+            watch(
+                () => paginationData.tableData.items.map(item => ({
+                    hourly_wage: item.hourly_wage,
+                    work_hours: item.work_hours,
+                    account_balance: item.account_balance
+                })),
+                (newVal) => {
+                    // 遍历原始 items，计算 actual_disbursement
+                    paginationData.tableData.items.forEach((item, index) => {
+                        const account_balance = new Decimal(item.account_balance || 0);
+                        const hourly_wage = new Decimal(item.hourly_wage || 0);
+                        const work_hours = new Decimal(item.work_hours || 0);
+                        // ✅ 直接更新 item.actual_disbursement
+                        item.actual_disbursement = hourly_wage.times(work_hours).plus(account_balance).toString();
+                    });
+                },
+                { deep: false, immediate: true }
+            );
+
+
+
+
+            // 刷新页面数据
+            const refreshPage = async () => {
+                await initPageData();
+                ElMessage.success("刷新成功！")
+            }
+
+            return {
+                paginationData,
+                onSelectionChange,
+                onRowClick,
+                selectable,
+                rowClassName,
+                pageChangeHandle,
+                fetchTableData,
+                batchSetWorkHoursHandler,
+                batchSetHourlyWageHandler,
+                refreshPage,
+                removeItem,
+                batchRemoveHandle,
+                goBack
+            };
+        }
+    });
+</script>
+{% endblock %}

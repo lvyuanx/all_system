@@ -30,8 +30,6 @@ audit_title_dict = {
 }
 
 
-
-
 def staff_salary_autit_timeline(request, ssid: int):
     
     ss_manager = StaffSalary.objects.filter(pk=ssid)
@@ -70,4 +68,12 @@ def staff_salary_autit_timeline(request, ssid: int):
         "audit_lst": audit_lst,
     }
     return render(request, "staff/staff_salary_autit_timeline.html", context)
+
+
+
+def staff_salary_hourly_disbursement(request):
+    context = {
+        "title": "时薪工资发放",
+    }
+    return render(request, "staff/staff_salary_hourly_disbursement.html", context)
 

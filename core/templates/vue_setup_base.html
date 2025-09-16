@@ -1,0 +1,86 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>{% block title %}Django + Vue + Element Plus{% endblock %}</title>
+
+    <link rel="stylesheet" href="{% static 'element-plus/css/element-plus.css' %}" />
+    <link rel="stylesheet" href="{% static 'vue/css/custom.css' %}" />
+    {% block extra_css %}{% endblock %}
+</head>
+
+<body>
+    {% block content %}{% endblock %}
+
+    <!-- 基础依赖 -->
+    <script src="{% static 'vue/js/loadingPage.js' %}"></script>
+    <script src="{% static 'element-plus/js/simpleui-helper.js' %}"></script>
+    <script src="{% static 'vue/js/vue3.js' %}"></script>
+    <script src="{% static 'vue/js/axios.js' %}"></script>
+    <script src="{% static 'element-plus/js/element-plus.js' %}"></script>
+    <script src="{% static 'element-plus/js/element-plus-icon.js' %}"></script>
+    <script src="{% static 'element-plus/js/zh-cn.js' %}"></script>
+    <script src="{% static 'vue/js/request.js' %}"></script>
+    <script src="{% static 'vue/js/decimal.min.js' %}"></script>
+    <script src="{% static 'vue/js/showModal.js' %}"></script>
+    {% block extra_js_import %}{% endblock %}
+
+    <script>
+        // 定义 SimpleUI 插件
+        const SimpleUIPlugin = {
+            install(app, options) {
+                if (!options) return;
+
+                // 挂载到全局 (Options API 可直接 this.xxx)
+                // Object.assign(app.config.globalProperties, {
+                //     $SimpleUIExtra: options,
+                //     $ElMessage: options.ElMessage,
+                //     $ElMessageBox: options.ElMessageBox,
+                //     $goBack: options.goBack,
+                //     $openParentTab: options.openParentTab,
+                //     $navigate: options.navigate,
+                //     $closeParentModal: options.closeParentModal,
+                // });
+
+                // provide 出去 (Composition API 可 inject)
+                app.provide("SimpleUIExtra", options);
+                app.provide("ElMessage", options.ElMessage);
+                app.provide("ElMessageBox", options.ElMessageBox);
+                app.provide("goBack", options.goBack);
+            }
+        };
+
+        // 初始化 Vue 应用
+        window.createApp = function (componentOptions) {
+            const { createApp } = Vue;
+            const app = createApp(componentOptions);
+
+            // ElementPlus
+            app.use(ElementPlus, {
+                locale: ElementPlusLocaleZhCn
+            });
+
+            // 注册所有图标
+            for (const iconName in window.ElementPlusIconsVue) {
+                app.component(iconName, window.ElementPlusIconsVue[iconName]);
+            }
+
+            // 自定义插值符号 [[ ]]
+            app.config.compilerOptions = {
+                delimiters: ['[[', ']]']
+            };
+
+            // 挂载 SimpleUI 插件
+            if (window.SimpleUIExtra) {
+                app.use(SimpleUIPlugin, window.SimpleUIExtra);
+            }
+
+            app.mount("#app");
+        };
+    </script>
+
+    {% block extra_js %}{% endblock %}
+</body>
+</html>
