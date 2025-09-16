@@ -11,3 +11,4 @@ pdfkit~=1.0.0
 django-guardian~=3.0.3
 transitions~=0.9.3
 django-adminfilters~=2.6
+mysqlclient~=2.2.7

@@ -1,2 +1,0 @@
-NINJA_BASE_URL = "api/"
-TOKEN_EXPIRE = 60 * 60 * 24

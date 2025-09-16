@@ -92,13 +92,21 @@ WSGI_APPLICATION = "main.wsgi.application"
 ASGI_APPLICATION = "main.asgi.application"
 
 # 数据库配置
-# 默认使用 SQLite 数据库
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.sqlite3",  # 数据库引擎
-        "NAME": BASE_DIR / "db.sqlite3",         # 数据库文件路径
+        "ENGINE": "django.db.backends.mysql",
+        "NAME": merge_config("DB_NAME", "all_system"),
+        "USER": merge_config("DB_USER"),
+        "PASSWORD": merge_config("DB_PASSWORD"),
+        "HOST": merge_config("DB_HOST", "127.0.0.1"),
+        "PORT":  merge_config("DB_PORT", "3306"),
+        "OPTIONS": {
+            "init_command": "SET sql_mode='STRICT_TRANS_TABLES'",
+            "charset": "utf8mb4",
+        },
     }
 }
+
 
 # 密码验证器
 # 定义密码强度验证规则
