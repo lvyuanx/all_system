@@ -11,7 +11,7 @@ SECRET_KEY = "django-insecure-#9rd5_+z@*)=-kqwzt@5x(v76bg#hgdt!=i2gq6en&#v_j7&g4
 
 # SECURITY WARNING: don"t run with debug turned on in production!
 # 调试模式开关，开发时设为 True，生产环境应设为 False
-DEBUG = True
+DEBUG = merge_config("DEBUG", True)
 
 # 允许访问该 Django 项目的主机列表
 # 在生产环境中需要设置具体的域名或 IP 地址
