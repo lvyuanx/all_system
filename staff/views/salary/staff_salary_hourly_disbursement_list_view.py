@@ -24,7 +24,6 @@ class Pagination(AsyncLimitOffsetPagination):
         在分页结果返回前，对每一条数据做二次加工
         """
         for item in results:
-            account_balance = item.get("account_balance", Decimal("0.00"))
             staff_hourly_wage = item.get("hourly_wage", Decimal("0.00"))
 
             hourly_wage = staff_hourly_wage
