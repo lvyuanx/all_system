@@ -2,6 +2,7 @@ from django.utils.html import format_html
 from django.contrib.admin.models import LogEntry, CHANGE
 from django.utils.encoding import force_str
 from django.contrib.contenttypes.models import ContentType
+from typing import Literal
 
 
 def btn(
@@ -36,12 +37,13 @@ def format_avatar(url: str):
     )
 
 
-def log_custom_action(request, obj, msg="执行了自定义操作", action_flag=CHANGE):
-    LogEntry.objects.log_action(
+def log_custom_actions(
+    request, objs, msg="执行了自定义操作", action_flag: Literal[1, 2, 4] = CHANGE
+):
+    return LogEntry.objects.log_actions(
         user_id=request.user.pk,
-        content_type_id=ContentType.objects.get_for_model(obj).pk,
-        object_id=obj.pk,
-        object_repr=force_str(obj),
+        queryset=objs,  # 这里必须是可迭代的
         action_flag=action_flag,
         change_message=msg,
+        single_object=True,  # 保持返回单个 LogEntry
     )

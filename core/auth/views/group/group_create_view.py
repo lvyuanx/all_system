@@ -42,7 +42,7 @@ class View(BaseApi):
         for pack in pack_objs:
             pack.add_group(group_obj)
         
-        admin_util.log_custom_action(request, group_obj, f"创建角色[{group_name}]")
+        admin_util.log_custom_actions(request, [group_obj], f"创建角色[{group_name}]", 1)
     
     @staticmethod
     async def api(request: HttpRequest, group: GroupCreateSchema = Body(..., description="角色信息")):

@@ -158,7 +158,7 @@
 
             // 刷新页面数据
             refreshPage: async function () {
-                await this.initPage();
+                await this.tabelApi();
                 this.$ElMessage.success("刷新成功！")
             },
 
@@ -236,7 +236,7 @@
                     }
                 }
                 await this.batchDisbursementApi(selectRows)
-                await this.initPage()
+                await this.tabelApi()
             },
 
             // 获取上个月

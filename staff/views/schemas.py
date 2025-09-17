@@ -27,7 +27,13 @@ class HourlyStaffSalaryListItemSchema(BaseModel):
     phone: str = Field(..., description="手机号")
     staff_hourly_wage: Decimal = Field(..., description="员工时薪（元）")
     hourly_wage: Decimal = Field(..., description="实发时薪（元）")
-    work_hours: Decimal = Field(..., description="总工时（天）")
+    work_hours: Decimal = Field(..., description="总工时")
     actual_disbursement: Decimal = Field(..., description="实发工资（元）")
     memo: Optional[str] = Field(None, description="备注")
+
+
+class BasicHourlyBatchDisbursementSchema(BaseModel):
+    data: list[HourlyStaffSalaryListItemSchema] = Field(..., description="发放基础工资列表")
+    year: int = Field(..., ge=2000, description="发放年份")
+    month: int = Field(..., ge=1, le=12, description="发放月份")
 

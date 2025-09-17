@@ -39,7 +39,7 @@ class View(BaseApi):
         for pack in pack_objs:
             pack.add_group(group)
         
-        admin_util.log_custom_action(request, group, f"修改角色[{group}]的权限")
+        admin_util.log_custom_actions(request, [group], f"修改角色[{group}]的权限", 2)
     
     @staticmethod
     async def api(request: HttpRequest, group: GroupCreateSchema = Body(..., description="角色信息")):

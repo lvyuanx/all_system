@@ -8,10 +8,10 @@
 """
 from asgiref.sync import sync_to_async
 from django.db import transaction
-from core.ninja_extra.api_extra import BaseApi, HttpRequest, Body, BusinessException
-from core.utils import time_util
+from core.ninja_extra.api_extra import BaseApi, HttpRequest, Body
+from core.utils import admin_util, time_util
 from staff.enums import StaffIncomeExpenseChoices, StaffSalaryTypeChoices
-from staff.models import Staff, StaffSalary
+from staff.models import StaffSalary
 from staff.utils import salary_util
 from .. import schemas
 
@@ -20,12 +20,7 @@ class View(BaseApi):
     methods = ["POST"]
     finally_code = "000", "发放基础工资失败"
     response_schema = None
-    error_codes = [
-        (
-            "001",
-            "员工{full_name}本月可发放基础工资在0~{max_salary}之间, 但是却发放了{salary}元, 发放失败!",
-        ),
-    ]
+    error_codes = []
 
     @staticmethod
     async def api(
@@ -61,8 +56,12 @@ class View(BaseApi):
                     salary_data["title"] = salary_util.generate_title(salary_data)
                     batch_lst.append(StaffSalary(**salary_data))
 
+                # 打印日志
+                admin_util.log_custom_actions(request, batch_lst, "发放基础工资成功", 1)
+
                 # 批量创建工资流水
                 StaffSalary.objects.bulk_create(batch_lst, batch_size=500)
+                
 
         await sync_to_async(_create_salaries_and_sns)()
 

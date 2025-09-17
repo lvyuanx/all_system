@@ -18,7 +18,7 @@ def preview_bill_pdf_view(request, id: int):
             # 修改票据路径
             obj.bill_path = media_path
             obj.save()
-            admin_util.log_custom_action(request, obj, "重新生成票据")
+            admin_util.log_custom_actions(request, [obj], "重新生成票据", 2)
         context = {
             "pdf_url": f"{settings.MEDIA_URL}{obj.bill_path}",  # 返回PDF的URL
         }

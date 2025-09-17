@@ -24,7 +24,7 @@
             <el-button type="default" @click="refreshPage"><el-icon>
                     <Refresh />
                 </el-icon>重置</el-button>
-            <el-button type="default" @click="">批量发放</el-button>
+            <el-button type="default" @click="batchDisbursementHandler(paginationData.selectRows)">批量发放</el-button>
             <el-button type="default" @click="batchSetHourlyWageHandler">批量设置时薪</el-button>
             <el-button type="default" @click="batchSetWorkHoursHandler">批量设置工时</el-button>
             <el-button type="danger" @click="batchRemoveHandle">批量移除</el-button>
@@ -39,7 +39,7 @@
             :is-paginated="true" :row-class-name="rowClassName" :selectable="selectable"
             @selection-change="onSelectionChange" @row-click="onRowClick" @page-change="pageChangeHandle">
             <template #actions="{ row }">
-                <el-button type="success" size="small" @click="" :disabled="paginationData.errorRows.includes(row.staff_code)">发放</el-button>
+                <el-button type="success" size="small" @click="batchDisbursementHandler([row.staff_code])" :disabled="paginationData.errorRows.includes(row.staff_code)">发放</el-button>
                 <el-button type="danger" size="small" @click="removeItem(row.staff_code)">移除</el-button>
             </template>
 
@@ -69,10 +69,13 @@
         components: { CommonTable },
         setup() {
             // inject 全局对象
-            const goBack = inject("goBack");
             const ElMessage = inject("ElMessage");
             const ElMessageBox = inject("ElMessageBox");
             const tableRef = ref(null);
+
+            const goBack = () => {
+                window.location.href = '{% get_previous_url %}'
+            }
 
             // 表格分页数据
             const paginationData = reactive({
@@ -95,7 +98,7 @@
                     { prop: "phone", label: "手机号", align: "center", width: 180 },
                     { prop: "staff_hourly_wage", label: "员工时薪（元）", align: "center", width: 200 },
                     { prop: "hourly_wage", label: "实发时薪（元）", align: "center", type: "input", width: 220 },
-                    { prop: "work_hours", label: "总工时（天）", align: "center", type: "input" },
+                    { prop: "work_hours", label: "总工时", align: "center", type: "input" },
                     { prop: "actual_disbursement", label: "实发工资（元）", align: "center", width: 220 },
                     { prop: "memo", label: "备注", align: "center", type: "input" },
                 ],
@@ -231,7 +234,35 @@
             };
 
             /** 批量发放 */
-            const batchDisbursementHandler = async () => {
+            const batchDisbursementHandler = async (staff_codes) => {
+                if (!staff_codes?.length) {
+                    ElMessage.warning("请选择要发放的行！")
+                    return;
+                }
+                
+                const monthStr = paginationData.tableFilter.month;
+                const [year, month] = monthStr.split("-");
+                const display = `${year}年${month}月`;
+                await ElMessageBox.confirm(`确定要发放${display}的时薪工资吗？`, "提示", {
+                    confirmButtonText: "确定",
+                    cancelButtonText: "取消",
+                    type: "primary",
+                })
+                const selectRows = []
+                for (const staff_code of staff_codes) {
+                    const row = paginationData.tableData.items.find(item => item.staff_code == staff_code)
+                    if (row) {
+                        selectRows.push(row)
+                    }
+                }
+
+                await request.post("/staff/salary/hourly_disbursement", {
+                    data: selectRows,
+                    year: paginationData.tableFilter.month.substring(0, 4),
+                    month: paginationData.tableFilter.month.substring(5, 7),
+                });
+                ElMessage.success('操作成功')
+                await fetchTableData()
             };
 
             /** 移除项 */
@@ -318,7 +349,7 @@
 
             // 刷新页面数据
             const refreshPage = async () => {
-                await initPageData();
+                await fetchTableData();
                 ElMessage.success("刷新成功！")
             }
 
@@ -332,6 +363,7 @@
                 fetchTableData,
                 batchSetWorkHoursHandler,
                 batchSetHourlyWageHandler,
+                batchDisbursementHandler,
                 refreshPage,
                 removeItem,
                 batchRemoveHandle,

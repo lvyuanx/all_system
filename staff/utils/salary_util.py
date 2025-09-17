@@ -45,7 +45,7 @@ def generate_title(staff_salary: Union[dict, "StaffSalary"]) -> str:
 
     if salary_type == StaffSalaryTypeChoices.HOURLY_SALARY:
         assert hourly_wage and isinstance(hourly_wage, Decimal), "缺少【时薪】参数, 或者参数格式不正确"
-        assert work_hours and isinstance(work_hours, int), "缺少【工时】参数, 或者参数格式不正确"
+        assert work_hours and (isinstance(work_hours, int) or isinstance(work_hours, Decimal)), "缺少【工时】参数, 或者参数格式不正确"
         return f"{year}年{month}月时薪工资{hourly_wage}元 * {work_hours}小时, 总计时薪工资{salary}元"
 
     if salary_type == StaffSalaryTypeChoices.SALARY_DISBURSEMENT:

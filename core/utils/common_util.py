@@ -7,6 +7,7 @@
 # version    : python 3.11
 # Description: 通用工具类
 """
+from decimal import Decimal
 import importlib
 
 
@@ -41,3 +42,7 @@ def import_func_or_class(path: str):
         obj = getattr(obj, attr)
 
     return obj
+
+
+def to_decimal(value, digits="0.00"):
+    return Decimal(str(value or 0)).quantize(Decimal(digits))

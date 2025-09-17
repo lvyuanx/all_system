@@ -121,8 +121,8 @@ class UserAdmin(AdminBaseMixin, AdminListImagePreviewMixin, admin.ModelAdmin):
             else:
                 obj.password = settings.DEFAULT_PASSWORD
                 obj.save()
-                admin_util.log_custom_action(
-                    request, obj, f"用户{obj.username}重置密码成功"
+                admin_util.log_custom_actions(
+                    request, [obj], f"用户{obj.username}重置密码成功", 2
                 )
         except Exception as e:
             self.message_user(request, f"生成失败: {e}", level=messages.ERROR)

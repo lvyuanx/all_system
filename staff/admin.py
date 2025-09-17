@@ -238,7 +238,7 @@ class StaffSalaryAdmin(
                 sm.audit_pass()
                 sm.save_state()
                 count += 1
-                admin_util.log_custom_action(request, obj, "审批通过")
+                admin_util.log_custom_actions(request, [obj], "审批通过", 2)
                 
                 # 发送审核通过信号
                 after_salary_audit_pass_signal.send(
@@ -270,7 +270,7 @@ class StaffSalaryAdmin(
                 obj.release_user = request.user
                 obj.save()
                 count += 1
-                admin_util.log_custom_action(request, obj, "发放成功")
+                admin_util.log_custom_actions(request, [obj], "发放成功", 2)
 
         messages.success(request, f"{count} 条记录已发放成功。")
 
@@ -288,7 +288,7 @@ class StaffSalaryAdmin(
                 sm.correction()
                 sm.save_state()
                 count += 1
-                admin_util.log_custom_action(request, obj, "修正完成")
+                admin_util.log_custom_actions(request, [obj], "修正完成", 2)
         messages.success(request, f"{count} 条记录已批量修正完成。")
 
     @admin_util.btn(
@@ -316,7 +316,7 @@ class StaffSalaryAdmin(
                 sm.cancel()
                 sm.save_state()
                 count += 1
-                admin_util.log_custom_action(request, obj, "工资项取消")
+                admin_util.log_custom_actions(request, [obj], "工资项取消", 2)
         messages.success(request, f"{count} 条记录已批量取消。")
 
     @admin_util.btn(
@@ -371,7 +371,7 @@ class StaffSalaryAdmin(
                 sm.audit_correction()
                 sm.save_state()
                 count += 1
-                admin_util.log_custom_action(request, obj, "审批不通过")
+                admin_util.log_custom_actions(request, [obj], "审批不通过", 2)
 
         return JsonResponse({"status": "success", "msg": f"{count} 条记录已操作成功"})
 
@@ -427,7 +427,7 @@ class StaffSalaryAdmin(
                 sm.audit_reject()
                 sm.save_state()
                 count += 1
-                admin_util.log_custom_action(request, obj, "审批拒绝")
+                admin_util.log_custom_actions(request, [obj], "审批拒绝", 2)
 
         return JsonResponse({"status": "success", "msg": f"{count} 条记录已操作成功"})
 
