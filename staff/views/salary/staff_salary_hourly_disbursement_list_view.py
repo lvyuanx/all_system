@@ -81,7 +81,7 @@ class Pagination(AsyncLimitOffsetPagination):
 
 
 class View(BaseApi):
-    api_status = BaseApi.ApiStatus.DEV_IN_PROGRESS
+    api_status = BaseApi.ApiStatus.ARCHIVED
     methods = ["POST"]
     finally_code = "000", "查询未发放时薪信息失败"
     response_schema = schemas.HourlyStaffSalaryListItemSchema

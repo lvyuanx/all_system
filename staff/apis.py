@@ -3,6 +3,8 @@ from .views.salary import (
     staff_salary_basic_batch_disbursement_view,
     staff_salary_hourly_disbursement_list_view,
     staff_salary_hourly_batch_disbursement_view,
+    staff_salary_disbursement_list_view,
+    staff_salary_batch_disbursement_view,
 )
 
 apis = {
@@ -30,6 +32,18 @@ apis = {
             "hourly_disbursement",
             staff_salary_hourly_batch_disbursement_view.View,
             "时薪工资批量发放",
+        ),
+        (
+            "A4",
+            "salary_disbursement_list",
+            staff_salary_disbursement_list_view.View,
+            "查询其它工资列表",
+        ),
+        (
+            "A5",
+            "salary_disbursement",
+            staff_salary_batch_disbursement_view.View,
+            "工资批量发放",
         ),
     ]
 }

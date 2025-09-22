@@ -4,6 +4,7 @@ from .page_views.staff_page import (
     staff_salary_basic_disbursement,
     staff_salary_autit_timeline,
     staff_salary_hourly_disbursement,
+    staff_salary_disbursement,
 )
 
 app_name = "staff"
@@ -24,5 +25,10 @@ urls = [
         "staff/staffsalary/autit_timeline/<int:ssid>/",
         staff_salary_autit_timeline,
         name="staff_salary_autit_timeline",
+    ),
+    path(
+        "staff/staffsalary/other/<int:salary_type>/",
+        staff_salary_disbursement,
+        name="staff_salary_disbursement",
     ),
 ]

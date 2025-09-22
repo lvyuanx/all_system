@@ -18,7 +18,7 @@ from core.utils import admin_util, common_util
 from .. import schemas
 
 class View(BaseApi):
-    api_status = BaseApi.ApiStatus.DEV_IN_PROGRESS
+    api_status = BaseApi.ApiStatus.ARCHIVED
     methods = ["POST"]
     finally_code = "000", "发放时薪工资失败"
     response_schema = None

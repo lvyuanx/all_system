@@ -4,7 +4,7 @@ from django.contrib.auth.models import Group
 
 from core.utils import time_util
 from staff.models import StaffSalary, StaffSalaryCa
-from staff.enums import StaffSalaryStatusChoices
+from staff.enums import StaffSalaryStatusChoices, StaffSalaryTypeChoices
 
 def staff_salary_cards(request):
     context = {
@@ -76,4 +76,20 @@ def staff_salary_hourly_disbursement(request):
         "title": "时薪工资发放",
     }
     return render(request, "staff/staff_salary_hourly_disbursement.html", context)
+
+
+def staff_salary_disbursement(request, salary_type: int):
+    title_dict = {
+        StaffSalaryTypeChoices.OVERTIME_SALARY: "加班工资",
+        StaffSalaryTypeChoices.BONUS: "奖金",
+        StaffSalaryTypeChoices.PERFORMANCE_EVALUATION: "绩效",
+        StaffSalaryTypeChoices.COMMISSION: "提成",
+    }
+    enum_type = StaffSalaryTypeChoices(salary_type)  
+    context = {
+        "title": f"{title_dict[enum_type]}发放",
+        "actual_disbursement_name": title_dict[enum_type],
+        "salary_type": salary_type,
+    }
+    return render(request, "staff/staff_salary_disbursement.html", context)
 

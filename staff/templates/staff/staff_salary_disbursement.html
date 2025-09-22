@@ -1,0 +1,360 @@
+{% extends "vue_setup_base.html" %}
+{% load i18n %}
+{% load static %}
+{% load simpletags %}
+
+{% block title %}
+{{ title }}
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .table-row-red td {
+        background-color: var(--el-color-danger-light-7) !important;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div id="app">
+    <div class="page-header">
+        <el-page-header title="{% trans 'Back' %}" @back="goBack" content="{{title}}"></el-page-header>
+        <!-- <div></div> -->
+        <div class="header-right">
+            <el-button type="default" @click="refreshPage"><el-icon>
+                    <Refresh />
+                </el-icon>重置</el-button>
+            <el-button type="default" @click="batchDisbursementHandler(paginationData.selectRows)">批量发放</el-button>
+            <el-button type="default" @click="onbatchSetTime">批量设置时间</el-button>
+            <el-button type="default" @click="batchSetSalaryHandler">批量设置金额</el-button>
+            <el-button type="danger" @click="batchRemoveHandle">批量移除</el-button>
+        </div>
+    </div>
+    <div class="page-container">
+        <common-table ref="tableRef" v-model:filter-form="paginationData.tableFilter"
+            v-model:current-page="paginationData.tableData.current_page"
+            v-model:page-size="paginationData.tableData.page_size"
+            v-model:total-count="paginationData.tableData.total_count" :data="paginationData.tableData.items"
+            :columns="paginationData.columns" :loading="paginationData.loading" :selectable-is-show="true"
+            :is-paginated="true" :row-class-name="rowClassName" :selectable="selectable"
+            @selection-change="onSelectionChange" @row-click="onRowClick" @page-change="pageChangeHandle">
+            <template #actions="{ row }">
+                <el-button type="success" size="small" @click="batchDisbursementHandler([row.staff_code])"
+                    :disabled="paginationData.errorRows.includes(row.staff_code)">发放</el-button>
+                <el-button type="danger" size="small" @click="removeItem(row.staff_code)">移除</el-button>
+            </template>
+
+            <template #filter="{ model }">
+                <el-form-item label="姓名">
+                    <el-input v-model="model.full_name" placeholder="请输入姓名" clearable />
+                </el-form-item>
+                <el-form-item label="手机号">
+                    <el-input v-model="model.phone" placeholder="请输入手机号" clearable />
+                </el-form-item>
+            </template>
+        </common-table>
+    </div>
+
+    <el-dialog v-model="paginationData.dialogVisible" title="批量设置时间" width="500" align-center>
+        <template #default>
+            <el-date-picker v-model="paginationData.date" type="date" placeholder="选择日期" format="YYYY-MM-DD"
+                value-format="YYYY-MM-DD" :disabled-date="disabledAfterToday" />
+        </template>
+        <template #footer>
+            <div class="dialog-footer">
+                <el-button @click="paginationData.dialogVisible = false">取消</el-button>
+                <el-button type="primary" @click="batchSetTimeHandler">
+                    确定
+                </el-button>
+            </div>
+        </template>
+    </el-dialog>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script type="module">
+    import CommonTable from "{% static 'vue/js/CommonTable.js' %}";
+    const { reactive, inject, onMounted, watch, ref } = Vue;
+
+    window.createApp({
+        components: { CommonTable },
+        setup() {
+            // inject 全局对象
+            const ElMessage = inject("ElMessage");
+            const ElMessageBox = inject("ElMessageBox");
+            const tableRef = ref(null);
+
+            const goBack = () => {
+                window.location.href = '{% get_previous_url %}'
+            }
+
+            // 表格分页数据
+            const paginationData = reactive({
+                loading: false,
+                salary_type: "{{salary_type}}",
+                dialogVisible: false,
+                date: null,
+                tableFilter: {
+                    full_name: "",
+                    phone: "",
+                },
+                sort: [],
+                tableData: {
+                    current_page: 1,
+                    page_size: 15,
+                    total_count: 0,
+                    items: []
+                },
+                columns: [
+                    { prop: "staff_code", label: "工号", align: "center", fixed: "left", width: 80 },
+                    { prop: "full_name", label: "姓名", align: "center", fixed: "left", width: 120 },
+                    { prop: "phone", label: "手机号", align: "center", width: 180 },
+                    { prop: "disbursement_time", label: "发放时间", type: "date", align: "center", width: 250 },
+                    { prop: "actual_disbursement", label: "{{actual_disbursement_name}}（元）", type: "input", align: "center", width: 220 },
+                    { prop: "memo", label: "备注", align: "center", type: "input" },
+                ],
+                selectRows: [],
+                errorRows: []
+            });
+
+            /** 表格行选中事件 */
+            const onSelectionChange = (val) => {
+                paginationData.selectRows = []
+                val.forEach(row => {
+                    paginationData.selectRows.push(row.staff_code)
+                })
+            };
+
+            /** 表格行点击事件 */
+            const onRowClick = (row) => { console.log("点击行：", row); };
+
+            /** 表格行是否可选 */
+            const selectable = (row) => !paginationData.errorRows.includes(row.staff_code);;
+
+            /** 动态行样式 */
+            const rowClassName = ({ row }) => {
+                return paginationData.errorRows.includes(row.staff_code) ? "table-row-red" : "";
+            };
+
+            /** 分页变化 */
+            const pageChangeHandle = async () => {
+                await fetchTableData();
+            };
+
+            /** 表格数据获取 */
+            const fetchTableData = async () => {
+                paginationData.loading = true;
+                try {
+                    paginationData.tableData.items = [];
+                    const data = {
+                        current_page: paginationData.tableData.current_page,
+                        page_size: paginationData.tableData.page_size,
+                        filter: JSON.stringify(paginationData.tableFilter),
+                        sort: JSON.stringify(paginationData.sort)
+                    };
+                    const res = await request.post("/staff/salary/salary_disbursement_list", {}, data);
+                    paginationData.tableData = res;
+                } catch (e) {
+                    ElMessage.error("页面数据加载失败！");
+                    throw e;
+                } finally {
+                    paginationData.loading = false;
+                }
+            };
+
+            /** 初始化页面 */
+            const initPageData = async () => {
+                paginationData.tableData.current_page = 1;
+                paginationData.tableData.page_size = 15;
+                await fetchTableData();
+            };
+
+            onMounted(async () => {
+                await initPageData();
+            });
+
+            /** 批量设置工时 */
+            const batchSetSalaryHandler = async () => {
+                if (paginationData.selectRows.length === 0) {
+                    ElMessage.error("请选择要批量设置的行！");
+                    return;
+                }
+
+                const { value } = await ElMessageBox.prompt(
+                    '请输入金额：',
+                    "批量设置金额",
+                    {
+                        confirmButtonText: '提交',
+                        cancelButtonText: '取消',
+                        inputPattern: /^[0-9]+(\.[0-9]+)?$/, // 只允许数字
+                        inputErrorMessage: '请输入合法数字',
+                    }
+                );
+
+                if (!value || isNaN(value)) {
+                    ElMessage.error('请输入有效金额');
+                    return;
+                }
+
+                paginationData.tableData.items.forEach(row => {
+                    if (paginationData.selectRows.includes(row.staff_code)) {
+                        row.actual_disbursement = value
+                    }
+                })
+            };
+
+            /** 批量设置实发时薪 */
+            const onbatchSetTime = async () => {
+                if (paginationData.selectRows.length === 0) {
+                    ElMessage.error("请选择要批量设置的行！");
+                    return;
+                }
+                paginationData.dialogVisible = true;
+            };
+            const batchSetTimeHandler = async () => {
+                paginationData.dialogVisible = false;
+                paginationData.tableData.items.forEach(row => {
+                    if (paginationData.selectRows.includes(row.staff_code)) {
+                        row.disbursement_time = paginationData.date
+                    }
+                })
+            };
+
+            /** 批量发放 */
+            const batchDisbursementHandler = async (staff_codes) => {
+                if (!staff_codes?.length) {
+                    ElMessage.warning("请选择要发放的行！")
+                    return;
+                }
+
+                await ElMessageBox.confirm(`确定要发放吗？`, "提示", {
+                    confirmButtonText: "确定",
+                    cancelButtonText: "取消",
+                    type: "primary",
+                })
+                const selectRows = []
+                for (const staff_code of staff_codes) {
+                    const row = paginationData.tableData.items.find(item => item.staff_code == staff_code)
+                    if (row) {
+                        selectRows.push(row)
+                    }
+                }
+
+                await request.post("/staff/salary/salary_disbursement", {
+                    data: selectRows,
+                    salary_type: paginationData.salary_type
+                });
+                ElMessage.success('操作成功')
+                await fetchTableData()
+            };
+
+            /** 移除项 */
+            const removeItem = (staff_code) => {
+                let removeIdx = null;
+                paginationData.tableData.items.forEach((item, idx) => {
+                    if (item.staff_code == staff_code) {
+                        removeIdx = idx;
+                    }
+                })
+                if (removeIdx !== null) {
+                    paginationData.tableData.items.splice(removeIdx, 1);
+                }
+            }
+
+            /** 批量移除 */
+            const batchRemoveHandle = () => {
+                for (const staff_code of paginationData.selectRows) {
+                    removeItem(staff_code)
+                }
+            }
+
+            const safeDecimal = (val) => {
+                if (val === null || val === undefined || val === '' || isNaN(val)) {
+                    return new Decimal(0);
+                }
+                try {
+                    return new Decimal(val);
+                } catch {
+                    return new Decimal(0);
+                }
+            }
+
+            // 取消表格行选择
+            const unSelection = (staff_code) => {
+                const commTableRef = tableRef?.value.getTableRef()
+                if (staff_code) {
+                    const row = paginationData.tableData.items.find(item => item.staff_code == staff_code)
+                    if (row) {
+                        commTableRef?.toggleRowSelection(
+                            row,
+                            false
+                        )
+                    }
+                } else {
+                    commTableRef?.clearSelection();
+                }
+            }
+
+            /** 监听数据变化 */
+            watch(
+                () => paginationData.tableData.items.map(item => ({
+                    actual_disbursement: item.actual_disbursement
+                })),
+                (newVal) => {
+                    // 遍历原始 items，计算 actual_disbursement
+                    paginationData.tableData.items.forEach((item, index) => {
+                        const actual_disbursement = safeDecimal(item.actual_disbursement);
+                        const staff_code = item.staff_code;
+                        if (actual_disbursement.lessThan(0)) {
+                            ElMessage.error(`员工 ${staff_code} 的实发小于0，请检查！`);
+                            paginationData.errorRows.push(staff_code);
+                            unSelection(staff_code)
+                            return;
+                        }
+
+                        const idx = paginationData.errorRows.indexOf(staff_code);
+                        if (idx !== -1) {
+                            paginationData.errorRows.splice(idx, 1);
+                        }
+                    });
+                },
+                { deep: false, immediate: true }
+            );
+
+            
+            /** 禁用今天以后的日期 */
+            const disabledAfterToday = (time) => {
+                return time.getTime() > Date.now();  // 禁止选择今天以后的日期
+            }
+
+            // 刷新页面数据
+            const refreshPage = async () => {
+                await fetchTableData();
+                ElMessage.success("刷新成功！")
+            }
+
+            return {
+                paginationData,
+                onSelectionChange,
+                onRowClick,
+                selectable,
+                rowClassName,
+                pageChangeHandle,
+                fetchTableData,
+                batchSetSalaryHandler,
+                batchSetTimeHandler,
+                onbatchSetTime,
+                batchDisbursementHandler,
+                refreshPage,
+                removeItem,
+                batchRemoveHandle,
+                goBack,
+                disabledAfterToday,
+                tableRef
+            };
+        }
+    });
+</script>
+{% endblock %}

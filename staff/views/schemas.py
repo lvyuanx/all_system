@@ -1,6 +1,8 @@
 from decimal import Decimal
 from pydantic import Field, BaseModel
 from typing import Optional
+from ..enums import StaffSalaryTypeChoices
+from datetime import datetime
 
 
 
@@ -36,4 +38,19 @@ class BasicHourlyBatchDisbursementSchema(BaseModel):
     data: list[HourlyStaffSalaryListItemSchema] = Field(..., description="发放基础工资列表")
     year: int = Field(..., ge=2000, description="发放年份")
     month: int = Field(..., ge=1, le=12, description="发放月份")
+    
+    
+class SalaryListItemSchema(BaseModel):
+    sid: int = Field(..., description="员工id")
+    staff_code: str = Field(..., description="工号")
+    full_name: str = Field(..., description="姓名")
+    phone: str = Field(..., description="手机号")
+    actual_disbursement: Decimal = Field(..., description="实发工资")
+    disbursement_time: datetime = Field(..., description="发放时间")
+    memo: Optional[str] = Field(None, description="备注")
+    
+
+class SalaryBatchDisbursementSchema(BaseModel):
+    data: list[SalaryListItemSchema] = Field(..., description="发放工资列表")
+    salary_type: StaffSalaryTypeChoices = Field(..., description="发放工资类型")
 
