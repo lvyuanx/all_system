@@ -19,6 +19,12 @@ class Client(model_util.PermissionHelperMixin, models.Model):
     company_logo = models.ImageField(upload_to=model_util.client_logo_path, blank=True, null=True, default=settings.DEFAULT_IMAGE, verbose_name="公司logo")
     is_active = models.BooleanField(default=True, null=True, verbose_name="是否激活")
 
+    total_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0, verbose_name="历史下单总金额")
+    total_arrears = models.DecimalField(max_digits=10, decimal_places=2, default=0, verbose_name="欠款总额")
+    total_order_count = models.IntegerField(default=0, verbose_name="历史下单总数")
+    total_end_order_count = models.IntegerField(default=0, verbose_name="历史结束订单数")
+    
+
     class Meta:
         verbose_name = "客户列表"
         verbose_name_plural = verbose_name

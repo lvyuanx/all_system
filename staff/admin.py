@@ -84,7 +84,6 @@ class StaffSalaryAdmin(
     def salary_bind_month(self, obj):
         return f"{obj.year}年{obj.month}月"
     @admin.display(description="账户余额（元）")
-    
     def staff_account_balance(self, obj):
         return obj.staff.account_balance
 

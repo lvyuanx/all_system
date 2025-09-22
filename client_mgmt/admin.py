@@ -1,4 +1,5 @@
 from django.contrib import admin
+from django.http import HttpRequest
 
 from core.admin_extra import AdminBaseMixin
 from core.admin_extra.forms import AdminFormImageUploadForm
@@ -23,24 +24,26 @@ class UserAdmin(AdminBaseMixin, AdminListImagePreviewMixin, admin.ModelAdmin):
         "client_name",
         "client_phone",
         "client_sex",
+        "company_name",
         "company_address",
+        "unfinished_order_total",
         "is_active",
     )
-    list_display_links = ("client_name",)
-    """排序字段"""
+    list_filter = ("company_name",)
+    search_fields = ("client_name", "client_phone")
+    readonly_fields = ("total_amount", "total_arrears", "total_order_count", "total_end_order_count")
+    list_display_links = []
     sortable_by = ("client_name",)
+    
+    @admin.display(description="未结束订单数")
+    def unfinished_order_total(self, obj):
+        return obj.total_order_count - obj.total_end_order_count
+    
+    
+    def get_list_display_links(self, request: HttpRequest, list_display):
+        if request.user.is_superuser:
+            return ("client_name",)
+        return self.list_display
 
-    """定义哪个字段可以编辑"""
-    list_editable = ("is_active",)
 
-    """分页：每页10条"""
-    list_per_page = 10
 
-    """最大条目"""
-    list_max_show_all = 200  # default
-
-    """按日期分组"""
-    # date_hierarchy = "last_login"
-
-    """默认空值"""
-    empty_value_display = ""
