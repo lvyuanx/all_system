@@ -1,7 +1,8 @@
 from django.conf import settings
+from django.http import Http404, HttpResponse
 from django.shortcuts import render
 
-from bill.models import Bill
+from bill.models import Bill, BillTemplate
 from bill.utils import pdf_util
 from core.utils import admin_util
 
@@ -25,3 +26,11 @@ def preview_bill_pdf_view(request, id: int):
     else:
         context = {"pdf_url": ""}
     return render(request, "pdf/pdf_preview.html", context)
+
+
+def dynamic_rendering_bill_html_view(request, id: int):
+    bt_queryset = BillTemplate.objects.filter(pk=id)
+    if not bt_queryset.exists():
+        return Http404()
+    bt = bt_queryset.first()
+    return HttpResponse(bt.content)

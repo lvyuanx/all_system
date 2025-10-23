@@ -7,21 +7,44 @@
 # version    : python 3.11
 # Description: pdf工具
 """
+# import os
+# import uuid
+# from django.conf import settings
+# from jinja2 import Template
+# import pdfkit
+
+# def jinja2_to_pdf(template_str: str, params: dict):
+#     filename = f"{uuid.uuid4().hex}.pdf"
+#     media_path = os.path.join("pdf", filename)  # 保存到 MEDIA_ROOT/pdf/ 下
+#     output_path = os.path.join(settings.MEDIA_ROOT, media_path)
+#     # 确保目录存在
+#     os.makedirs(os.path.dirname(output_path), exist_ok=True)
+#     template = Template(template_str)
+#     rendered_html = template.render(**params)
+#     pdfkit.from_string(rendered_html, output_path)
+#     return media_path
+
 import os
 import uuid
 from django.conf import settings
 from jinja2 import Template
-import pdfkit
+from playwright.sync_api import sync_playwright
 
 def jinja2_to_pdf(template_str: str, params: dict):
     filename = f"{uuid.uuid4().hex}.pdf"
-    media_path = os.path.join("pdf", filename)  # 保存到 MEDIA_ROOT/pdf/ 下
+    media_path = os.path.join("pdf", filename)
     output_path = os.path.join(settings.MEDIA_ROOT, media_path)
-    # 确保目录存在
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    template = Template(template_str)
-    rendered_html = template.render(**params)
-    pdfkit.from_string(rendered_html, output_path)
+
+    html_str = Template(template_str).render(**params)
+
+    with sync_playwright() as p:
+        browser = p.chromium.launch()
+        page = browser.new_page()
+        page.set_content(html_str)
+        page.pdf(path=output_path, format="A4")
+        browser.close()
+
     return media_path
     
     

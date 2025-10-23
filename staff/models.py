@@ -156,7 +156,7 @@ class StaffSalary(
     
     def save(self, *args, **kwargs):
         if not self.salary_serial_number:  # 只有保存时才生成
-            self.salary_serial_number = self.get_sn()
+            self.salary_serial_number = self.get_sn()[0]
         if not self.salary:
             self.salary = Decimal("0.00")
         super().save(*args, **kwargs)

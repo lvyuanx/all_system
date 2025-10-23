@@ -42,10 +42,10 @@ class OperateButtonsMixin:
             btn_type = conf.get(
                 "type", "default"
             )  # default / primary / warning / danger / text
-            mode = conf.get("mode", "link")  # link / modal
+            mode = conf.get("mode", "link")  # link / modal / js
             icon = conf.get("icon", "")
             url_func = conf.get("url")
-            js_func = conf.get("js")  # 自定义 JS 函数调用
+            js_func = conf.get("js_func")  # 自定义 JS 函数调用
             modal_width = conf.get("modal_width")
             modal_height = conf.get("modal_height")
 

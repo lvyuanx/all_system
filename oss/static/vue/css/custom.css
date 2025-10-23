@@ -94,3 +94,9 @@ body,
     align-items: center;
     justify-content: center;
 }
+
+
+
+.form-row.errors {
+    background-color: red !important;
+}

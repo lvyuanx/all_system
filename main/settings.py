@@ -34,6 +34,7 @@ INSTALLED_APPS = [
     "staff",                         # 员工管理
     "bill",                          # 票据管理
     "client_mgmt",                   # 客户管理
+    "order",                         # 订单管理
 ]
 
 # 中间件列表
@@ -157,6 +158,7 @@ NINJA_PAGINATION_CLASS = 'core.ninja_extra.base_pagination.AsyncCustomLimitOffse
 # region ******************** 日志配置 start ******************** #
 LOG_DIR = BASE_DIR / "logs"
 LOGGING_BACK_COUNT = merge_config("LOGGING_BACK_COUNT", 10)
+LOG_LEVEL = merge_config("LOG_LEVEL", "DEBUG" if DEBUG else "INFO")
 LOGGING = {
             "version": 1,
             "disable_existing_loggers": False,
@@ -206,17 +208,17 @@ LOGGING = {
                 
                 "": {
                     "handlers": ["all", "console", "error"],
-                    "level": "DEBUG" if DEBUG else "INFO",
+                    "level": LOG_LEVEL,
                     "propagate": True,
                 },
                 "project": {
                     "handlers": ["project"],
-                    "level": "DEBUG" if DEBUG else "INFO",
+                    "level": LOG_LEVEL,
                     "propagate": True,
                 },
                 "django.db.backends": {
                     "handlers": ["console"],
-                    "level": "DEBUG" if DEBUG else "ERROR",
+                    "level": LOG_LEVEL,
                 },
             },
         }
@@ -263,3 +265,18 @@ PERM_PAKC = {
     }
 }
 # endregion ****************** 权限 end ********************* #
+
+
+# region ******************** 系统初始化相关 start ******************** #
+INIT_SCRIPTS = merge_config("INIT_SCRIPTS", [
+    "main.init.init_csv_sql:init_csv_sql",
+    "main.init.init_perm_pack:init_perm_pack",
+])
+DB_CSVS = merge_config("DB_CSVS", [
+    # (csv文件地址， 模型， 联合唯一字段， 排除字段)
+    (BASE_DIR / "run" / "sqls" / "core_auth_simpleuimenus.csv", "core_auth.SimpleuiMenus", ["path"], ["id"]),
+    (BASE_DIR / "run" / "sqls" / "core_common_provincecode.csv", "core_common.ProvinceCode", ["id"], []),
+    (BASE_DIR / "run" / "sqls" / "core_common_citycode.csv", "core_common.CityCode", ["id"], []),
+    (BASE_DIR / "run" / "sqls" / "core_common_districtcode.csv", "core_common.DistrictCode", ["id"], []),
+])
+# endregion ****************** 系统初始化相关 end ********************* #

@@ -15,7 +15,16 @@ class Client(model_util.PermissionHelperMixin, models.Model):
     client_age = models.IntegerField(null=True, blank=True, default=None, verbose_name="客户年龄")
     company_name = models.CharField(max_length=255, null=True, blank=True, default=None, verbose_name="公司名称")
     company_phone = models.CharField(max_length=255, null=True, blank=True, default=None, verbose_name="公司电话")
-    company_address = models.CharField(max_length=255, null=True, blank=True, default=None, verbose_name="公司地址")
+    address_province = models.ForeignKey(
+        "core_common.ProvinceCode", on_delete=models.SET_NULL, null=True, blank=True, default=None, db_constraint=False, verbose_name="公司所在省"
+    )
+    address_city = models.ForeignKey(
+        "core_common.CityCode", on_delete=models.SET_NULL, null=True, blank=True, default=None, db_constraint=False, verbose_name="公司所在市"
+    )
+    address_district = models.ForeignKey(
+        "core_common.DistrictCode", on_delete=models.SET_NULL, null=True, blank=True, default=None, db_constraint=False, verbose_name="公司所在区"
+    )
+    address_detail = models.CharField(max_length=255, null=True, blank=True, default=None, verbose_name="公司详细地址")
     company_logo = models.ImageField(upload_to=model_util.client_logo_path, blank=True, null=True, default=settings.DEFAULT_IMAGE, verbose_name="公司logo")
     is_active = models.BooleanField(default=True, null=True, verbose_name="是否激活")
 
@@ -23,7 +32,7 @@ class Client(model_util.PermissionHelperMixin, models.Model):
     total_arrears = models.DecimalField(max_digits=10, decimal_places=2, default=0, verbose_name="欠款总额")
     total_order_count = models.IntegerField(default=0, verbose_name="历史下单总数")
     total_end_order_count = models.IntegerField(default=0, verbose_name="历史结束订单数")
-    
+
 
     class Meta:
         verbose_name = "客户列表"

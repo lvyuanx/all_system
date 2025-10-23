@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="utf-8" />
+    <title>发货单</title>
+    <style>
+        body {
+            font-family: "宋体", SimSun, serif;
+            background: #f3f3f3;
+            margin: 0;
+            padding: 0;
+        }
+
+        /* 打印时适配 A4 */
+        @media print {
+            body {
+                background: #fff;
+                margin: 0;
+                padding: 0;
+            }
+
+            .receipt {
+                width: 190mm; /* A4宽度 210mm - 左右各 10mm边距 */
+                margin: 0 auto;
+                padding: 10mm;
+                border: none !important;
+                box-sizing: border-box;
+            }
+        }
+
+        /* 页面显示样式 */
+        .receipt {
+            max-width: 100%;
+            width: 700px; /* 屏幕显示宽度 */
+            background: #fff;
+            margin: 20px auto;
+            padding: 20px;
+            border: 1px solid #000;
+            box-sizing: border-box;
+            word-wrap: break-word;
+        }
+
+        /* 页头 */
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 8px;
+            border-bottom: 2px solid #000;
+            padding-bottom: 6px;
+        }
+
+        .header img {
+            height: 40px;
+            margin-right: 10px;
+        }
+
+        .header h1 {
+            font-size: 20px;
+            margin: 0;
+            text-align: center;
+        }
+
+        /* 基本信息 */
+        .meta {
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+
+        .meta span {
+            margin-right: 40px;
+        }
+
+        /* 发货/收货信息两列 */
+        .meta-columns {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+
+        .column {
+            width: 48%;
+            word-break: break-word;
+        }
+
+        .column strong {
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        .meta-group span {
+            display: block;
+            margin-bottom: 4px;
+            word-break: break-word;
+            white-space: pre-wrap;
+            overflow-wrap: break-word;
+        }
+
+        /* 表格 */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+
+        table,
+        th,
+        td {
+            border: 1px solid #000;
+        }
+
+        th,
+        td {
+            padding: 6px;
+            text-align: center;
+            word-break: break-word;
+        }
+
+        /* 固定列宽 */
+        table th:nth-child(1),
+        table td:nth-child(1) {
+            width: 30px;
+        }
+
+        table th:nth-child(3),
+        table td:nth-child(3) {
+            width: 80px;
+        }
+
+        table th:nth-child(4),
+        table td:nth-child(4),
+        table th:nth-child(5),
+        table td:nth-child(5) {
+            width: 50px;
+        }
+
+        table th:nth-child(6),
+        table td:nth-child(6) {
+            width: 40px;
+        }
+
+        table th:nth-child(7),
+        table td:nth-child(7) {
+            width: 100px;
+        }
+
+        /* 打印分页 */
+        thead {
+            display: table-header-group;
+        }
+
+        tfoot {
+            display: table-footer-group;
+        }
+
+        tr,
+        td,
+        th {
+            page-break-inside: avoid;
+        }
+
+        /* 签字区域两列 */
+        .footer-columns {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
+        }
+
+        .footer-column {
+            width: 48%;
+            text-align: left;
+        }
+
+        /* 备注区域 */
+        .remark {
+            margin-top: 10px;
+            font-size: 14px;
+            min-height: 30px;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        /* 日期区域 */
+        .date {
+            margin-top: 10px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="receipt">
+        <!-- 页头 -->
+        <div class="header">
+            <img src="{{ company_logo }}" alt="Logo">
+            <h1>{{ company_name }}发货单</h1>
+        </div>
+
+        <!-- 基本信息 -->
+        <div class="meta">
+            <span>发货单号：{{ order_no }}</span>
+            <span>下单日期：{{ create_time }}</span>
+            <span>发货方式：{{ delivery_method }}</span>
+        </div>
+
+        <!-- 发货/收货信息两列 -->
+        <div class="meta-columns">
+            <!-- 发货方 -->
+            <div class="column">
+                <strong>发货方信息</strong>
+                <div class="meta-group">
+                    <span>单位：{{ shipping_party }} {{ shipping_party_phone }}</span>
+                    <span>地址：{{ shipping_party_address }}</span>
+                </div>
+            </div>
+
+            <!-- 收货方 -->
+            <div class="column">
+                <strong>收货方信息</strong>
+                <div class="meta-group">
+                    <span>单位：{{ receiver_name }} {{ receiver_phone }}</span>
+                    <span>地址：{{ receiver_address }}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 发货表格 -->
+        <table>
+            <thead>
+                <tr>
+                    <th>序号</th>
+                    <th>名称</th>
+                    <th>款号</th>
+                    <th>颜色</th>
+                    <th>数量</th>
+                    <th>单位</th>
+                    <th>备注</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in items %}
+                <tr>
+                    <td>{{ forloop.counter }}</td>
+                    <td>{{ item.item_name }}</td>
+                    <td>{{ item.pattern_code }}</td>
+                    <td>{{ item.color }}</td>
+                    <td>{{ item.count }}</td>
+                    <td>{{ item.count_unit }}</td>
+                    <td>{{ item.memo }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <!-- 签字区域两列 -->
+        <div class="footer-columns">
+            <div class="footer-column">
+                发货人（签字）：________________
+            </div>
+            <div class="footer-column">
+                收货人（签字）：________________
+            </div>
+        </div>
+
+        <!-- 发货日期 -->
+        <div class="date">
+            发货日期：{{ delivery_time }}
+        </div>
+
+        <!-- 备注区域 -->
+        <div class="remark">
+            备注：{{ memo }}
+        </div>
+    </div>
+</body>
+
+</html>

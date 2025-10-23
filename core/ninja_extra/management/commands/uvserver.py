@@ -150,7 +150,7 @@ class Command(BaseCommand):
             workers=options["workers"],
             reload=options["reload"],
             loop=options["loop"],
-            log_level=options["log_level"] or ("DEBUG" if settings.DEBUG else "INFO"),
+            log_level=options["log_level"] or settings.LOG_LEVEL,
             log_config=settings.LOGGING
         )
 

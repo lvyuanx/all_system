@@ -97,10 +97,10 @@ class StaffSalaryAdmin(
 
     operate_buttons_config = [
         {
-            "name": "",
+            "name": "操作日志",
             "type": "text",
             "mode": "modal",
-            "icon": "fa-solid fa-magnifying-glass",
+            "icon": "el-icon-date",
             "modal_width": "35vw",
             "modal_height": "80vh",
             "url": lambda obj: reverse("staff_salary_autit_timeline", kwargs={"ssid": obj.pk}),

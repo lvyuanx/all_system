@@ -50,3 +50,46 @@ class SignalReceiverFail(models.Model):
             "error_message": self.error_message,
             "is_recovered": self.is_recovered,
         }, ensure_ascii=False, indent=2)
+
+
+class ProvinceCode(models.Model):
+    """省份代码"""
+    code = models.CharField("代码", max_length=64, unique=True)
+    name = models.CharField("名称", max_length=64)
+    
+    class Meta:
+        verbose_name = "省份代码"
+        verbose_name_plural = "省份代码"
+        ordering = ["code"]
+    
+    def __str__(self):
+        return self.name
+    
+class CityCode(models.Model):
+    """城市代码"""
+    code = models.CharField("代码", max_length=64, unique=True)
+    name = models.CharField("名称", max_length=64)
+    province = models.ForeignKey(ProvinceCode, on_delete=models.CASCADE, related_name="cities", db_constraint=False)
+    
+    class Meta:
+        verbose_name = "城市代码"
+        verbose_name_plural = "城市代码"
+        ordering = ["code"]
+    
+    def __str__(self):
+        return self.name
+
+class DistrictCode(models.Model):
+    """区县代码"""
+    code = models.CharField("代码", max_length=64, unique=True)
+    name = models.CharField("名称", max_length=64)
+    city = models.ForeignKey(CityCode, on_delete=models.CASCADE, related_name="districts", db_constraint=False)
+    
+    class Meta:
+        verbose_name = "区县代码"
+        verbose_name_plural = "区县代码"
+        ordering = ["code"]
+    
+    def __str__(self):
+        return self.name
+

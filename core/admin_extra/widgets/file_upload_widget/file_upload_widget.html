@@ -1,0 +1,149 @@
+<div id="customFileUploadWidget" class="file-upload-widget">
+    <style>
+        .upload-container {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+
+            background-image: url('/media/system/image_default.png');
+            background-repeat: no-repeat;
+            background-position: center center;
+            background-size: cover;
+
+            width: clamp(200px, 30vw, 300px);
+            height: clamp(200px, 30vw, 300px);
+
+            border: 2px dashed #dcdfe6;
+            border-radius: 8px;
+            overflow: hidden;
+            transition: border-color 0.2s;
+            cursor: pointer;
+        }
+
+        .upload-container:hover { border-color: #f56c6c; }
+
+        .upload-overlay {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background-color: rgba(0,0,0,0.4);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .upload-container:hover .upload-overlay { opacity: 1; }
+
+        .upload-overlay button {
+            opacity: 0;
+            transform: translateY(10px);
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+
+        .upload-container:hover .upload-overlay button {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .el-button { padding: 6px 14px; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; color: white; }
+        .el-button--primary { background-color: #409eff; }
+        .el-button--danger { background-color: #f56c6c; }
+        .file-input { display: none; }
+
+        /* 预览弹窗 */
+        .preview-modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+        .preview-modal.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .preview-modal img {
+            max-width: 95vw;
+            max-height: 95vh;
+            object-fit: contain;
+            border: none;
+            box-shadow: none;
+        }
+    </style>
+
+    <div class="upload-container" id="uploadBox">
+        <input type="file" class="file-input" id="fileInput" accept="image/*">
+        <div class="upload-overlay">
+            <button type="button" class="el-button el-button--primary el-button--small" id="btnUpload">上传</button>
+            <button type="button" class="el-button el-button--danger el-button--small" id="btnPreview">预览</button>
+        </div>
+    </div>
+
+    <div class="preview-modal" id="previewModal">
+        <img src="" alt="预览图" id="previewImg">
+    </div>
+
+    <script>
+        const customImageInput = document.querySelector("input[name='custom_widget_company_logo']");
+        const imageInput = document.querySelector("input[name='company_logo']");
+
+        const uploadBox = document.getElementById('uploadBox');
+        const fileInput = document.getElementById('fileInput');
+        const btnUpload = document.getElementById('btnUpload');
+        const btnPreview = document.getElementById('btnPreview');
+        const previewModal = document.getElementById('previewModal');
+        const previewImg = document.getElementById('previewImg');
+
+        const defaultImage = '/media/system/image_default.png';
+        let currentImage = defaultImage;
+
+        // 初始化回显
+        if (customImageInput?.value) {
+            currentImage = customImageInput.value;
+            uploadBox.style.backgroundImage = `url('${currentImage}')`;
+        }
+
+        // 上传按钮点击
+        btnUpload.addEventListener('click', () => fileInput.click());
+
+        // 文件选择后预览
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                currentImage = ev.target.result;
+                uploadBox.style.backgroundImage = `url('${currentImage}')`;
+
+                // 更新隐藏字段
+                if (customImageInput) customImageInput.value = currentImage;
+                if (imageInput) imageInput.files = e.target.files;
+            };
+            reader.readAsDataURL(file);
+        });
+
+        // 预览按钮
+        btnPreview.addEventListener('click', () => {
+            if (currentImage === defaultImage) {
+                window.SimpleUIExtra?.ElMessage?.warning?.('暂无可预览的图片');
+                return;
+            }
+            previewImg.src = currentImage;
+            previewModal.classList.add('active');
+        });
+
+        // 点击关闭预览
+        previewModal.addEventListener('click', () => previewModal.classList.remove('active'));
+    </script>
+</div>

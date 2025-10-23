@@ -1,0 +1,174 @@
+<div id="provinceCityDistrictWidget" class="province-city-district-widget">
+    <style>
+        .province-city-district-widget {
+            display: flex;
+            gap: 8px;
+            align-items: flex-start; /* 顶端对齐 */
+            flex-wrap: wrap;
+        }
+
+        .province-city-district-widget select,
+        .province-city-district-widget textarea.address-detail {
+            padding: 4px 8px;
+            font-size: 14px;
+            border: 1px solid #dcdfe6;
+            border-radius: 4px;
+            min-width: 120px;
+            box-sizing: border-box;
+        }
+
+        .province-city-district-widget select:focus,
+        .province-city-district-widget textarea.address-detail:focus {
+            border-color: #409eff;
+            outline: none;
+        }
+
+        .province-city-district-widget textarea.address-detail {
+            flex: 1;
+            min-width: 300px;
+            resize: both; /* 可拖拽 */
+            overflow: auto;
+            height: 48px; /* 默认两行高度 */
+        }
+    </style>
+
+    <select id="provinceSelect">
+        <option value="">请选择省份</option>
+    </select>
+
+    <select id="citySelect" disabled>
+        <option value="">请选择城市</option>
+    </select>
+
+    <select id="districtSelect" disabled>
+        <option value="">请选择区县</option>
+    </select>
+
+    <textarea
+        id="addressDetail"
+        class="address-detail"
+        placeholder="请输入详细地址"
+        rows="3"
+    ></textarea>
+
+    <script>
+        (async function () {
+            const provinceSelect = document.getElementById("provinceSelect");
+            const citySelect = document.getElementById("citySelect");
+            const districtSelect = document.getElementById("districtSelect");
+            const addressDetail = document.getElementById("addressDetail");
+
+            const provinceInput = document.querySelector("input[name='address_province']");
+            const cityInput = document.querySelector("input[name='address_city']");
+            const districtInput = document.querySelector("input[name='address_district']");
+            const addressDetailInput = document.querySelector("input[name='address_detail']");
+
+            const customProvinceInput = document.querySelector("input[name='custom_widget_address_province']");
+            const customCityInput = document.querySelector("input[name='custom_widget_address_city']");
+            const customDistrictInput = document.querySelector("input[name='custom_widget_address_district']");
+            const customDetailInput = document.querySelector("input[name='custom_widget_address_detail']");
+
+            const provinceId = customProvinceInput?.value?.trim() || "";
+            const cityId = customCityInput?.value?.trim() || "";
+            const districtId = customDistrictInput?.value?.trim() || "";
+            const addressText = customDetailInput?.value?.trim() || "";
+
+            // 回显详细地址
+            if (addressText) {
+                addressDetail.value = addressText;
+            }
+
+            async function requestPost(url, params, data) {
+                return await request.post(url, params, data);
+            }
+
+            async function loadProvinces(selectedId) {
+                try {
+                    const res = await requestPost("/common/province/page", {}, { page:1, page_size:500 });
+                    provinceSelect.innerHTML = `<option value="">请选择省份</option>`;
+                    res.items.forEach(item => {
+                        const opt = document.createElement("option");
+                        opt.value = item.id;
+                        opt.textContent = item.name;
+                        provinceSelect.appendChild(opt);
+                    });
+                    if (selectedId) {
+                        provinceSelect.value = selectedId;
+                        citySelect.disabled = false;
+                    }
+                } catch(err) { console.error("加载省份失败:", err); }
+            }
+
+            async function loadCities(provinceId, selectedId) {
+                citySelect.innerHTML = `<option value="">请选择城市</option>`;
+                districtSelect.innerHTML = `<option value="">请选择区县</option>`;
+                citySelect.disabled = !provinceId;
+                districtSelect.disabled = true;
+                if (!provinceId) return;
+                try {
+                    const res = await requestPost("/common/city/page", {}, { page:1, page_size:500, filter:JSON.stringify({ parent_id: provinceId }) });
+                    res.items.forEach(item => {
+                        const opt = document.createElement("option");
+                        opt.value = item.id;
+                        opt.textContent = item.name;
+                        citySelect.appendChild(opt);
+                    });
+                    if (selectedId) {
+                        citySelect.value = selectedId;
+                        districtSelect.disabled = false;
+                    }
+                } catch(err){ console.error("加载城市失败:", err); }
+            }
+
+            async function loadDistricts(cityId, selectedId) {
+                districtSelect.innerHTML = `<option value="">请选择区县</option>`;
+                districtSelect.disabled = !cityId;
+                if (!cityId) return;
+                try {
+                    const res = await requestPost("/common/district/page", {}, { page:1, page_size:500, filter:JSON.stringify({ parent_id: cityId }) });
+                    res.items.forEach(item => {
+                        const opt = document.createElement("option");
+                        opt.value = item.id;
+                        opt.textContent = item.name;
+                        districtSelect.appendChild(opt);
+                    });
+                    if (selectedId) districtSelect.value = selectedId;
+                } catch(err){ console.error("加载区县失败:", err); }
+            }
+
+            // 回显
+            await loadProvinces(provinceId);
+            if (provinceId){
+                await loadCities(provinceId, cityId);
+                if (cityId){
+                    await loadDistricts(cityId, districtId);
+                }
+            }
+
+            // 事件绑定
+            provinceSelect.addEventListener("change", async function(){
+                provinceInput.value = this.value;
+                cityInput.value = "";
+                districtInput.value = "";
+                await loadCities(this.value);
+                addressDetail.value = "";
+            });
+
+            citySelect.addEventListener("change", async function(){
+                cityInput.value = this.value;
+                districtInput.value = "";
+                await loadDistricts(this.value);
+                addressDetail.value = "";
+            });
+
+            districtSelect.addEventListener("change", function(){
+                districtInput.value = this.value;
+                addressDetail.value = "";
+            });
+
+            addressDetail.addEventListener("input", function(){
+                if (addressDetailInput) addressDetailInput.value = this.value;
+            });
+        })();
+    </script>
+</div>

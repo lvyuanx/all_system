@@ -19,15 +19,19 @@ from django.contrib import admin
 from django.urls import include, path
 from django.conf.urls.static import static
 
+from core.common.urls import urls as COMMON_URLS
 from core.ninja_extra.urls import urls as NINJA_URLS
 from core.auth.urls import urls as AUTH_URLS
 from staff.urls import urls as STAFF_URLS
 from bill.urls import urls as BILL_URLS
+from order.urls import urls as ORDER_URLS
 
 urlpatterns = [
+    path('admin/', include(COMMON_URLS)),
     path('admin/', include(AUTH_URLS)),
     path('admin/', include(STAFF_URLS)),
     path('admin/', include(BILL_URLS)),
+    path('admin/', include(ORDER_URLS)),
     path('admin/', admin.site.urls),
 ] + NINJA_URLS
 

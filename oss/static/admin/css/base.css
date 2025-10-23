@@ -694,8 +694,21 @@ td ul.errorlist li {
     margin: 0;
     border: none;
     border-bottom: 1px solid var(--hairline-color);
-    background: none;
+    background-color:  pink;
+    display: flex;
+    flex-direction: row-reverse;
+    justify-content: flex-end;
 }
+
+.form-row.errors div {
+    display: flex;
+    align-items: center;
+}
+
+.errorlist {
+    background-color: pink !important;
+}
+
 
 .form-row.errors ul.errorlist li {
     padding-left: 0;
