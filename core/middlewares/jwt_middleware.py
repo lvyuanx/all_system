@@ -31,7 +31,7 @@ class JWTMiddleware:
         
         
     def __call__(self, request: HttpRequest):
-        if not request.path.startswith(NINJA_BASE_URL):  # 只拦截ninja
+        if not request.path.startswith(f"/{NINJA_BASE_URL}"):  # 只拦截ninja
             return self.get_response(request)
         
         token = token_handler.get(request, TOKEN_TAG)  # 去指定来源获取token

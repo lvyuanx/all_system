@@ -32,6 +32,9 @@ class Client(model_util.PermissionHelperMixin, models.Model):
     total_arrears = models.DecimalField(max_digits=10, decimal_places=2, default=0, verbose_name="欠款总额")
     total_order_count = models.IntegerField(default=0, verbose_name="历史下单总数")
     total_end_order_count = models.IntegerField(default=0, verbose_name="历史结束订单数")
+    sites = models.ManyToManyField(
+        "site_mgmt.SysSite", blank=True, default=None, db_constraint=False, verbose_name="所属站点"
+    )
 
 
     class Meta:

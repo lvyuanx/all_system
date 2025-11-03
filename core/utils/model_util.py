@@ -7,6 +7,7 @@ USER_FILE_PATH = "user/{user_phone}/{business_path}"
 USER_AVATAR_PATH = "avatars/{filename}"
 CLIENT_FILE_PATH = "client/{business_path}"
 CLIENT_LOGO_PATH = "client_logos/{filename}"
+SITE_LOGO_PATH = "site_logos/{filename}"
 
 def random_filename(filename: str) -> str:
     ext = os.path.splitext(filename)[1]  # 获取文件后缀，如 ".png"
@@ -22,6 +23,11 @@ def user_avatar_path(instance, filename):
 def client_logo_path(instance, filename):
     return CLIENT_FILE_PATH.format(
         business_path=CLIENT_LOGO_PATH.format(filename=random_filename(filename=filename))
+    )
+    
+def site_logo_path(instance, filename):
+    return CLIENT_FILE_PATH.format(
+        business_path=SITE_LOGO_PATH.format(filename=random_filename(filename=filename))
     )
 
 class StructureMoelMixin(models.Model):

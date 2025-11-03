@@ -40,6 +40,9 @@ class Staff(model_util.PermissionHelperMixin, models.Model):
         default=Decimal("0.00"),
         verbose_name="账户总支出",
     )
+    site = models.ForeignKey(
+        "site_mgmt.SysSite", on_delete=models.SET, null=True, blank=True, default=None, db_constraint=False, verbose_name="所属站点"
+    )
 
 
     class Meta:

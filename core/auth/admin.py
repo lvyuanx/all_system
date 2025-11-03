@@ -166,7 +166,3 @@ class GroupAdmin(AdminBaseMixin, admin.ModelAdmin):
 Group._meta.verbose_name = "角色组"
 Group._meta.verbose_name_plural = "用户组管理"
 
-
-admin.site.site_header = "管理系统"
-admin.site.site_title = "管理系统"
-admin.site.index_title = "3"

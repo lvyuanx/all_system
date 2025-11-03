@@ -1,6 +1,7 @@
 import inspect
 import os
 from django import forms
+from django.template import Context, Engine
 from django.utils.safestring import mark_safe
 
 
@@ -39,4 +40,11 @@ class BaseWidget(forms.Widget):
         {hiden_input_str}
         {self.widget_html}
         """
-        return mark_safe(html)
+    
+        # 用 Django 模板引擎渲染 HTML
+        engine = Engine(debug=False)
+        template = engine.from_string(html)
+        context = Context(self.attrs.get("context", {}))
+        html_rendered = template.render(context)
+
+        return mark_safe(html_rendered)

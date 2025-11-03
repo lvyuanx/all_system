@@ -35,6 +35,7 @@ INSTALLED_APPS = [
     "bill",                          # 票据管理
     "client_mgmt",                   # 客户管理
     "order",                         # 订单管理
+    "site_mgmt",                     # 站点管理
 ]
 
 # 中间件列表
@@ -50,10 +51,14 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",   # 消息中间件
     "django.middleware.clickjacking.XFrameOptionsMiddleware", # 点击劫持保护中间件
     
-    "core.middlewares.docs_login_middleware.DocsLoginMiddlware", # 文档登录中间件
+    # "core.middlewares.docs_login_middleware.DocsLoginMiddlware", # 文档登录中间件
+    "core.middlewares.docs_login_middleware2.DocsLoginMiddlware", # 文档登录中间件
     "core.middlewares.admin_login_to_jwt_middleware.AdminLoginToJwtMiddleware", # admin登录中间件
     "core.middlewares.jwt_middleware.JWTMiddleware", # jwt认证中间件
     "core.middlewares.simpleui_menus_middleware.SimpleuiMenusMiddlware", # simpleui菜单中间件
+    "core.middlewares.swigger_inject_middleware.SwaggerInjectMiddleware",  # swagger注入js中间件
+    "site_mgmt.middlewares.site_middleware.SiteMiddlware",  # 站点管理中间件
+
 ]
 
 # 身份验证后端
@@ -232,6 +237,7 @@ SIMPLEUI_CONFIG = {
     'dynamic': True,    # 设置是否开启动态菜单, 默认为False. 如果开启, 则会在每次用户登陆时动态展示菜单内容
     "menus": []
 }
+SIMPLEUI_LOGO = "/media/client/site_logos/fd0bc8c080424abe86bdaa44cb431913.png"
 SIMPLEUI_CUSTOM_CSS = 'static/admin/simpleui-x/css/custom.css'
 SIMPLEUI_HOME_INFO = False # 去掉右侧多余部分
 # endregion ****************** simpleui end ********************* #

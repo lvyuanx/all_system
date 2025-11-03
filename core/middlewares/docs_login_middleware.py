@@ -30,7 +30,7 @@ class DocsLoginMiddlware:
     def __call__(self, request: HttpRequest):
         
         new_token = None
-        if request.path.startswith("/docs"):  # 对docs开头的请求拦截
+        if request.path.startswith(f"/{settings.NINJA_BASE_URL}docs"):  # 对docs开头的请求拦截
             token = token_handler.get(request, TOKEN_TAG)  # 去指定来源获取token
             if not token:
                 user = http_util.check_basic_auth(request)  # 通过HTTP Basic的方式认证

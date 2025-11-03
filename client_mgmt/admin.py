@@ -2,11 +2,13 @@ from django import forms
 from django.conf import settings
 from django.contrib import admin
 from django.http import HttpRequest
+from django.utils.html import format_html_join
 
 
 from core.admin_extra import AdminBaseMixin
 from core.admin_extra.mixins import AdminListImagePreviewMixin
 from core.admin_extra.widgets import PCDWidget, FileUploadWidget, HiddenFileInput
+from site_mgmt.utils import site_util
 from .models import Client
 
 
@@ -34,6 +36,9 @@ class ClientAdmin(AdminBaseMixin, AdminListImagePreviewMixin, admin.ModelAdmin):
             required=False,
             widget=FileUploadWidget(
                 attrs={
+                    "context": {
+                        "file_field_name": "company_logo",
+                    },
                     "origin_attrs": [
                         "company_logo",
                     ]
@@ -103,6 +108,7 @@ class ClientAdmin(AdminBaseMixin, AdminListImagePreviewMixin, admin.ModelAdmin):
     image_preview = {"company_logo": "头像"}
     list_display = (
         "company_logo_preview",
+        "from_site",
         "client_name",
         "client_phone",
         "client_sex",
@@ -127,6 +133,18 @@ class ClientAdmin(AdminBaseMixin, AdminListImagePreviewMixin, admin.ModelAdmin):
     def unfinished_order_total(self, obj):
         return obj.total_order_count - obj.total_end_order_count
 
+    
+    @admin.display(description="所属站点")
+    def from_site(self, obj):
+        sites = obj.sites.all()
+        if not sites:
+            return ""
+        return format_html_join(
+            '',
+            '<span style="display:inline-block; background:#ccc; color:#000; border-radius:4px; padding:4px 6px; margin:2px; font-size:12px;">{}</span>',
+            ((site.site_name,) for site in sites)
+        )
+
     @admin.display(description="地址")
     def full_address(self, obj):
         return (
@@ -140,3 +158,8 @@ class ClientAdmin(AdminBaseMixin, AdminListImagePreviewMixin, admin.ModelAdmin):
         if request.user.is_superuser:
             return ("client_name",)
         return self.list_display
+
+    
+    def get_queryset(self, request):
+        return site_util.admin_filter_site(request, super().get_queryset(request), "sites")
+        

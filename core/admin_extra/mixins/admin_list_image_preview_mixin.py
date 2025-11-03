@@ -65,7 +65,6 @@ class AdminListImagePreviewMixin:
                 .admin-lightbox-overlay img {{
                     max-width: 90%;
                     max-height: 90%;
-                    box-shadow: 0 0 20px rgba(255,255,255,0.5);
                     border-radius: 8px;
                 }}
                 .admin-lightbox-close {{

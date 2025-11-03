@@ -55,12 +55,12 @@ start_template = r"""
 IP: {host}, Port: {port}, Workers: {workers}, Reload: {reload}, Loop: {loop}
 
 管理后台地址:
-{admin_url}
-{ip_admin_url}
+- {admin_url}
+- {ip_admin_url}
 
 推荐使用在线文档进行接口调试：
-{doc_url}
-{ip_doc_url}
+- {doc_url}
+- {ip_doc_url}
 
 """
 

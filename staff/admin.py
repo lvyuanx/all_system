@@ -13,6 +13,7 @@ from core.admin_extra import AdminBaseMixin
 from core.admin_extra.mixins import AuditAdminMixin, FilterChangeListMixin, OperateButtonsMixin, AdminListImagePreviewMixin
 from core.admin_extra.filters import CreateTimeQuickFilter
 from core.utils import admin_util
+from site_mgmt.utils import site_util
 from .enums import (
     StaffSalaryStatusChoices,
     StaffSalaryTypeChoices,
@@ -26,7 +27,7 @@ from .signals.signals import after_salary_audit_pass_signal
 @admin.register(Staff)
 class StaffAdmin(AdminBaseMixin, admin.ModelAdmin):
 
-    list_display = ("user_avatar", "staff_code", "fullname_link")
+    list_display = ("user_avatar", "staff_code", "fullname_link", "from_site")
 
     search_fields = ("user__full_name", "staff_code")
     autocomplete_fields = ["user"]
@@ -52,6 +53,15 @@ class StaffAdmin(AdminBaseMixin, admin.ModelAdmin):
     fullname_link.short_description = "姓名"
 
     list_display_links = ("staff_code",)
+    
+    @admin.display(description="所属站点")
+    def from_site(self, obj):
+        if not obj.site:
+            return ""
+        return obj.site.site_name
+    
+    def get_queryset(self, request):
+        return site_util.admin_filter_site(request, super().get_queryset(request), "site")
 
 
 @admin.register(StaffSalary)
