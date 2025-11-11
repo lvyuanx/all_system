@@ -36,6 +36,8 @@ INSTALLED_APPS = [
     "client_mgmt",                   # 客户管理
     "order",                         # 订单管理
     "site_mgmt",                     # 站点管理
+    "flow_engine",                   # 流程引擎
+    "pattern_library",               # 版式库
 ]
 
 # 中间件列表
@@ -165,68 +167,68 @@ LOG_DIR = BASE_DIR / "logs"
 LOGGING_BACK_COUNT = merge_config("LOGGING_BACK_COUNT", 10)
 LOG_LEVEL = merge_config("LOG_LEVEL", "DEBUG" if DEBUG else "INFO")
 LOGGING = {
-            "version": 1,
-            "disable_existing_loggers": False,
-            "formatters": {
-                "detailed": {
-                    "format": "[%(asctime)s][%(threadName)s:%(thread)d][task_id:%(name)s][%(filename)s:%(lineno)d][%(funcName)s][%(levelname)s] - %(message)s"
-                },
-                "simple": {
-                    "format": "[%(asctime)s][%(filename)s:%(lineno)d][%(funcName)s][%(levelname)s] - %(message)s"
-                },
-            },
-            "handlers": {
-                "all": {  # 记录所有日志
-                    "level": "DEBUG",
-                    "class": "core.logging.multiprocess_time_handler.MultiprocessTimeHandler",
-                    "file_path": LOG_DIR,
-                    "suffix": "%Y-%m-%d-all",
-                    "formatter": "detailed",
-                    "backup_count": LOGGING_BACK_COUNT,
-                    "encoding": "utf-8",
-                },
-                "project": {  # 记录项目日志
-                    "level": "DEBUG",
-                    "class": "core.logging.multiprocess_time_handler.MultiprocessTimeHandler",
-                    "file_path": LOG_DIR,
-                    "suffix": "%Y-%m-%d-project",
-                    "formatter": "detailed",
-                    "backup_count": LOGGING_BACK_COUNT,
-                    "encoding": "utf-8",
-                },
-                "error": {  # 只记录错误日志
-                    "level": "ERROR",
-                    "class": "core.logging.multiprocess_time_handler.MultiprocessTimeHandler",
-                    "file_path": LOG_DIR,
-                    "suffix": "%Y-%m-%d-error",
-                    "formatter": "detailed",
-                    "backup_count": LOGGING_BACK_COUNT,
-                    "encoding": "utf-8",
-                },
-                "console": {
-                    "level": "DEBUG",
-                    "class": "logging.StreamHandler",
-                    "formatter": "simple",
-                },
-            },
-            "loggers": {
-                
-                "": {
-                    "handlers": ["all", "console", "error"],
-                    "level": LOG_LEVEL,
-                    "propagate": True,
-                },
-                "project": {
-                    "handlers": ["project"],
-                    "level": LOG_LEVEL,
-                    "propagate": True,
-                },
-                "django.db.backends": {
-                    "handlers": ["console"],
-                    "level": LOG_LEVEL,
-                },
-            },
-        }
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "detailed": {
+            "format": "[%(asctime)s][%(threadName)s:%(thread)d][task_id:%(name)s][%(filename)s:%(lineno)d][%(funcName)s][%(levelname)s] - %(message)s"
+        },
+        "simple": {
+            "format": "[%(asctime)s][%(filename)s:%(lineno)d][%(funcName)s][%(levelname)s] - %(message)s"
+        },
+    },
+    "handlers": {
+        "all": {  # 记录所有日志
+            "level": "DEBUG",
+            "class": "core.logging.multiprocess_time_handler.MultiprocessTimeHandler",
+            "file_path": LOG_DIR,
+            "suffix": "%Y-%m-%d-all",
+            "formatter": "detailed",
+            "backup_count": LOGGING_BACK_COUNT,
+            "encoding": "utf-8",
+        },
+        "project": {  # 记录项目日志
+            "level": "DEBUG",
+            "class": "core.logging.multiprocess_time_handler.MultiprocessTimeHandler",
+            "file_path": LOG_DIR,
+            "suffix": "%Y-%m-%d-project",
+            "formatter": "detailed",
+            "backup_count": LOGGING_BACK_COUNT,
+            "encoding": "utf-8",
+        },
+        "error": {  # 只记录错误日志
+            "level": "ERROR",
+            "class": "core.logging.multiprocess_time_handler.MultiprocessTimeHandler",
+            "file_path": LOG_DIR,
+            "suffix": "%Y-%m-%d-error",
+            "formatter": "detailed",
+            "backup_count": LOGGING_BACK_COUNT,
+            "encoding": "utf-8",
+        },
+        "console": {
+            "level": "DEBUG",
+            "class": "logging.StreamHandler",
+            "formatter": "simple",
+        },
+    },
+    "loggers": {
+        
+        "": {
+            "handlers": ["all", "console", "error"],
+            "level": LOG_LEVEL,
+            "propagate": True,
+        },
+        "project": {
+            "handlers": ["project"],
+            "level": LOG_LEVEL,
+            "propagate": True,
+        },
+        "django.db.backends": {
+            "handlers": ["console"],
+            "level": LOG_LEVEL,
+        },
+    },
+}
 # endregion ****************** 日志配置 end ********************* #
 
 

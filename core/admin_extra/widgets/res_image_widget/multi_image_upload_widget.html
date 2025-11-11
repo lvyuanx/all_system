@@ -1,0 +1,189 @@
+<div id="multiImageUploadWidget">
+    <style>
+        .multi-upload-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .upload-item {
+            position: relative;
+            width: 180px;
+            height: 180px;
+            border: 2px dashed #dcdfe6;
+            border-radius: 8px;
+            background-image: url('/media/system/image_default.png');
+            background-repeat: no-repeat;
+            background-position: center;
+            background-size: cover;
+            overflow: hidden;
+            cursor: pointer;
+            transition: border-color 0.2s ease;
+        }
+
+        .upload-item:hover {
+            border-color: #409eff;
+        }
+
+        .upload-item .upload-overlay {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background-color: rgba(0, 0, 0, 0.4);
+            opacity: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: opacity 0.3s ease;
+        }
+
+        .upload-item:hover .upload-overlay {
+            opacity: 1;
+        }
+
+        .upload-overlay button {
+            padding: 6px 10px;
+            font-size: 12px;
+            border: none;
+            border-radius: 4px;
+            color: white;
+            cursor: pointer;
+        }
+
+        .el-button--primary { background-color: #409eff; }
+        .el-button--danger { background-color: #f56c6c; }
+
+        .add-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 180px;
+            height: 180px;
+            border: 2px dashed #dcdfe6;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 36px;
+            color: #909399;
+            transition: border-color 0.2s;
+        }
+
+        .add-btn:hover {
+            border-color: #409eff;
+            color: #409eff;
+        }
+
+        .file-input { display: none; }
+
+        .preview-modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .preview-modal.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .preview-modal img {
+            width: 75vw;
+            height: 75vh;
+            object-fit: contain;
+        }
+    </style>
+
+    <div class="multi-upload-container" id="uploadContainer">
+        <div class="add-btn" id="addBtn">+</div>
+        <input type="file" id="multiFileInput" class="file-input" accept="image/*" multiple>
+    </div>
+
+    <div class="preview-modal" id="previewModal">
+        <img src="" id="previewImg" alt="预览图">
+    </div>
+
+    <script>
+        const uploadContainer = document.getElementById('uploadContainer');
+        const addBtn = document.getElementById('addBtn');
+        const fileInput = document.getElementById('multiFileInput');
+        const previewModal = document.getElementById('previewModal');
+        const previewImg = document.getElementById('previewImg');
+
+        const imageField = document.querySelector("input[name='{{file_field_name}}']");
+        const defaultImage = '/media/system/image_default.png';
+
+        // 将 Django 初始值转为列表
+        let imageList = [];
+        try {
+            imageList = JSON.parse(`{{widget_val|safe}}`) || [];
+        } catch(e) {
+            imageList = [];
+        }
+
+        function renderImages() {
+            // 移除旧项（保留 + 按钮）
+            uploadContainer.querySelectorAll('.upload-item').forEach(e => e.remove());
+            
+            imageList.forEach((src, idx) => {
+                const item = document.createElement('div');
+                item.className = 'upload-item';
+                item.style.backgroundImage = `url('${src}')`;
+                item.innerHTML = `
+                    <div class="upload-overlay">
+                        <button class="el-button--primary" data-index="${idx}" data-action="preview">预览</button>
+                        <button class="el-button--danger" data-index="${idx}" data-action="remove">删除</button>
+                    </div>`;
+                uploadContainer.insertBefore(item, addBtn);
+            });
+
+            // 同步到隐藏字段
+            imageField.value = JSON.stringify(imageList);
+        }
+
+        addBtn.addEventListener('click', () => fileInput.click());
+
+        fileInput.addEventListener('change', e => {
+            const files = e.target.files;
+            if (!files || !files.length) return;
+
+            [...files].forEach(file => {
+                const reader = new FileReader();
+                reader.onload = ev => {
+                    imageList.push(ev.target.result);
+                    renderImages();
+                };
+                reader.readAsDataURL(file);
+            });
+
+            fileInput.value = ''; // 清空选择状态
+        });
+
+        uploadContainer.addEventListener('click', e => {
+            const btn = e.target.closest('button');
+            if (!btn) return;
+
+            const idx = btn.getAttribute('data-index');
+            const action = btn.getAttribute('data-action');
+
+            if (action === 'remove') {
+                imageList.splice(idx, 1);
+                renderImages();
+            } else if (action === 'preview') {
+                previewImg.src = imageList[idx];
+                previewModal.classList.add('active');
+            }
+        });
+
+        previewModal.addEventListener('click', () => previewModal.classList.remove('active'));
+
+        // 初始化
+        renderImages();
+    </script>
+</div>

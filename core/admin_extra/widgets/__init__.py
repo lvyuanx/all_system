@@ -1,3 +1,5 @@
 from .pcd_widget.pcd_widget import PCDWidget
 from .file_upload_widget.file_upload_widget import FileUploadWidget
 from .hidden_file_input import HiddenFileInput
+from .res_image_widget.image_upload_widget import ImageUploadWidget
+from .res_image_widget.multi_image_upload_widget import MultiImageUploadWidget

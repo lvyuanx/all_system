@@ -13,6 +13,8 @@ export default {
     totalCount: { type: Number, default: 0 },
     filterForm: { type: Object, default: () => ({}) }, // 父组件传入
     rowClassName: { type: [String, Function], default: "" },
+    headerClassName: { type: String, default: "common-table-header" },
+    border: { type: Boolean, default: false },
   },
   data() {
     return {
@@ -118,8 +120,9 @@ export default {
         style="width:100%"
         :height="height"
         v-loading="loading"
-        header-row-class-name="common-table-header"
+        :header-row-class-name="headerClassName"
         :row-class-name="rowClassName"
+        :border="border"
         @selection-change="$emit('selection-change', $event)"
         @row-click="$emit('row-click', $event)"
       >

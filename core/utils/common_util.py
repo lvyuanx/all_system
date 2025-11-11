@@ -46,3 +46,14 @@ def import_func_or_class(path: str):
 
 def to_decimal(value, digits="0.00"):
     return Decimal(str(value or 0)).quantize(Decimal(digits))
+
+
+def media_url(path_or_res):
+    from django.conf import settings
+    if not path_or_res: return ""
+    if isinstance(path_or_res, str):
+        return f"{settings.MEDIA_URL}{path_or_res}"
+    else:
+        #  Resource 对象
+        return path_or_res.file.url
+    

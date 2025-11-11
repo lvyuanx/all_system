@@ -26,10 +26,25 @@ class Order(
         default=OrderTypeChoices.CLIENT,
         verbose_name="订单类型",
     )
-    order_status = models.IntegerField(
-        choices=OrderStatusChoices.choices,
-        default=OrderStatusChoices.CREATED,
-        verbose_name="订单状态",
+    
+    # 流程相关
+    flow_definition = models.ForeignKey(
+        "flow_engine.FlowDefinition",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        default=None,
+        related_name="order",
+        verbose_name="流程模板",
+    )
+    flow_instance = models.ForeignKey(
+        "flow_engine.FlowInstance",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        default=None,
+        related_name="order",
+        verbose_name="流程实例",
     )
 
     # 金额相关
@@ -133,6 +148,15 @@ class Order(
         choices=OrderShipStatusChoices.choices,
         default=OrderShipStatusChoices.NOT_SHIPPED,
         verbose_name="订单发货状态",
+    )
+    site = models.ForeignKey(
+        "site_mgmt.SysSite",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        default=None,
+        related_name="order",
+        verbose_name="所属站点",
     )
 
     # 收货信息

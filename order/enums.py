@@ -3,6 +3,7 @@ from django.db import models
 
 class OrderTypeChoices(models.IntegerChoices):
     CLIENT = 1, "客户订单"
+    PEER_TRANSFER = 2, "同行转单"
 
 
 class OrderStatusChoices(models.IntegerChoices):

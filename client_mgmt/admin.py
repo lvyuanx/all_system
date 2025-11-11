@@ -8,12 +8,14 @@ from django.utils.html import format_html_join
 from core.admin_extra import AdminBaseMixin
 from core.admin_extra.mixins import AdminListImagePreviewMixin
 from core.admin_extra.widgets import PCDWidget, FileUploadWidget, HiddenFileInput
-from site_mgmt.utils import site_util
+from site_mgmt.admin_extra.mixins import SiteFilterMixin
 from .models import Client
 
 
 @admin.register(Client)
-class ClientAdmin(AdminBaseMixin, AdminListImagePreviewMixin, admin.ModelAdmin):
+class ClientAdmin(AdminBaseMixin, AdminListImagePreviewMixin, SiteFilterMixin, admin.ModelAdmin):
+    
+    site_field_name = "sites"
 
     class ClientAdminForm(forms.ModelForm):
         linkage = forms.CharField(
@@ -158,8 +160,4 @@ class ClientAdmin(AdminBaseMixin, AdminListImagePreviewMixin, admin.ModelAdmin):
         if request.user.is_superuser:
             return ("client_name",)
         return self.list_display
-
-    
-    def get_queryset(self, request):
-        return site_util.admin_filter_site(request, super().get_queryset(request), "sites")
         
