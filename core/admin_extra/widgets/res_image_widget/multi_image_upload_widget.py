@@ -1,4 +1,4 @@
-import json
+import os
 from django import forms
 from django.template import Context, Engine
 from django.utils.safestring import mark_safe
@@ -11,22 +11,19 @@ class MultiImageUploadWidget(BaseWidget):
     html_name = "multi_image_upload_widget.html"
 
     def render(self, name, value, attrs=None, renderer=None):
-        widget_conf = self.attrs.get("widget_conf", {})
-        value_attr = widget_conf.get("value_attr_name", name)
+        """
+        name: 字段名
+        value: 已有图片列表（逗号分隔 或 list）
+        """
+        field_value = self.attrs.get("field_value")
 
-        # 将值转换为 JSON 字符串
-        value = self.attrs.get(value_attr, "[]")
-        if isinstance(value, list):
-            value = json.dumps(value, ensure_ascii=False)
-
+        # 渲染 HTML
         engine = Engine(debug=False)
         template = engine.from_string(self.widget_html)
-
         context = self.attrs.get("context", {})
         context.update({
-            "widget_val": value,
-            "file_field_name": name,
+            "field_value": field_value,
+            "field_name": name,
         })
-
         html_rendered = template.render(Context(context))
         return mark_safe(html_rendered)

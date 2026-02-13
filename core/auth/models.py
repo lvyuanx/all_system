@@ -43,7 +43,7 @@ class User(model_util.PermissionHelperMixin, AbstractUser):
 
 class SimpleuiMenus(model_util.PermissionHelperMixin, models.Model):
 
-    name = models.CharField(max_length=255, verbose_name="菜单名称", unique=True)
+    name = models.CharField(max_length=255, verbose_name="菜单名称")
     icon = models.CharField(max_length=255, null=True, blank=True, verbose_name="图标")
     url = models.CharField(max_length=255, null=True, blank=True, verbose_name="菜单链接")
     new_tab = models.BooleanField(default=False, null=True, verbose_name="新标签页打开")

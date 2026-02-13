@@ -7,6 +7,7 @@
 # version    : python 3.11
 # Description: 使用uvicorn作为服务器
 """
+import asyncio
 import logging
 import socket
 
@@ -18,9 +19,7 @@ logger = logging.getLogger(__name__)
 NINJA_BASE_URL = settings.NINJA_BASE_URL
 start_template = r"""
 
-
-
-
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> DJANGO + UVICORN <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
  ______  __       __          ____    __    __  ____       
 /\  _  \/\ \     /\ \        /\  _`\ /\ \  /\ \/\  _`\     
 \ \ \L\ \ \ \    \ \ \       \ \,\L\_\ `\`\\/'/\ \,\L\_\   
@@ -53,7 +52,6 @@ start_template = r"""
                 佛祖保佑       永不宕机     永无BUG                 
 
 IP: {host}, Port: {port}, Workers: {workers}, Reload: {reload}, Loop: {loop}
-
 管理后台地址:
 - {admin_url}
 - {ip_admin_url}
@@ -62,14 +60,26 @@ IP: {host}, Port: {port}, Workers: {workers}, Reload: {reload}, Loop: {loop}
 - {doc_url}
 - {ip_doc_url}
 
-"""
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> STARTED <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
-def start_print(**kwargs):
-    logger.info(start_template.format(**kwargs))
+"""
 
 
 class Command(BaseCommand):
     help = "使用uvicorn启动服务"
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.asgi_module = None
+        self.asgi_application = None
+        self.host = None
+        self.port = None
+        self.workers = None
+        self.reload = None
+        self.loop = None
+        self.log_level = None
+        self.ip_address = None
+        self.ready_event = asyncio.Event()
 
     def add_arguments(self, parser):
 
@@ -126,31 +136,86 @@ class Command(BaseCommand):
         assert LOGGING, "LOGGING not found in settings"
         asgi_module, asgi_application = ASGI_APPLICATION.rsplit(".", 1)
 
+        self.asgi_module = asgi_module
+        self.asgi_application = asgi_application
+        self.host = options["host"]
+        self.port = options["port"]
+        self.workers = options["workers"]
+        self.reload = options["reload"]
+        self.loop = options["loop"]
+        self.log_level = options["log_level"]
 
         # 获取本机的主机名
         hostname = socket.gethostname()
         # 获取主机的ip地址
-        ip_address = socket.gethostbyname(hostname)
-        
-        url_prefix = f"http://{'127.0.0.1' if options['host'] == '0.0.0.0' else '127.0.0.1' }:{options['port']}"
-        url_ip_prefix = f"http://{ip_address}:{options['port']}"
-        
-        start_print(
-            **options,
-            doc_url = f"{url_prefix}/{NINJA_BASE_URL}docs",
-            ip_doc_url = f"{url_ip_prefix}/{NINJA_BASE_URL}docs",
-            admin_url = f"{url_prefix}/admin/",
-            ip_admin_url = f"{url_ip_prefix}/admin/",
+        self.ip_address = socket.gethostbyname(hostname)
+
+        asyncio.run(self._start())
+
+    async def _start(self):
+        tasks = [
+            asyncio.create_task(self._run_uvicorn()),
+            asyncio.create_task(self._uvicorn_ready_event()),
+            asyncio.create_task(self._print_information()),
+        ]
+
+        await asyncio.gather(*tasks)
+
+    async def _run_uvicorn(self):
+        import uvicorn
+
+        config = uvicorn.Config(
+            f"{self.asgi_module}:{self.asgi_application}",
+            host=self.host,
+            port=self.port,
+            loop=self.loop,
+            log_level=self.log_level or settings.LOG_LEVEL,
+            log_config=settings.LOGGING,
         )
 
-        uvicorn.run(
-            f"{asgi_module}:{asgi_application}",
-            host=options["host"],
-            port=options["port"],
-            workers=options["workers"],
-            reload=options["reload"],
-            loop=options["loop"],
-            log_level=options["log_level"] or settings.LOG_LEVEL,
-            log_config=settings.LOGGING
-        )
+        server = uvicorn.Server(config)
 
+        # 异步启动 uvicorn
+        await server.serve()
+
+    async def _uvicorn_ready_event(self, timeout: float = 10.0):
+        host = "127.0.0.1" if self.host == "0.0.0.0" else self.host
+        loop = asyncio.get_running_loop()
+        deadline = loop.time() + timeout
+
+        while loop.time() < deadline:
+            try:
+                reader, writer = await asyncio.open_connection(host, self.port)
+                writer.close()
+                await writer.wait_closed()
+                self.ready_event.set()
+                return
+            except OSError:
+                await asyncio.sleep(0.1)
+
+        raise RuntimeError("Uvicorn 启动超时")
+
+    async def _print_information(self):
+        await self.ready_event.wait()
+        url_prefix = f"http://{'127.0.0.1' if self.host == '0.0.0.0' else self.host }:{self.port}"
+        url_ip_prefix = f"http://{self.ip_address}:{self.port}"
+        doc_url = f"{url_prefix}/{NINJA_BASE_URL}docs"
+        ip_doc_url = f"{url_ip_prefix}/{NINJA_BASE_URL}docs"
+        admin_url = f"{url_prefix}/admin/"
+        ip_admin_url = f"{url_ip_prefix}/admin/"
+
+        logger.info(
+            start_template.format(
+                **{
+                    "host": self.host,
+                    "port": self.port,
+                    "workers": self.workers,
+                    "reload": self.reload,
+                    "loop": self.loop,
+                    "doc_url": doc_url,
+                    "ip_doc_url": ip_doc_url,
+                    "admin_url": admin_url,
+                    "ip_admin_url": ip_admin_url,
+                }
+            )
+        )

@@ -1,0 +1,82 @@
+{% extends "vue_base.html" %}
+{% load static %}
+{% load static i18n %}
+{% load simpletags %}
+
+{% block title %}
+{{ title }}
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .timeline-container {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .timeline-container .timeline-title {
+        font-size: 16px;
+        line-height: 32px;
+        font-weight: 600;
+    }
+
+    .timeline-container .timeline-tips {
+        font-size: 14px;
+        line-height: 21px;
+        color: var(--el-color-danger);
+    }
+
+    .timeline-container .timeline-footer {
+        font-size: 12px;
+        line-height: 16px;
+        color: var(--el-text-color-secondary);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div id="app">
+    <div class="page-container">
+        <div class="page-container-header"></div>
+        <div class="page-container-main">
+            <el-timeline style="max-width: 600px">
+                {% for item in data_lst %}
+                <el-timeline-item timestamp="{{ item.item_time }}" placement="top">
+                    <div class="timeline-container">
+                        <div class="timeline-title">
+                            {{ item.item_title }}
+                        </div>
+                        {% if item.item_memo %}
+                        <div class="timeline-tips">
+                            {{ item.item_memo }}
+                        </div>
+                        {% endif %}
+                        <div class="timeline-footer">
+                            操作人: {{ item.item_user }} {{ item.item_phone }}
+                        </div>
+                    </div>
+                </el-timeline-item>
+                {% endfor %}
+            </el-timeline>
+        </div>
+        <div class="page-container-footer"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script type="module">
+
+    // 引入父页面的组件
+    window.initVueApp({
+        data() {
+            return {
+
+            }
+        },
+        methods: {
+
+        }
+    });
+</script>
+{% endblock %}

@@ -26,6 +26,11 @@ class Order(
         default=OrderTypeChoices.CLIENT,
         verbose_name="订单类型",
     )
+    order_status = models.IntegerField(
+        choices=OrderStatusChoices.choices,
+        default=OrderStatusChoices.CREATED,
+        verbose_name="订单状态",
+    )
     
     # 流程相关
     flow_definition = models.ForeignKey(
@@ -80,12 +85,12 @@ class Order(
     )
 
     # 支付信息
-    pay_status = models.IntegerField(
+    pay_status = models.SmallIntegerField(
         choices=OrderPayStatusChoices.choices,
         default=OrderPayStatusChoices.NOT_PAID,
         verbose_name="订单支付状态",
     )
-    pay_method = models.ImageField(
+    pay_method = models.SmallIntegerField(
         choices=OrderPayMehtodChoices.choices,
         default=OrderPayMehtodChoices.ALIPAY,
         verbose_name="订单支付方式",
@@ -198,8 +203,8 @@ class Order(
         )
 
     def save(self, *args, **kwargs):
-        if not self.salary_serial_number:  # 只有保存时才生成
-            self.salary_serial_number = self.get_sn()[0]
+        if not self.order_no:  # 只有保存时才生成
+            self.order_no = self.get_sn()[0]
         super().save(*args, **kwargs)
 
     class Meta:
@@ -220,16 +225,8 @@ class OrderItem(
         verbose_name="订单",
     )
 
-    item_name = models.CharField(max_length=255, verbose_name="订单项名称")
     item_no = models.CharField(max_length=255, verbose_name="订单项编号")
     pattern_code = models.CharField(max_length=255, verbose_name="订单项款号")
-    pattern_png = models.ImageField(
-        upload_to=model_util.client_logo_path,
-        blank=True,
-        null=True,
-        default=settings.DEFAULT_IMAGE,
-        verbose_name="款号主图",
-    )
     color = models.CharField(max_length=255, verbose_name="颜色")
     unit_price = models.DecimalField(
         max_digits=10,
@@ -272,4 +269,44 @@ class OrderItem(
 
     class Meta:
         verbose_name = "订单项"
+        verbose_name_plural = verbose_name
+
+
+
+class OrderCa(models.Model):
+
+    order_no = models.CharField(max_length=255, verbose_name="订单编号")
+    order = models.ForeignKey(
+        Order,
+        on_delete=models.CASCADE,
+        db_constraint=False,
+        related_name="order_ca",
+        verbose_name="订单",
+    )
+    
+    pre_status = models.IntegerField(
+        choices=OrderStatusChoices.choices,
+        null=True,
+        default=None,
+        verbose_name="原始状态",
+    )
+    cur_status = models.IntegerField(
+        choices=OrderStatusChoices.choices,
+        verbose_name="当前状态",
+    )
+    operator = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="order_ca_operator",
+        db_constraint=False,
+        verbose_name="操作人",
+    )
+    operator_name = models.CharField(max_length=255, verbose_name="操作人姓名")
+    operator_phone = models.CharField(max_length=255, verbose_name="操作人手机号码")
+    operator_time = models.DateTimeField(verbose_name="操作时间")
+    operator_memo = models.TextField(null=True, default=None, verbose_name="操作备注")
+    
+    class Meta:
+        verbose_name = "订单状态流水表"
         verbose_name_plural = verbose_name

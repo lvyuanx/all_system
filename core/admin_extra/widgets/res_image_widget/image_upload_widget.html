@@ -5,61 +5,101 @@
             display: flex;
             align-items: center;
             justify-content: center;
-
-            background-image: url('/media/system/image_default.png');
-            background-repeat: no-repeat;
-            background-position: center center;
-            background-size: cover;
-
             width: 180px;
             height: 180px;
-
             border: 2px dashed #dcdfe6;
             border-radius: 8px;
             overflow: hidden;
             transition: border-color 0.2s;
             cursor: pointer;
+            font-size: 48px;
+            color: #dcdfe6;
+            background-size: cover;
+            background-position: center center;
+            background-repeat: no-repeat;
         }
 
-        .upload-container:hover { border-color: #f56c6c; }
+        .upload-container:hover {
+            border-color: #f56c6c;
+        }
+
+        /* +号显示 */
+        .upload-container::before {
+            content: "+";
+            position: absolute;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 100%;
+            font-size: 48px;
+            color: #dcdfe6;
+        }
+
+        .upload-container.has-image::before {
+            content: "";
+        }
 
         .upload-overlay {
             position: absolute;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            background-color: rgba(0,0,0,0.4);
-            opacity: 0;
-            transition: opacity 0.3s ease;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.4);
             display: flex;
             align-items: center;
             justify-content: center;
             flex-direction: column;
             gap: 10px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
         }
 
-        .upload-container:hover .upload-overlay { opacity: 1; }
+        .upload-container.has-image:hover .upload-overlay {
+            opacity: 1;
+        }
 
         .upload-overlay button {
-            opacity: 0;
-            transform: translateY(10px);
-            transition: opacity 0.3s ease, transform 0.3s ease;
+            padding: 6px 14px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            color: white;
         }
 
-        .upload-container:hover .upload-overlay button {
-            opacity: 1;
-            transform: translateY(0);
+        .btn-upload {
+            background-color: #409eff;
         }
 
-        .el-button { padding: 6px 14px; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; color: white; }
-        .el-button--primary { background-color: #409eff; }
-        .el-button--danger { background-color: #f56c6c; }
-        .file-input { display: none; }
+        .btn-preview {
+            background-color: #f56c6c;
+        }
+
+        .btn-delete {
+            background-color: #e6a23c;
+        }
+
+        .btn-preview,
+        .btn-delete {
+            display: none;
+        }
+
+        .upload-container.has-image .btn-preview,
+        .upload-container.has-image .btn-delete {
+            display: inline-block;
+        }
+
+        .file-input {
+            display: none;
+        }
 
         /* 预览弹窗 */
         .preview-modal {
             position: fixed;
             inset: 0;
-            background: rgba(0,0,0,0.9);
+            background: rgba(0, 0, 0, 0.9);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -68,10 +108,12 @@
             pointer-events: none;
             transition: opacity 0.3s ease;
         }
+
         .preview-modal.active {
             opacity: 1;
             pointer-events: auto;
         }
+
         .preview-modal img {
             width: 75vw;
             height: 75vh;
@@ -82,83 +124,126 @@
     </style>
 
     <div class="upload-container" id="uploadBox">
-        <input type="file" class="file-input" id="fileInput" accept="image/*" name="{{file_field_name_proxy}}">
+        <input type="file" class="file-input" id="signImageInput" accept="image/*" name="{{field_name}}">
+        <input type="text" class="file-input" id="initValue" value="{{field_value}}" name="{{field_name}}">
         <div class="upload-overlay">
-            <button type="button" class="el-button el-button--primary el-button--small" id="btnUpload">上传</button>
-            <button type="button" class="el-button el-button--danger el-button--small" id="btnPreview">预览</button>
+            <button type="button" class="btn-upload" id="btnUpload">上传</button>
+            <button type="button" class="btn-preview" id="btnPreview">预览</button>
+            <button type="button" class="btn-delete" id="btnDelete">删除</button>
         </div>
     </div>
-
-    <div class="preview-modal" id="previewModal">
-        <img src="" alt="预览图" id="previewImg">
-    </div>
-
-    <script>
-        // const origin_form_item = document.querySelector(".field-{{file_field_name}}"); // 原始表单
-        // origin_form_item.style.height = "0px";
-        // origin_form_item.style.overflow = "hidden";
-        // origin_form_item.style.padding = "0px";
-
-        // 找到原 errorlist
-        const errorUl = document.querySelector(".field-{{file_field_name}} .errorlist");
-        const targetDiv = document.querySelector(".field-{{file_field_name_proxy}}");
-        if (targetDiv) {  // 修复排版问题
-            targetDiv.querySelectorAll("div").forEach(div => {
-                div.style.display = "flex";
-            });
-        }
-
-        if (errorUl && targetDiv) {
-            // 移动 ul 到目标 div 下
-            targetDiv.insertBefore(errorUl, targetDiv.firstChild);
-            targetDiv.classList.add("errors");
-        }
-
-        const imageInput = document.querySelector("input[name='{{file_field_name}}']");
-
-        const uploadBox = document.getElementById('uploadBox');
-        const btnUpload = document.getElementById('btnUpload');
-        const btnPreview = document.getElementById('btnPreview');
-        const previewModal = document.getElementById('previewModal');
-        const previewImg = document.getElementById('previewImg');
-
-        const defaultImage = '/media/system/image_default.png';
-        let currentImage = defaultImage;
-        let vidget_val = "{{widget_val}}";
-
-        // 初始化回显
-        if (vidget_val) {
-            currentImage = vidget_val
-            uploadBox.style.backgroundImage = `url('${currentImage}')`;
-        }
-
-        // 上传按钮点击
-        btnUpload.addEventListener('click', () => imageInput.click());
-
-        // 文件选择后预览
-        imageInput.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-
-            const reader = new FileReader();
-            reader.onload = (ev) => {
-                currentImage = ev.target.result;
-                uploadBox.style.backgroundImage = `url('${currentImage}')`;
-            };
-            reader.readAsDataURL(file);
-        });
-
-        // 预览按钮
-        btnPreview.addEventListener('click', () => {
-            if (currentImage === defaultImage) {
-                window.SimpleUIExtra?.ElMessage?.warning?.('暂无可预览的图片');
-                return;
-            }
-            previewImg.src = currentImage;
-            previewModal.classList.add('active');
-        });
-
-        // 点击关闭预览
-        previewModal.addEventListener('click', () => previewModal.classList.remove('active'));
-    </script>
 </div>
+
+<div class="preview-modal" id="previewModal">
+    <img src="" alt="预览图" id="previewImg">
+</div>
+
+<script>
+    (function () {
+        let initValue = { value: "" };
+        const initValueDom = document.querySelector("#initValue");
+        const imageInputDom = document.querySelector("#signImageInput");
+        const uploadBoxDom = document.querySelector('#uploadBox');
+        const btnUploadDom = document.querySelector('#btnUpload');
+        const btnPreviewDom = document.querySelector('#btnPreview');
+        const btnDeleteDom = document.querySelector('#btnDelete');
+        const previewModalDom = document.querySelector('#previewModal');
+        const previewImgDom = document.querySelector('#previewImg');
+        const fromItemDom = document.querySelector('.field-{{field_name}}');
+        const formDom = document.querySelector('#{{model_name}}_form');
+
+        let initValueRef = new Proxy(initValue, {
+            set(target, key, value) {
+                target[key] = value;
+                if (value) {
+                    uploadBoxDom.style.backgroundImage = `url('${value}')`;
+                    uploadBoxDom.classList.add('has-image');
+                    initValueDom.value = value;
+                } else {
+                    uploadBoxDom.style.backgroundImage = '';
+                    uploadBoxDom.classList.remove('has-image');
+                    initValueDom.value = '';
+                }
+                return true;
+            }
+        });
+
+        function resetFileInput(input) {
+            const parent = input.parentNode;
+            const tempForm = document.createElement("form");
+            const next = input.nextSibling;
+
+            // 把 input 暂时放入 form
+            tempForm.appendChild(input);
+            tempForm.reset();  // ✅ 完全清空文件选择缓存
+
+            // 再把 input 放回原位
+            if (next) {
+                parent.insertBefore(input, next);
+            } else {
+                parent.appendChild(input);
+            }
+
+            return input;
+        }
+
+
+        function init() {
+            // 修复默认样式问题
+            fromItemDom.querySelector("div") && (fromItemDom.querySelector("div").style.display = 'flex');
+
+            // 解决无法识别文件上传类型
+            formDom.setAttribute("enctype", "multipart/form-data");
+
+            if (initValueDom.value) {
+                initValueRef.value = initValueDom.value;
+            }
+
+            // 上传按钮点击事件
+            btnUploadDom.addEventListener('click', () => imageInputDom.click());
+
+            // 整个div点击上传（仅在没有图片时）
+            uploadBoxDom.addEventListener('click', (e) => {
+                if (!initValueRef.value) {
+                    imageInputDom.click();
+                } else if (e.target !== btnUploadDom) {
+                    // 有图片时点击 div 但不是上传按钮，阻止触发
+                    e.stopPropagation();
+                }
+            });
+
+            // 文件选择后更新图片
+            imageInputDom.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                    initValueRef.value = ev.target.result;
+                };
+                reader.readAsDataURL(file);
+            });
+
+            // 预览按钮
+            btnPreviewDom.addEventListener('click', () => {
+                if (!initValueRef.value) return;
+                previewImgDom.src = initValueRef.value;
+                previewModalDom.classList.add('active');
+            });
+
+            // 删除按钮
+            btnDeleteDom.addEventListener('click', (e) => {
+                debugger;
+                e.stopPropagation();  // 阻止事件冒泡，避免触发 div 点击
+                initValueRef.value = "";
+                imageInputDom.value = "";
+                resetFileInput(imageInputDom)
+            });
+
+            // 点击关闭预览
+            previewModalDom.addEventListener('click', () => previewModalDom.classList.remove('active'));
+        }
+
+        init();
+    })();
+</script>

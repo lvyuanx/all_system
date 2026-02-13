@@ -1,107 +1,148 @@
+import json
+import os
+from urllib.parse import unquote, urlparse
 from django import forms
-from django.conf import settings
 from django.contrib import admin
 
-from django.contrib import messages
-from django.forms import ValidationError
-from core.admin_extra.widgets.hidden_file_input import HiddenFileInput
+from django.db import transaction
 from core.admin_extra.widgets import ImageUploadWidget, MultiImageUploadWidget
-from core.common.utils.upload_util import  ResourceAttachContext
+from core.admin_extra.mixins import AdminListImagePreviewMixin
+from core.common.utils import res_util
 from .models import Pattern
 from main.enums import ResCategoryEnum
 from core.utils import common_util
 
 
 @admin.register(Pattern)
-class PatternAdmin(admin.ModelAdmin):
+class PatternAdmin(AdminListImagePreviewMixin, admin.ModelAdmin):
     
     
     class AdminForm(forms.ModelForm):
-        
-        file_field_name = "main_image"
 
-        image_upload = forms.CharField(
+        image_upload = forms.FileField(
             label="主图",
-            required=False,
+            required=True,
             widget=ImageUploadWidget(
                 attrs={
                     "context": {
-                        "file_field_name": file_field_name,
-                        "file_field_name_proxy": "image_upload",
-                    },
-                    "widget_conf": {
-                        "value_attr_name": file_field_name,
+                        "model_name": "pattern"
                     }
                 }
             ),
         )
         
-        multi_image_upload = forms.CharField(
+        images_upload = forms.FileField(
             label="辅图",
             required=False,
             widget=MultiImageUploadWidget(
                 attrs={
                     "context": {
-                        "file_field_name": file_field_name,
-                        "file_field_name_proxy": "multi_image_upload",
-                    },
-                    "widget_conf": {
-                        "value_attr_name": file_field_name,
+                        "model_name": "pattern"
                     }
                 }
-            )
-        )       
+            ),
+        )
         
         def clean(self):
-            cleaned = super().clean()
-            # request.FILES 在 form.clean 中不可直接拿到，所以判断逻辑：
-            # 1) 新建时必须上传 main_image
-            # 2) 编辑时：如果实例已有 main_image_id，则可以不传新文件；否则必须上传
-            # 注意：如果你在 admin 里用的是 upload input name="main_image"，可以用 self.files
-            uploaded = self.files.get(self.file_field_name) if hasattr(self, "files") else None
-            has_existing = bool(getattr(self.instance, f"{self.file_field_name}_id", None))
+            cleaned_data = super().clean()
+            
+            main_image = self.files.get("image_upload")
+            main_image_url  =  self.data.get("image_upload", None)
 
-            if not uploaded and not has_existing:
-                # 关联字段级错误
-                raise ValidationError({"main_image": "请上传主图文件"})
-            else:
-                for field in [
-                        self.file_field_name
-                    ]:
-                        if field in self._errors:
-                            del self._errors[field]
-                return cleaned
+            if not main_image_url and not main_image:
+                return cleaned_data
+            
+            # 移除隐藏字段的错误
+            for field in [
+                "image_upload",
+            ]:
+                if field in self._errors:
+                    del self._errors[field]
+            return cleaned_data
         
         class Meta:
             model = Pattern
-            fields = "__all__"
-            widgets = {
-                "main_image": forms.FileInput(),
-            }
+            exclude = ("main_image", "images")
     
     form = AdminForm
     
     def get_form(self, request, obj=None, **kwargs):
         form = super().get_form(request, obj, **kwargs)
         if obj:
+            images = obj.images.all().order_by("id")
+            image_urls = [common_util.media_url(image) for image in images]
             form.base_fields["image_upload"].widget.attrs.update(
                 {
-                    "main_image": common_util.media_url(getattr(obj, "main_image", None)),
+                    "field_value": common_util.media_url(getattr(obj, "main_image", None)),
+                }
+            )
+            form.base_fields["images_upload"].widget.attrs.update(
+                {
+                    "field_value": image_urls,
+                }
+            )
+        else:
+            # 注意，这一步不能省略，会导致field_value出现缓存
+            form.base_fields["image_upload"].widget.attrs.update(
+                {
+                    "field_value": "",
+                }
+            )
+            form.base_fields["images_upload"].widget.attrs.update(
+                {
+                    "field_value": [],
                 }
             )
         
         return form
     
     
-    
+    @transaction.atomic
     def save_model(self, request, obj, form, change):
-        file = request.FILES.get("main_image", None)
-        if file:
-            with ResourceAttachContext(request.user.pk) as ctx:
-                rid = ctx.upload(file, ResCategoryEnum.版型库.value, obj=obj)
-                obj.main_image_id = rid
-                super().save_model(request, obj, form, change)
-                ctx.link(rid, obj.pk)
-        else:
-            raise ValidationError({"main_image": "请上传主图文件"})
+        # 主图
+        main_image = request.FILES.get("image_upload", None)
+        if main_image and obj.main_image != main_image:
+            if obj.main_image:  # 删除旧图片
+                res_util.unactive_res(obj.main_image)
+            mres_id = res_util.upload_res(
+                request, main_image, ResCategoryEnum.版型库.value, obj=obj
+            )
+            obj.main_image_id = mres_id
+        
+        # 副图
+        images_deleted = request.POST.get("images_deleted", None)
+        if images_deleted:
+            images_deleted = json.loads(images_deleted)
+            # 获取删除的文件名称
+            images_deleted_names = []
+            for image_deleted in images_deleted:
+                path = urlparse(image_deleted).path
+                filename = os.path.basename(path)
+                filename = unquote(filename)
+                images_deleted_names.append(filename)
+            # 解除res的关联
+            images_to_remove = obj.images.filter(name__in=images_deleted_names)
+            obj.images.remove(*images_to_remove)
+            res_util.batch_unactive_res(images_to_remove)
 
+        
+        images = request.FILES.getlist("images_upload", [])
+        for image in images:
+            res_id = res_util.upload_res(
+                request, image, ResCategoryEnum.版型库.value, obj=obj
+            )
+            obj.images.add(res_id)
+        
+
+        super().save_model(request, obj, form, change)
+
+    
+    image_preview = {"main_image": "主图"}
+    list_display = (
+        "name",
+        "code",
+        "memo",
+        "main_image_preview",
+    )
+    
+    search_fields = ("code", "name")

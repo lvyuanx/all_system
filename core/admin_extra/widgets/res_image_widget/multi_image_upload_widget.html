@@ -1,189 +1,176 @@
-<div id="multiImageUploadWidget">
-    <style>
-        .multi-upload-container {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-        }
+<div id="mfuWidget_{{ field_name }}" class="mfu-widget">
 
-        .upload-item {
-            position: relative;
-            width: 180px;
-            height: 180px;
-            border: 2px dashed #dcdfe6;
-            border-radius: 8px;
-            background-image: url('/media/system/image_default.png');
-            background-repeat: no-repeat;
-            background-position: center;
-            background-size: cover;
-            overflow: hidden;
-            cursor: pointer;
-            transition: border-color 0.2s ease;
-        }
+<style>
+.mfu-container { display: flex; flex-wrap: wrap; gap: 10px; }
+.mfu-box { position: relative; width: 180px; height: 180px;
+    border: 2px dashed #dcdfe6; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; background-size: cover;
+    background-position: center; background-repeat: no-repeat; }
+.mfu-box:hover { border-color: #409eff; }
+.mfu-box::before { content: "+"; position: absolute; font-size: 48px; color: #ccc; z-index:0; }
+.mfu-box.has-image::before { content: ""; }
 
-        .upload-item:hover {
-            border-color: #409eff;
-        }
+.mfu-overlay { position: absolute; z-index: 1; inset: 0;
+    background: rgba(0,0,0,0.5); opacity: 0;
+    display: flex; align-items: center; justify-content: center; gap: 5px;
+    transition: opacity 0.2s; flex-direction: column; }
+.mfu-box.has-image:hover .mfu-overlay { opacity: 1; }
 
-        .upload-item .upload-overlay {
-            position: absolute;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            background-color: rgba(0, 0, 0, 0.4);
-            opacity: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            transition: opacity 0.3s ease;
-        }
+.mfu-overlay button { padding: 6px 8px; font-size: 12px; border:none;
+    border-radius: 4px; color: #fff; cursor: pointer; }
+.mfu-btn-preview { background: #409eff !important; }
+.mfu-btn-delete { background: #f56c6c !important; }
+.mfu-btn-upload { background: #e6a23c !important; }
 
-        .upload-item:hover .upload-overlay {
-            opacity: 1;
-        }
+.mfu-file-input { display: none; }
 
-        .upload-overlay button {
-            padding: 6px 10px;
-            font-size: 12px;
-            border: none;
-            border-radius: 4px;
-            color: white;
-            cursor: pointer;
-        }
+.mfu-preview-modal { position: fixed; z-index: 1000; inset: 0;
+    background: rgba(0,0,0,0.9); display: flex;
+    align-items: center; justify-content: center; opacity: 0;
+    pointer-events: none; transition: opacity 0.2s; }
+.mfu-preview-modal.active { opacity: 1; pointer-events: auto; }
+.mfu-preview-modal img { width: 75vw; height: 75vh; object-fit: contain; }
+</style>
 
-        .el-button--primary { background-color: #409eff; }
-        .el-button--danger { background-color: #f56c6c; }
+<!-- 保存图片顺序 -->
+<input type="hidden" id="mfuHidden_{{ field_name }}" name="{{ field_name }}_values">
+<!-- 保存被删除图片 -->
+<input type="hidden" id="mfuDeleted_{{ field_name }}" name="images_deleted">
 
-        .add-btn {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            width: 180px;
-            height: 180px;
-            border: 2px dashed #dcdfe6;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 36px;
-            color: #909399;
-            transition: border-color 0.2s;
-        }
-
-        .add-btn:hover {
-            border-color: #409eff;
-            color: #409eff;
-        }
-
-        .file-input { display: none; }
-
-        .preview-modal {
-            position: fixed;
-            inset: 0;
-            background: rgba(0,0,0,0.9);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 10000;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.3s ease;
-        }
-
-        .preview-modal.active {
-            opacity: 1;
-            pointer-events: auto;
-        }
-
-        .preview-modal img {
-            width: 75vw;
-            height: 75vh;
-            object-fit: contain;
-        }
-    </style>
-
-    <div class="multi-upload-container" id="uploadContainer">
-        <div class="add-btn" id="addBtn">+</div>
-        <input type="file" id="multiFileInput" class="file-input" accept="image/*" multiple>
+<div class="mfu-container" id="mfuContainer_{{ field_name }}">
+    <div class="mfu-box" id="mfuAddBox_{{ field_name }}">
+        <input type="file" id="mfuInput_{{ field_name }}" multiple accept="image/*" class="mfu-file-input">
     </div>
+</div>
 
-    <div class="preview-modal" id="previewModal">
-        <img src="" id="previewImg" alt="预览图">
-    </div>
+<div class="mfu-preview-modal" id="mfuPreview_{{ field_name }}">
+    <img id="mfuPreviewImg_{{ field_name }}">
+</div>
 
-    <script>
-        const uploadContainer = document.getElementById('uploadContainer');
-        const addBtn = document.getElementById('addBtn');
-        const fileInput = document.getElementById('multiFileInput');
-        const previewModal = document.getElementById('previewModal');
-        const previewImg = document.getElementById('previewImg');
+<script>
+(function(){
+    const container = document.querySelector("#mfuContainer_{{ field_name }}");
+    const addBox = document.querySelector("#mfuAddBox_{{ field_name }}");
+    const input = document.querySelector("#mfuInput_{{ field_name }}");
+    const hiddenInput = document.querySelector("#mfuHidden_{{ field_name }}");
+    const deletedInput = document.querySelector("#mfuDeleted_{{ field_name }}");
+    const previewModal = document.querySelector("#mfuPreview_{{ field_name }}");
+    const previewImg = document.querySelector("#mfuPreviewImg_{{ field_name }}");
 
-        const imageField = document.querySelector("input[name='{{file_field_name}}']");
-        const defaultImage = '/media/system/image_default.png';
+    const MAX_COUNT = {{ max_count|default:3 }};
+    const ALLOWED_EXTS = {{ allowed_exts|default:"['jpg','png','jpeg']"|safe }};
+    const MAX_SIZE = {{ max_size_mb|default:5 }} * 1024*1024;
 
-        // 将 Django 初始值转为列表
-        let imageList = [];
-        try {
-            imageList = JSON.parse(`{{widget_val|safe}}`) || [];
-        } catch(e) {
-            imageList = [];
+    const existingImages = {{ field_value|default:"[]"|safe }};
+    existingImages.forEach(url => addImageBox(url, null, true));
+
+    function addImageBox(url, file=null, isOld=false){
+        const box = document.createElement("div");
+        box.className = "mfu-box has-image";
+        box.style.backgroundImage = `url('${url}')`;
+
+        if(isOld) box.dataset.old = "true";
+
+        // 每张图片独立 input
+        const eachInput = document.createElement("input");
+        eachInput.type = "file";
+        eachInput.name = "{{ field_name }}";
+        eachInput.className = "mfu-file-input";
+        if(file){
+            const dt = new DataTransfer();
+            dt.items.add(file);
+            eachInput.files = dt.files;
         }
+        box.appendChild(eachInput);
 
-        function renderImages() {
-            // 移除旧项（保留 + 按钮）
-            uploadContainer.querySelectorAll('.upload-item').forEach(e => e.remove());
-            
-            imageList.forEach((src, idx) => {
-                const item = document.createElement('div');
-                item.className = 'upload-item';
-                item.style.backgroundImage = `url('${src}')`;
-                item.innerHTML = `
-                    <div class="upload-overlay">
-                        <button class="el-button--primary" data-index="${idx}" data-action="preview">预览</button>
-                        <button class="el-button--danger" data-index="${idx}" data-action="remove">删除</button>
-                    </div>`;
-                uploadContainer.insertBefore(item, addBtn);
-            });
+        const overlay = document.createElement("div");
+        overlay.className = "mfu-overlay";
 
-            // 同步到隐藏字段
-            imageField.value = JSON.stringify(imageList);
-        }
+        const btnUpload = document.createElement("button");
+        btnUpload.type = "button"; btnUpload.textContent="上传";
+        btnUpload.className="mfu-btn-upload";
+        btnUpload.onclick = e => {
+            e.stopPropagation();
+            eachInput.onchange = ev => {
+                const newFile = ev.target.files[0];
+                if(!newFile) return;
 
-        addBtn.addEventListener('click', () => fileInput.click());
+                const ext = newFile.name.split('.').pop().toLowerCase();
+                if(!ALLOWED_EXTS.includes(ext)){ alert(`文件类型不允许: ${ext}`); return; }
+                if(newFile.size > MAX_SIZE){ alert(`文件大小不可超过 ${MAX_SIZE/1024/1024} MB`); return; }
 
-        fileInput.addEventListener('change', e => {
-            const files = e.target.files;
-            if (!files || !files.length) return;
+                const url = URL.createObjectURL(newFile);
+                box.style.backgroundImage = `url('${url}')`;
+                delete box.dataset.old; // 上传新文件后清除旧文件标记
+                syncHiddenField();
+            };
+            eachInput.click();
+        };
 
-            [...files].forEach(file => {
-                const reader = new FileReader();
-                reader.onload = ev => {
-                    imageList.push(ev.target.result);
-                    renderImages();
-                };
-                reader.readAsDataURL(file);
-            });
+        const btnPreview = document.createElement("button");
+        btnPreview.type = "button"; btnPreview.textContent="预览";
+        btnPreview.className="mfu-btn-preview";
+        btnPreview.onclick = e => {
+            e.stopPropagation();
+            previewImg.src = box.style.backgroundImage.replace(/^url\(["']?/,"").replace(/["']?\)$/,"");
+            previewModal.classList.add("active");
+        };
 
-            fileInput.value = ''; // 清空选择状态
-        });
-
-        uploadContainer.addEventListener('click', e => {
-            const btn = e.target.closest('button');
-            if (!btn) return;
-
-            const idx = btn.getAttribute('data-index');
-            const action = btn.getAttribute('data-action');
-
-            if (action === 'remove') {
-                imageList.splice(idx, 1);
-                renderImages();
-            } else if (action === 'preview') {
-                previewImg.src = imageList[idx];
-                previewModal.classList.add('active');
+        const btnDelete = document.createElement("button");
+        btnDelete.type = "button"; btnDelete.textContent="删除";
+        btnDelete.className="mfu-btn-delete";
+        btnDelete.onclick = e => {
+            e.stopPropagation();
+            if(box.dataset.old){
+                const deletedUrls = JSON.parse(deletedInput.value || "[]");
+                const bgUrl = box.style.backgroundImage.replace(/^url\(["']?/,"").replace(/["']?\)$/,"");
+                deletedUrls.push(bgUrl);
+                deletedInput.value = JSON.stringify(deletedUrls);
             }
+            box.remove();
+            syncHiddenField();
+            updateAddBox();
+        };
+
+        overlay.append(btnUpload, btnPreview, btnDelete);
+        box.appendChild(overlay);
+
+        container.insertBefore(box, addBox);
+        syncHiddenField();
+        updateAddBox();
+    }
+
+    function syncHiddenField(){
+        const urls = [...container.querySelectorAll(".mfu-box.has-image")]
+            .map(box => box.style.backgroundImage.replace(/^url\(["']?/,"").replace(/["']?\)$/,""));
+        hiddenInput.value = JSON.stringify(urls);
+    }
+
+    function updateAddBox(){
+        const count = container.querySelectorAll(".mfu-box.has-image").length;
+        addBox.style.display = (count >= MAX_COUNT) ? "none" : "flex";
+    }
+
+    addBox.addEventListener("click", () => input.click());
+
+    input.addEventListener("change", e => {
+        let files = Array.from(e.target.files);
+        const existCount = container.querySelectorAll(".mfu-box.has-image").length;
+        if(existCount + files.length > MAX_COUNT)
+            files = files.slice(0, MAX_COUNT - existCount);
+
+        files.forEach(file=>{
+            const ext = file.name.split('.').pop().toLowerCase();
+            if(!ALLOWED_EXTS.includes(ext)){ alert(`文件类型不允许: ${ext}`); return; }
+            if(file.size > MAX_SIZE){ alert(`文件大小不可超过 ${MAX_SIZE/1024/1024} MB`); return; }
+
+            const url = URL.createObjectURL(file);
+            addImageBox(url, file);
         });
+    });
 
-        previewModal.addEventListener('click', () => previewModal.classList.remove('active'));
-
-        // 初始化
-        renderImages();
-    </script>
+    previewModal.addEventListener("click", ()=> previewModal.classList.remove("active"));
+})();
+</script>
 </div>

@@ -1,47 +1,19 @@
-{% extends "vue_setup_base.html" %}
-{% load i18n %}
-{% load static %}
-{% load simpletags %}
-
-{% block title %}
-{{ title }}
-{% endblock %}
-
-{% block extra_css %}
+{% extends "vue_setup_base.html" %} {% load i18n %} {% load static %} {% load simpletags %} {% block title %} {{ title }} {% endblock %} {% block extra_css %}
 <style>
     .el-from {
         width: 100% !important;
-
     }
 
-    .order-container {
+    .order-info-container {
+        width: 100%;
         display: flex;
         flex-direction: row;
         justify-content: space-between;
-        padding: 12px;
-        gap: 12px;
-        /* 建议加上统一间距 */
-    }
-
-    /* 默认（大屏幕）布局：左右排列 */
-    .order-info-container {
-        width: 40%;
+        align-items: flex-start;
     }
 
     .order-items-container {
-        width: calc(60% - 12px);
-    }
-
-    /* 小屏幕下改为垂直排列并自适应宽度 */
-    @media (max-width: 768px) {
-        .order-container {
-            flex-direction: column;
-        }
-
-        .order-info-container,
-        .order-items-container {
-            width: 100%;
-        }
+        width: 32%;
     }
 
 
@@ -68,156 +40,402 @@
         width: 100vw;
         height: 100vh;
     }
-</style>
-{% endblock %}
 
-{% block content %}
+    .total-container {
+        font-size: 20px;
+        font-weight: 700;
+        color: #413e3e;
+    }
+
+
+    .checkout-container {
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        justify-content: center;
+    }
+
+    .checkout-item-container {
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        justify-content: flex-start;
+        border: 1px solid #eee;
+        background-color: #fafafa;
+        border-radius: 8px;
+        padding: 8px;
+    }
+
+    .checkout-item-container + .checkout-item-container {
+        margin-top: 10px;
+    }
+
+
+    .checkout-item-title {
+        font-size: 22px;
+        font-weight: 600;
+        color: #251e1e;
+    }
+
+    .checkout-item-content {
+        margin-top: 10px;
+        width: 100%;
+        font-size: 16px;
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        justify-content: flex-start;
+    }
+
+    .checkout-item-lable {
+        font-weight: 600;
+    }
+
+</style>
+{% endblock %} {% block content %}
 <div id="app">
     <div class="page-header">
-        <el-page-header title="{% trans 'Back' %}" @back="goBack" content="{{title}}" />
+        <el-page-header title="{% trans 'Back' %}" @back="goBack" content="{{title}}"></el-page-header>
+
+        <div class="header-right">
+            <el-button type="primary" @click="onSubmit" :disabled="isDisabledMode">提交</el-button>
+        </div>
     </div>
-    <div class="page-container">
-        <el-form :model="pageData.fromData" label-width="auto" size="default">
-            <div class="order-container">
-                <div class="order-info-container">
+    <div class="page-container"  v-loading="pageData.pageLoading">
+        <el-form ref="orderFormRef" :model="pageData.fromData" :rules="pageData.fromData.rules" label-width="auto"
+            size="default">
+            <div class="order-info-container">
+                <div class="order-items-container">
                     <div class="from-title">
                         <span>订单基础信息</span>
                     </div>
+                    <el-form-item label="所属站点" prop="site_id">
+                        <el-select v-model="pageData.fromData.site_id" placeholder="请选择订单所属站点">
+                            <el-option v-for="item in pageData.siteOptions" :key="item.value" :label="item.label"
+                                :value="item.value" :disabled="isDisabledMode" />
+                        </el-select>
+                    </el-form-item>
                     <el-form-item label="订单类型" prop="order_type">
                         <el-select v-model="pageData.fromData.order_type" placeholder="请选择订单类型">
                             <el-option v-for="item in pageData.orderTpyeOptions" :key="item.value" :label="item.label"
-                                :value="item.value" />
+                                :value="item.value" :disabled="isDisabledMode"/>
                         </el-select>
                     </el-form-item>
-                    <el-form-item label="订单工作流" prop="flow_definition">
+                    <!-- <el-form-item label="订单工作流" prop="flow_definition">
                         <el-select v-model="pageData.fromData.flow_definition" placeholder="请选择订单工作流">
                             <el-option v-for="item in pageData.flowDefinitionOptions" :key="item.value"
                                 :label="item.label" :value="item.value" />
                         </el-select>
-                    </el-form-item>
-                    <el-form-item label="订单备注" prop="memo">
-                        <el-input v-model="pageData.fromData.memo" :rows="1" type="textarea" placeholder="请输入订单备注" />
-                    </el-form-item>
+                    </el-form-item> -->
                     <el-form-item label="订单配送方式" prop="delivery_method">
                         <el-select v-model="pageData.fromData.delivery_method" placeholder="请选择订单配送方式">
                             <el-option v-for="item in pageData.deliveryMethodOptions" :key="item.value"
-                                :label="item.label" :value="item.value" />
+                                :label="item.label" :value="item.value" :disabled="isDisabledMode"/>
                         </el-select>
                     </el-form-item>
-
+                    <el-form-item label="订单备注" prop="memo">
+                        <el-input v-model="pageData.fromData.memo" :autosize="{ minRows: 2, maxRows: 4 }"
+                            type="textarea" placeholder="请输入订单备注" :disabled="isDisabledMode"/>
+                    </el-form-item>
+                </div>
+                <div class="order-items-container">
                     <div class="from-title">
                         <span>订单发货方</span>
-                        <el-button type="info" round plain size="small">导入 <el-icon>
-                                <Search />
-                            </el-icon></el-button>
+                        <el-button type="info" round plain size="small" @click="onSelectShipping" :disabled="isEditMode || isDisabledMode">
+                            导入
+                            <el-icon>
+                                <search />
+                            </el-icon>
+                        </el-button>
                     </div>
                     <el-form-item label="订单发货方" prop="shipping_party">
-                        <el-input v-model="pageData.fromData.shipping_party" placeholder="请输入发货方名称" />
+                        <el-input v-model="pageData.fromData.shipping_party" placeholder="请输入发货方名称" :disabled="isEditMode || isDisabledMode" />
                     </el-form-item>
                     <el-form-item label="发货方公司" prop="shipping_party_company">
-                        <el-input v-model="pageData.fromData.shipping_party_company" placeholder="请输入发货方公司名称" />
+                        <el-input v-model="pageData.fromData.shipping_party_company" placeholder="请输入发货方公司名称" :disabled="isEditMode || isDisabledMode" />
                     </el-form-item>
                     <el-form-item label="发货方电话" prop="shipping_party_phone">
-                        <el-input v-model="pageData.fromData.shipping_party_phone" placeholder="请输入发货方电话" />
+                        <el-input v-model="pageData.fromData.shipping_party_phone" placeholder="请输入发货方电话" :disabled="isEditMode || isDisabledMode" />
                     </el-form-item>
                     <el-form-item label="发货方地址" prop="shipping_party_address">
-                        <el-input v-model="pageData.fromData.shipping_party_address" placeholder="请输入发货方地址" />
+                        <el-input v-model="pageData.fromData.shipping_party_address"
+                            :autosize="{ minRows: 2, maxRows: 4 }" type="textarea" placeholder="请输入发货方地址" :disabled="isDisabledMode"/>
                     </el-form-item>
-
+                </div>
+                <div class="order-items-container">
                     <div class="from-title">
                         <span>订单收货方</span>
-                        <el-button type="info" round plain size="small">导入 <el-icon>
-                                <Search />
-                            </el-icon></el-button>
+                        <el-button type="info" round plain size="small" @click="onSelectReceiver" :disabled="isEditMode || isDisabledMode">
+                            导入
+                            <el-icon>
+                                <search />
+                            </el-icon>
+                        </el-button>
                     </div>
                     <el-form-item label="收货方" prop="receiver_name">
-                        <el-input v-model="pageData.fromData.receiver_name" placeholder="请输入收货方名称" />
+                        <el-input v-model="pageData.fromData.receiver_name" placeholder="请输入收货方名称" :disabled="isEditMode || isDisabledMode"/>
                     </el-form-item>
                     <el-form-item label="收货方公司" prop="receiver_company">
-                        <el-input v-model="pageData.fromData.receiver_company" placeholder="请输入收货方公司名称" />
+                        <el-input v-model="pageData.fromData.receiver_company" placeholder="请输入收货方公司名称" :disabled="isEditMode || isDisabledMode"/>
                     </el-form-item>
                     <el-form-item label="收货方电话" prop="receiver_phone">
-                        <el-input v-model="pageData.fromData.receiver_phone" placeholder="请输入收货方电话" />
+                        <el-input v-model="pageData.fromData.receiver_phone" placeholder="请输入收货方电话" :disabled="isEditMode || isDisabledMode"/>
                     </el-form-item>
                     <el-form-item label="收货方地址" prop="receiver_address">
-                        <el-input v-model="pageData.fromData.receiver_address" placeholder="请输入收货方地址" />
+                        <el-input v-model="pageData.fromData.receiver_address" :autosize="{ minRows: 2, maxRows: 4 }"
+                            type="textarea" placeholder="请输入收货方地址" :disabled="isDisabledMode"/>
                     </el-form-item>
-
-
-                </div>
-                <div class="order-items-container" ref="itemsRef">
-                    <div class="from-title">
-                        <span>订单项</span>
-                        <div>
-                            <el-button type="primary" round plain size="small" @click="toggle">
-                                [[ isFullscreen ? '取消全屏' : '全屏显示']]
-                            </el-button>
-                            <el-button type="info" round plain size="small">添加 <el-icon>
-                                    <Plus />
-                                </el-icon></el-button>
-                        </div>
-                    </div>
-                    <el-form-item label="" prop="items">
-                        <common-table ref="tableRef" 
-                            :data="pageData.tableData.items" 
-                            :columns="pageData.columns"
-                            :loading="pageData.loading"
-                            header-class-name="table-header-class"
-                            border
-                        >
-                            <template #actions="{ row }">
-                                <el-button type="success" size="small">发放</el-button>
-                            </template>
-                        </common-table>
-
-                    </el-form-item>
-
                 </div>
             </div>
+            
+            <div class="from-title">
+                <span>订单项</span>
+                <div>
+                    <!-- <el-button type="primary" round plain size="small" @click="toggle">
+                        [[ isFullscreen ? '取消全屏' : '全屏显示']]
+                    </el-button> -->
+                    <el-button type="info" round plain size="small" @click="onAddOrderItem" :disabled="isEditMode || isDisabledMode">
+                        添加
+                        <el-icon>
+                            <Plus />
+                        </el-icon>
+                    </el-button>
+                </div>
+            </div>
+            <el-form-item label="" prop="items">
+                <common-table ref="tableRef" :data="pageData.fromData.items" :columns="pageData.columns"
+                    :loading="pageData.loading" header-class-name="table-header-class" border>
+                    <template #actions="{ row, idx }">
+                        <el-button type="primary" size="small" @click="onEditOrderItem(row, idx)" :disabled="isEditMode || isDisabledMode">编辑</el-button>
+                    </template>
+                </common-table>
+
+                <div class="total-container">总计金额: [[orderItemData.total]] 元</div>
+            </el-form-item>
+
+
         </el-form>
     </div>
-</div>
-{% endblock %}
 
-{% block extra_js %}
+    <el-dialog v-model="dialogData.dialogVisible" :title="dialogData.title" align-center>
+        <common-table ref="tableRef" v-model:filter-form="dialogData.tableFilter"
+            v-model:current-page="dialogData.tableData.current_page" v-model:page-size="dialogData.tableData.page_size"
+            v-model:total-count="dialogData.tableData.total_count" :data="dialogData.tableData.items"
+            :columns="dialogData.columns" :loading="dialogData.loading" :is-paginated="true"
+            :row-class-name="rowClassName" :selectable="selectable" @selection-change="onSelectionChange"
+            @row-click="onRowClick" @page-change="dialogData.tableChangeHandler">
+            <template #actions="{ row }">
+                <el-button type="primary" size="small" @click="selectHandle(row)">
+                    选择
+                </el-button>
+            </template>
+
+            <template #filter="{ model }">
+                <el-form-item :label="'搜索' + dialogData.searchLabel">
+                    <el-input v-model="model.search" :placeholder="'请输入' + dialogData.searchLabel" clearable />
+                </el-form-item>
+            </template>
+        </common-table>
+        <template #footer>
+            <div class="dialog-footer">
+                <el-button @click="dialogData.dialogVisible = false">取消</el-button>
+            </div>
+        </template>
+    </el-dialog>
+
+
+    <el-dialog v-model="orderItemData.dialogVisible" :title="orderItemData.title" align-center width="500px">
+        <el-form :model="orderItemData.formData" :rules="orderItemData.fromRules" ref="itemFormRef" label-width="auto">
+            <!-- <el-form-item label="名称" prop="item_name">
+                <el-input v-model="orderItemData.formData.item_name" />
+            </el-form-item> -->
+            <el-form-item label="版号" prop="pattern_code">
+                <el-input v-model="orderItemData.formData.pattern_code" disabled>
+                    <template #append>
+                        <el-button @click="onSelectPattern">
+                            <el-icon>
+                                <Search />
+                            </el-icon>
+                        </el-button>
+                    </template>
+                </el-input>
+            </el-form-item>
+            <el-form-item label="颜色" prop="color">
+                <el-input v-model="orderItemData.formData.color" />
+            </el-form-item>
+            <el-form-item label="数量" prop="count">
+                <el-input-number v-model="orderItemData.formData.count" :step="10" :min="1" />
+            </el-form-item>
+            <el-form-item label="订单单价" prop="unit_price">
+                <el-input-number v-model="orderItemData.formData.unit_price" :step="10" :min="1" :precision="2">
+                    <template #suffix>
+                        <span>[[orderItemData.formData.total_unit]]</span>
+                    </template>
+                </el-input-number>
+            </el-form-item>
+            <el-form-item label="订单金额" prop="total">
+                <!-- <el-input-number v-model="orderItemData.formData.total" :step="10" :min="1" :precision="2" disabled /> -->
+                [[orderItemData.formData.total + orderItemData.formData.total_unit ]]
+            </el-form-item>
+            <el-form-item label="优惠金额" prop="discount_price">
+                <el-input-number v-model="orderItemData.formData.discount_price" :step="10" :min="0" :precision="2">
+                    <template #suffix>
+                        <span>[[orderItemData.formData.total_unit]]</span>
+                    </template>
+                </el-input-number>
+            </el-form-item>
+            <el-form-item label="小计金额" prop="subtotal">
+                <!-- <el-input-number v-model="orderItemData.formData.subtotal" :step="10" :min="1" :precision="2"
+                    disabled /> -->
+                [[orderItemData.formData.subtotal + orderItemData.formData.total_unit]]
+            </el-form-item>
+
+            <el-form-item label="备注" prop="memo">
+                <el-input v-model="orderItemData.formData.memo" :autosize="{ minRows: 2, maxRows: 4 }"
+                    type="textarea" />
+            </el-form-item>
+        </el-form>
+
+
+        <template #footer>
+            <div class="dialog-footer">
+                <el-button type="primary" @click="submitItemForm">提交</el-button>
+                <el-button @click="resetItemForm">取消</el-button>
+            </div>
+        </template>
+    </el-dialog>
+
+
+    <el-dialog v-model="checkoutData.dialogVisible" title="请确认订单内容" align-center width="700px">
+        
+        <div class="checkout-container">
+            <div class="checkout-item-container">
+                <div class="checkout-item-title">基础信息</div>
+                <div class="checkout-item-content">
+                    <div class="checkout-item-lable">订单类型：</div>
+                    <div class="checkout-item-value">[[orderTypeLabel]]</div>
+                </div>
+                <div class="checkout-item-content">
+                    <div class="checkout-item-lable">配色方式：</div>
+                    <div class="checkout-item-value">[[deliveryMethodLabel]]</div>
+                </div>
+                <div class="checkout-item-content">
+                    <div class="checkout-item-lable">订单备注：</div>
+                    <div class="checkout-item-value">[[pageData.fromData.memo]]</div>
+                </div>
+            </div>
+            <div class="checkout-item-container">
+                <div class="checkout-item-title">发货方</div>
+                <div class="checkout-item-content">
+                    <div class="checkout-item-lable">公司名称：</div>
+                    <div class="checkout-item-value">[[pageData.fromData.shipping_party_company]]</div>
+                </div>
+                <div class="checkout-item-content">
+                    <div class="checkout-item-value">[[pageData.fromData.shipping_party]] [[pageData.fromData.shipping_party_phone]] [[pageData.fromData.shipping_party_address]]</div>
+                </div>
+            </div>
+            <div class="checkout-item-container">
+                <div class="checkout-item-title">收货方</div>
+                <div class="checkout-item-content">
+                    <div class="checkout-item-lable">公司名称：</div>
+                    <div class="checkout-item-value">[[pageData.fromData.receiver_company]]</div>
+                </div>
+                <div class="checkout-item-content">
+                    <div class="checkout-item-value">[[pageData.fromData.receiver_name]] [[pageData.fromData.receiver_phone]] [[pageData.fromData.receiver_address]]</div>
+                </div>
+            </div>
+            <div class="checkout-item-container">
+                <div class="checkout-item-title">订单项</div>
+                <div class="checkout-item-content" v-for="(item, index) in pageData.fromData.items">
+                    <div class="checkout-item-value">[[index + 1]]. [[item.pattern_code]] / [[item.color]] / [[item.subtotal]][[item.total_unit]]</div>
+                </div>
+                <div class="checkout-item-content">
+                    <div class="checkout-item-lable">总计：</div>
+                    <div class="checkout-item-value">[[orderItemData.total]][[pageData.fromData.items[0].total_unit]]</div>
+                </div>
+            </div>
+        </div>
+
+
+        <template #footer>
+            <div class="dialog-footer">
+                <el-button type="primary" @click="submitHandle">提交</el-button>
+                <el-button @click="checkoutData.dialogVisible = false">取消</el-button>
+            </div>
+        </template>
+    </el-dialog>
+</div>
+
+{% endblock %} {% block extra_js %}
 <script type="module">
     import CommonTable from "{% static 'vue/js/CommonTable.js' %}";
+    import { decimalAdd, decimalMul, decimalSub} from "{% static 'vue/js/EasyDecimal.js' %}";
     import { useFullscreen } from "{% static 'vue/js/useFullscreen.js' %}";
-    const { inject, reactive, ref } = Vue;
+    const { inject, reactive, ref, watch, onMounted, computed } = Vue;
     window.createApp({
         components: { CommonTable },
         setup() {
-            const goBack = inject("goBack");
+            const orderId = "{{order_id}}"
+            const isEditMode = orderId != ""
+            const isDisabledMode ="{{is_disabled_mode}}" == "1"
+            const goBack = () => {
+                window.location.href = "{% get_previous_url %}"
+            };
+            const ElMessage = inject("ElMessage");
             const itemsRef = ref(null);
+            const orderFormRef = ref(null);
             const { isFullscreen, enter, exit, toggle } = useFullscreen(itemsRef);
             const pageData = reactive({
-                orderTpyeOptions: [
-                    { label: "销售订单", value: 1 },
-                ],
-                flowDefinitionOptions: [
-                    { label: "通用流程", value: 1 },
-                ],
-                deliveryMethodOptions: [
-                    { label: "快递", value: 1 },
-                    { label: "自提", value: 2 },
-                ],
+                pageLoading: true,
+                orderTpyeOptions: [],
+                flowDefinitionOptions: [],
+                deliveryMethodOptions: [],
+                siteOptions: [],
                 tableData: {
-                    items: []
+                    items: [],
                 },
                 columns: [
-                    { prop: "item_name", label: "名称", align: "center", fixed: "left", width: 120 },
                     { prop: "pattern_code", label: "款号", align: "center", width: 120 },
                     { prop: "color", label: "颜色", align: "center", width: 120 },
-                    { prop: "unit_price", label: "价格", align: "center", width: 220},
-                    { prop: "count", label: "数量", align: "center", type: "input", width: 220 },
-                    { prop: "total", label: "总额", align: "center", type: "input", width: 220 },
-                    { prop: "total_unit", label: "单位", align: "center", type: "input", width: 220 },
-                    { prop: "discount_price", label: "优惠", align: "center", type: "input", width: 220 },
-                    { prop: "subtotal", label: "小计", align: "center", type: "input", width: 220 },
-                    { prop: "memo", label: "备注", align: "center", type: "input" },
+                    { prop: "unit_price", label: "价格", align: "center", width: 220 },
+                    {
+                        prop: "count",
+                        label: "数量",
+                        align: "center",
+                        width: 220,
+                    },
+                    {
+                        prop: "total",
+                        label: "总额",
+                        align: "center",
+                        width: 220,
+                    },
+                    {
+                        prop: "total_unit",
+                        label: "单位",
+                        align: "center",
+                        width: 220,
+                    },
+                    {
+                        prop: "discount_price",
+                        label: "优惠",
+                        align: "center",
+                        width: 220,
+                    },
+                    {
+                        prop: "subtotal",
+                        label: "小计",
+                        align: "center",
+                        width: 220,
+                        fixed: "right",
+                    },
+                    { prop: "memo", label: "备注", align: "center" },
                 ],
                 loading: false,
                 fromData: {
+                    site_id: "",
                     order_type: "",
                     flow_definition: null,
                     shipping_party: "",
@@ -232,10 +450,362 @@
                     receiver_address: "",
                     memo: "",
                     items: [],
-                }
+                    rules: {
+                        site_id: [{ required: true, message: '请选择订单站点', trigger: 'blur' }],
+                        order_type: [{ required: true, message: '请选择订单类型', trigger: 'blur' }],
+                        delivery_method: [{ required: true, message: '请选择订单配送方式', trigger: 'blur' }],
+                        shipping_party: [{ required: true, message: '请选择订单发货方信息', trigger: 'blur' }],
+                        shipping_party_company: [{ required: true, message: '请选择订单发货方信息', trigger: 'blur' }],
+                        shipping_party_phone: [{ required: true, message: '请选择订单发货方信息', trigger: 'blur' }],
+                        shipping_party_address: [{ required: true, message: '请选择订单发货方信息', trigger: 'blur' }],
+                        receiver_name: [{ required: true, message: '请选择订单收货方信息', trigger: 'blur' }],
+                        receiver_company: [{ required: true, message: '请选择订单收货方信息', trigger: 'blur' }],
+                        receiver_phone: [{ required: true, message: '请选择订单收货方信息', trigger: 'blur' }],
+                        receiver_address: [{ required: true, message: '请选择订单收货方信息', trigger: 'blur' }],
+                    },
+                },
+            });
+
+            onMounted(async () => {
+                await initPage()
+                await getOrderById()
+                pageData.pageLoading = false
             })
-            return { goBack, pageData, isFullscreen, toggle, itemsRef };
-        }
+
+            const getOrderById = async () => {
+                if (!orderId) return
+                const res = await request.get("/order/info", { order_id: orderId })
+                for (const item of res.items) { 
+                    item.total = decimalMul(item.unit_price, item.count).toFixed(2)
+                    item.subtotal = decimalSub(item.total, item.discount_price).toFixed(2)
+                }
+                pageData.fromData = res
+            }
+            const orderTypeLabel = computed(() => {
+                return pageData.orderTpyeOptions.find((item) => item.value == pageData.fromData.order_type)?.label
+            })
+            const deliveryMethodLabel = computed(() => {
+                return pageData.deliveryMethodOptions.find((item) => item.value == pageData.fromData.delivery_method)?.label
+            })
+
+            const initPage = async () => {
+                pageData.deliveryMethodOptions = await request.get("/order/order_delivery_all_list")
+                pageData.orderTpyeOptions = await request.get("/order/order_type_all_list")
+                pageData.siteOptions = await request.get("/site_mgmt/cur_site_options")
+            }
+
+            // ------------------------------- 发货方/收货方 --------------------------------
+            // 表格分页数据
+            const dialogData = reactive({
+                loading: false,
+                title: "",
+                select_type: "收货",
+                searchLabel: "",
+                dialogVisible: false,
+                tableChangeHandler: tableChangeHandler,
+                tableFilter: {
+                    search: "",
+                },
+                sort: [],
+                tableData: {
+                    current_page: 1,
+                    page_size: 15,
+                    total_count: 0,
+                    items: []
+                },
+                columns: [
+                ],
+            });
+
+            async function tableChangeHandler() {
+                const changeDict = {
+                    "收货": onSelectReceiver,
+                    "发货": onSelectShipping,
+                    "版式": onSelectPattern,
+
+                }
+                await changeDict[dialogData.select_type]();
+            }
+
+            const onSelectShipping = async () => {
+                dialogData.select_type = "发货";
+                dialogData.title = "选择发货方";
+                dialogData.searchLabel = "姓名/电话号码";
+                dialogData.columns = [
+                    { prop: "shipping_party", label: "发货方", align: "center", fixed: "left", width: 120 },
+                    { prop: "shipping_party_company", label: "公司名称", align: "center", width: 120 },
+                    { prop: "shipping_party_phone", label: "电话号码", align: "center", width: 120 },
+                    { prop: "shipping_party_address", label: "地址", align: "center" },
+                ]
+                dialogData.dialogVisible = true;
+                dialogData.loading = true;
+                try {
+                    dialogData.tableData.items = [];
+                    const data = {
+                        current_page: dialogData.tableData.current_page,
+                        page_size: dialogData.tableData.page_size,
+                        filter: JSON.stringify(dialogData.tableFilter),
+                        sort: JSON.stringify(dialogData.sort)
+                    };
+                    const res = await request.post("/site_mgmt/site_address_list", {}, data);
+                    dialogData.tableData = res;
+                } catch (e) {
+                    ElMessage.error("页面数据加载失败！");
+                    throw e;
+                } finally {
+                    dialogData.loading = false;
+                }
+            }
+
+            const onSelectReceiver = async () => {
+                dialogData.select_type = "收货";
+                dialogData.title = "选择收货方";
+                dialogData.searchLabel = "姓名/电话号码";
+                dialogData.columns = [
+                    { prop: "receiver_name", label: "收货方", align: "center", fixed: "left", width: 120 },
+                    { prop: "receiver_company", label: "公司名称", align: "center", width: 120 },
+                    { prop: "receiver_phone", label: "电话号码", align: "center", width: 120 },
+                    { prop: "receiver_address", label: "地址", align: "center" },
+                ]
+                dialogData.dialogVisible = true;
+                dialogData.loading = true;
+                try {
+                    dialogData.tableData.items = [];
+                    const data = {
+                        current_page: dialogData.tableData.current_page,
+                        page_size: dialogData.tableData.page_size,
+                        filter: JSON.stringify(dialogData.tableFilter),
+                        sort: JSON.stringify(dialogData.sort)
+                    };
+                    const res = await request.post("/client_mgmt/client_address_list", {}, data);
+                    dialogData.tableData = res;
+                } catch (e) {
+                    ElMessage.error("页面数据加载失败！");
+                    throw e;
+                } finally {
+                    dialogData.loading = false;
+                }
+            }
+
+
+            const onSelectPattern = async () => {
+                dialogData.select_type = "版式";
+                dialogData.title = "选择版式";
+                dialogData.searchLabel = "名称/版号";
+                dialogData.columns = [
+                    { prop: "main_image", label: "主图", align: "center", type: "image", fixed: "left", width: 120 },
+                    { prop: "pattern_name", label: "名称", align: "center", width: 120 },
+                    { prop: "pattern_code", label: "版号", align: "center", width: 120 },
+                    { prop: "pattern_memo", label: "备注", align: "center" },
+                ]
+                dialogData.dialogVisible = true;
+                dialogData.loading = true;
+                try {
+                    dialogData.tableData.items = [];
+                    const data = {
+                        current_page: dialogData.tableData.current_page,
+                        page_size: dialogData.tableData.page_size,
+                        filter: JSON.stringify(dialogData.tableFilter),
+                        sort: JSON.stringify(dialogData.sort)
+                    };
+                    const res = await request.post("/pattern_library/pattern_list", {}, data);
+                    dialogData.tableData = res;
+                } catch (e) {
+                    ElMessage.error("页面数据加载失败！");
+                    throw e;
+                } finally {
+                    dialogData.loading = false;
+                }
+            }
+
+            const selectHandle = (row) => {
+                const selectDict = {
+                    "发货": () => {
+                        pageData.fromData.shipping_party = row.shipping_party;
+                        pageData.fromData.shipping_party_company = row.shipping_party_company;
+                        pageData.fromData.shipping_party_phone = row.shipping_party_phone;
+                        pageData.fromData.shipping_party_address = row.shipping_party_address;
+                    },
+                    "收货": () => {
+                        pageData.fromData.receiver_name = row.receiver_name;
+                        pageData.fromData.receiver_company = row.receiver_company;
+                        pageData.fromData.receiver_phone = row.receiver_phone;
+                        pageData.fromData.receiver_address = row.receiver_address;
+                    },
+                    "版式": () => {
+                        orderItemData.formData.pattern_code = row.pattern_code;
+                    },
+                }
+                selectDict[dialogData.select_type]();
+                dialogData.dialogVisible = false;
+                ElMessage.success("操作成功！");
+                validateOrderForm();
+                validateItemForm();
+            }
+
+            // ------------------------------- 订单项 --------------------------------
+            const createEmptyItem = () => ({
+                item_name: "",
+                pattern_code: "",
+                color: "",
+                count: 1,
+                unit_price: 0,
+                discount_price: 0,
+                total: 0,
+                subtotal: 0,
+                total_unit: "元",
+                memo: "",
+            })
+            const orderItemData = reactive({
+                dialogVisible: false,
+                total: 0,
+                title: "",
+                formData: createEmptyItem(),
+                editRowIdx: -1,
+                fromRules: {
+                    pattern_code: [{ required: true, message: '请选择版号', trigger: 'blur' }],
+                    color: [{ required: true, message: '请输入颜色', trigger: 'blur' }],
+                    count: [{ required: true, message: '请输入数量', trigger: 'blur' }],
+                    unit_price: [{ required: true, message: '请输入订单单价', trigger: 'blur' }],
+                },
+            })
+
+            const itemFormRef = ref(null);
+
+            watch(() => [
+                orderItemData.formData.count,
+                orderItemData.formData.unit_price,
+                orderItemData.formData.discount_price,
+            ],
+                (newVal, oldVal) => {
+                    try {
+                        orderItemData.formData.total = decimalMul(orderItemData.formData.count, orderItemData.formData.unit_price).toFixed(2);
+                        orderItemData.formData.subtotal = decimalSub(orderItemData.formData.total - orderItemData.formData.discount_price).toFixed(2);
+                    } catch (e) {
+                        ElMessage.error("数据格式错误！");
+                    }
+                }, { immediate: true })
+
+            watch(
+                () => pageData.fromData.items,
+                (newVal, oldVal) => {
+                    let total = new Decimal(0);
+
+                    for(const item of newVal) {
+                        const lineSubtotal = decimalSub(
+                            decimalMul(item.unit_price, item.count),
+                            item.discount_price
+                        )
+
+                        total = decimalAdd(total, lineSubtotal)
+                    }
+
+                    orderItemData.total = total.toFixed(2);
+                }, { immediate: true, deep: true }
+            )
+
+
+            const submitItemForm = async () => {
+                if (!itemFormRef.value) return
+                await itemFormRef.value.validate((valid, fields) => {
+                    if (valid) {
+                        if (orderItemData.editRowIdx < 0) {
+                            pageData.fromData.items.push(orderItemData.formData)
+                        }
+                        orderItemData.dialogVisible = false;
+                        orderItemData.formData = createEmptyItem();
+                    } else {
+                        console.log('error submit!', fields)
+                    }
+                })
+            }
+
+            const resetItemForm = () => {
+                if (!itemFormRef.value) return
+                itemFormRef.value.resetFields()
+                orderItemData.dialogVisible = false;
+            }
+
+            const onAddOrderItem = () => {
+                resetItemForm()
+                orderItemData.editRowIdx = -1;
+                orderItemData.title = "添加订单项";
+                orderItemData.dialogVisible = true;
+            }
+
+            const onEditOrderItem = (row, idx) => {
+                orderItemData.title = "编辑订单项";
+                orderItemData.dialogVisible = true;
+                orderItemData.formData = row;
+                orderItemData.editRowIdx = idx;
+            }
+
+            const onSubmit = async () => {
+                if (!orderFormRef.value) return
+                await orderFormRef.value.validate((valid, fields) => {
+                    if (valid) {
+                        if (pageData.fromData.items.length < 1) {
+                            ElMessage.warning("请添加订单项！");
+                            return;
+                        }
+                        checkoutData.dialogVisible = true;
+                    } else {
+                        console.log('error submit!', fields)
+                    }
+                })
+            }
+            const validateOrderForm = () => {
+                if (!orderFormRef.value) return
+                orderFormRef.value.validate()
+            }
+
+            const validateItemForm = () => {
+                if (!itemFormRef.value) return
+                itemFormRef.value.validate()
+            }
+
+
+            const checkoutData = reactive({
+                dialogVisible: false,
+            })
+
+            const submitHandle = async () => {
+                try {
+                    let res = await request.post("/order/create", pageData.fromData);
+                    ElMessage.success("操作成功！");
+                    goBack();
+                } catch (e) {
+                    ElMessage.error(e.message);
+                }
+            }
+
+            return {
+                goBack,
+                pageData,
+                isFullscreen,
+                toggle,
+                itemsRef,
+                dialogData,
+                onSelectReceiver,
+                onSelectShipping,
+                onSelectPattern,
+                selectHandle,
+                orderItemData,
+                itemFormRef,
+                orderFormRef,
+                onAddOrderItem,
+                onEditOrderItem,
+                submitItemForm,
+                resetItemForm,
+                onSubmit,
+                checkoutData,
+                orderTypeLabel,
+                deliveryMethodLabel,
+                submitHandle,
+                isEditMode,
+                isDisabledMode,
+            };
+        },
     });
 </script>
 {% endblock %}

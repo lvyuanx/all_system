@@ -1,6 +1,6 @@
 import os
 import uuid
-from core.common.utils.upload_util import resource_upload_to
+from core.common.utils.res_util import calc_file_md5
 from core.utils.orjson_util import json
 from django.db import models
 import mimetypes
@@ -8,11 +8,25 @@ import hashlib
 
 from django.db import models
 from django.contrib.auth import get_user_model
-from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
-from core.utils import common_util
+from core.utils import time_util
 
 User = get_user_model()
+
+
+def resource_upload_to(instance: 'Resource', filename: str):
+    """
+    根据业务模型和分类动态生成上传路径：
+    /media/resources/<model_name>/<category>/<YYYY/MM/DD>/<stored_filename>
+    """
+    date_path = time_util.now().strftime("%Y/%m/%d")
+
+    # 优先使用业务模型提供的 resource_category 属性
+    category = getattr(instance, "category", None) or "common"
+
+    model_name = instance.content_type.model if instance.content_type else "unknown"
+
+    return os.path.join("resources", model_name, category, date_path, instance.name)
 
 
 class SerialNumber(models.Model):
@@ -122,9 +136,6 @@ class Resource(models.Model):
 
     # 通用外键关联
     content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, blank=True, null=True)
-    object_id = models.PositiveIntegerField(blank=True, null=True)
-    content_object = GenericForeignKey("content_type", "object_id")
-
     uploader = models.ForeignKey(User, on_delete=models.SET_NULL, blank=True, null=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
@@ -139,6 +150,16 @@ class Resource(models.Model):
 
     def __str__(self):
         return self.name or str(self.file)
+    
+    def __eq__(self, file):
+        return self.md5 == calc_file_md5(self.file)
+    
+    def unactive(self):
+        """
+        将文件从数据库中删除，但保留文件。
+        """
+        self.is_active = False
+        self.save()
 
     def save(self, *args, **kwargs):
         """
@@ -169,9 +190,6 @@ class Resource(models.Model):
 
             # 5️⃣ MD5 校验
             if not self.md5:
-                md5_hash = hashlib.md5()
-                for chunk in self.file.chunks():
-                    md5_hash.update(chunk)
-                self.md5 = md5_hash.hexdigest()
+                self.md5 = calc_file_md5(self.file)
 
         super().save(*args, **kwargs)

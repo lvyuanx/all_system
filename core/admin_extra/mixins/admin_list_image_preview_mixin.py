@@ -7,6 +7,7 @@
 # version    : python 3.11
 # Description: admin 列表页，图片预览
 """
+from core.common.models import Resource
 
 class AdminListImagePreviewMixin:
     image_preview = {}  # 形式：{"字段名": "列名"}
@@ -17,6 +18,10 @@ class AdminListImagePreviewMixin:
         def make_preview_func(field_name, column_title):
             def preview_func(self, obj):
                 img_field = getattr(obj, field_name)
+
+                if isinstance(img_field, Resource):
+                    return cls.format_image_lightbox(img_field.file.url, field_name)
+                
                 if img_field and hasattr(img_field, "url"):
                     return cls.format_image_lightbox(img_field.url, field_name)
                 return ""
@@ -35,8 +40,8 @@ class AdminListImagePreviewMixin:
     def format_image_lightbox(
         url,
         field_name,
-        thumb_width=40,
-        thumb_height=40,
+        thumb_width=80,
+        thumb_height=80,
         style="border-radius: 25%; cursor: pointer; vertical-align: middle;",
     ):
         from django.utils.safestring import mark_safe

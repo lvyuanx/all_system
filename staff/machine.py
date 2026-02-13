@@ -9,10 +9,10 @@
 
 from transitions import Machine, State
 from django.contrib.auth.models import AbstractUser
-from django.utils import timezone
 
 from staff.models import StaffSalary
 from .enums import StaffSalaryStatusChoices
+from core.utils import time_util
 
 
 class StaffSalaryStateMachine:
@@ -115,6 +115,6 @@ class StaffSalaryStateMachine:
             audit_user=self.audit_user,
             audit_full_name=getattr(self.audit_user, "full_name", None),
             audit_user_phone=getattr(self.audit_user, "phone", None),
-            audit_time=timezone.now(),
+            audit_time=time_util.now(),
             audit_memo=self.audit_memo,
         )

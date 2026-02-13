@@ -27,7 +27,7 @@ class SiteMiddlware:
         
     def __call__(self, request: HttpRequest):
 
-        if request.path == "/admin/":
+        if request.path.startswith("/admin/"):
 
             if hasattr(request, "user"):
                 user = request.user
@@ -37,6 +37,7 @@ class SiteMiddlware:
                         admin.site.site_title = "超管模式"
                         admin.site.index_title = "超管模式"
                         settings.SIMPLEUI_LOGO = "/static/images/default/superuser.png"
+                        return self.get_response(request)
                     elif user.staff:
                         user_site = user.staff.site
                         admin.site.site_header = user_site.site_name
@@ -45,9 +46,16 @@ class SiteMiddlware:
                         site_logo = user_site.site_logo
                         if site_logo:
                             settings.SIMPLEUI_LOGO = f"{settings.MEDIA_URL}{site_logo}"
+                        return self.get_response(request)
                     else:
                         admin.site.site_header = "游客模式"
                         admin.site.site_title = "游客模式"
                         admin.site.index_title = "游客模式"
                         settings.SIMPLEUI_LOGO = "/static/images/default/guestuser.png"
+                        return self.get_response(request)
+
+        admin.site.site_header = "管理系统"
+        admin.site.site_title = "管理系统"
+        admin.site.index_title = "管理系统"
+        settings.SIMPLEUI_LOGO = "/static/images/default/unlogin-logo.png"
         return self.get_response(request)

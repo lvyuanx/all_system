@@ -146,7 +146,8 @@ export default {
             <span class="common-table-header-label">[[ col.label ]]</span>
           </template>
           <template #default="{ row }">
-            <el-input v-if="col.type === 'input'" v-model="row[col.prop]" size="small" clearable />
+          <el-input v-if="col.type === 'input'" v-model="row[col.prop]" size="small" clearable />
+          <el-image v-else-if="col.type === 'image'" :src="row[col.prop]" fit="contain" />
             <el-switch v-else-if="col.type === 'switch'" v-model="row[col.prop]" />
             <el-select v-else-if="col.type === 'select'" v-model="row[col.prop]" placeholder="请选择" size="small" style="width:120px">
               <el-option v-for="opt in col.options || []" :key="opt.value" :label="opt.label" :value="opt.value" />
@@ -157,8 +158,8 @@ export default {
         </el-table-column>
 
         <el-table-column v-if="$slots.actions" label="操作" align="center" width="160" fixed="right">
-          <template #default="{ row }">
-            <slot name="actions" :row="row"></slot>
+          <template #default="scope">
+            <slot name="actions" :row="scope.row" :idx="scope.$index"></slot>
           </template>
         </el-table-column>
       </el-table>

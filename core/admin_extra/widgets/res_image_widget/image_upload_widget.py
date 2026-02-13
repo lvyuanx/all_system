@@ -16,15 +16,14 @@ class ImageUploadWidget(BaseWidget):
         name: 当前字段名（这里是 linkage）
         attrs: 可以由外部传入的初始值
         """
-        # 获取widget组件配置
-        widget_conf = self.attrs.get("widget_conf", {})
-        value = self.attrs.get(widget_conf["value_attr_name"], "")
+        field_value = self.attrs.get("field_value", "")
         
         # 用 Django 模板引擎渲染 HTML
         engine = Engine(debug=False)
         template = engine.from_string(self.widget_html)
         context = self.attrs.get("context", {})
-        context["widget_val"] = value
+        context["field_value"] = field_value
+        context["field_name"] = name
         context = Context(context)
         html_rendered = template.render(context)
 

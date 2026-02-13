@@ -7,12 +7,19 @@
 # version    : python 3.11
 # Description: 通用工具类
 """
-from decimal import Decimal
-import importlib
-
-
-import importlib
 import builtins
+import importlib
+import threading
+from decimal import Decimal
+from typing import Type
+
+from asgiref.sync import sync_to_async
+from django.contrib.auth import get_user
+from django.db import models
+from django.http import HttpRequest
+
+from core.common.schemas import ChoicesListItemSchema
+
 
 def import_func_or_class(path: str):
     """
@@ -56,4 +63,42 @@ def media_url(path_or_res):
     else:
         #  Resource 对象
         return path_or_res.file.url
+
+
+class SingletonBase:
+    _instance = None
+    _lock = threading.Lock()  # 保证线程安全
+
+    def __new__(cls, *args, **kwargs):
+        if cls._instance is None:
+            with cls._lock:
+                if cls._instance is None:
+                    cls._instance = super().__new__(cls)
+                    # 初始化参数只在第一次实例化时生效
+                    cls._instance._init(*args, **kwargs)
+        return cls._instance
     
+    
+    def _init(*args, **kwargs):
+        raise NotImplementedError("单例子类必须实现 _init 方法而不是 __init__ 方法")
+
+
+async def get_user_async(request: HttpRequest):
+    return await sync_to_async(get_user, thread_sensitive=True)(request)
+
+
+def choices_to_schema(
+    enum: Type[models.Choices],
+) -> list[ChoicesListItemSchema]:
+    """
+    将 Django models.Choices / TextChoices / IntegerChoices
+    转换为 Schema 列表
+    """
+    return [
+        ChoicesListItemSchema(
+            name=choice.name,
+            value=choice.value,
+            label=choice.label,
+        )
+        for choice in enum
+    ]

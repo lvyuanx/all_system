@@ -104,11 +104,34 @@
     // ---------------------------
     // 页面导航工具
     // ---------------------------
+    // 子页面点击返回
     function goBack() {
         const parentApp = getParentVueApp();
-        if (parentApp?.$router) parentApp.$router.back();
-        else window.history.back();
+        const activeTabName = parentApp?.tabModel;
+        const tabObj = parentApp?.tabs?.find(t => t.name === activeTabName);
+        
+        // 如果保存了 prevUrl，直接跳
+        const prevUrl = tabObj?.prevUrl;
+        if (prevUrl) {
+            window.location.href = prevUrl;
+            return;
+        }
+
+        // fallback
+        if (window.history.length > 1) {
+            window.history.back();
+            return;
+        }
+
+        // fallback关闭tab
+        if (parentApp?.handleTabsEdit && activeTabName) {
+            parentApp.handleTabsEdit(activeTabName, "remove");
+        }
     }
+
+
+
+
 
     // ---------------------------
     // 打开父页面 Tab / 新标签 / 当前 Tab 跳转

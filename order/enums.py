@@ -6,13 +6,22 @@ class OrderTypeChoices(models.IntegerChoices):
     PEER_TRANSFER = 2, "同行转单"
 
 
+from django.db import models
+
+
 class OrderStatusChoices(models.IntegerChoices):
-    CANCELED = 0, "取消"
-    CREATED = 1, "创建"
-    CONFIRMATION = 2, "订单确认"
-    SUBMIT = 3, "订单提交"
-    PRODUCTION = 4, "生产中"
-    ENDED = 99, "结束"
+    CANCELED = 0, "已取消"
+
+    CREATED = 10, "已创建"          # 录入订单
+    CONFIRMED = 20, "已确认"        # 审核通过/客户确认
+
+    SCHEDULED = 30, "已排产"        # 已进入排产计划
+    PRODUCING = 40, "生产中"        # 正在生产
+    FINISHED = 50, "已完工"         # 生产完成/待出库
+
+    SHIPPED = 60, "已发货"          # 已出库/已发货
+    COMPLETED = 70, "已完成"        # 签收/结案
+
 
 
 class OrderPayStatusChoices(models.IntegerChoices):
@@ -29,7 +38,7 @@ class OrderPayMehtodChoices(models.IntegerChoices):
     
 
 class OrderDeliveryChoices(models.IntegerChoices):
-    DELIVERY = 1, "配送"
+    DELIVERY = 1, "送货上门"
     SELF_DELIVERY = 2, "自提"
     EXPRESS = 3, "快递"
     OTHER = 4, "其他"
