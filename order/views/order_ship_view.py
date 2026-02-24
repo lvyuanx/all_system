@@ -7,6 +7,7 @@
 # version    : python 3.11
 # Description: 订单发货
 """
+from decimal import Decimal
 from asgiref.sync import sync_to_async
 from django.db import transaction
 from core.exceptions.base_exceptions import BusinessException
@@ -18,9 +19,10 @@ from . import schemas
 
 
 @transaction.atomic
-def do(request: HttpRequest, order: Order, delivery_method: int, tracking_no: str):
+def do(request: HttpRequest, order: Order, delivery_method: int, tracking_no: str, shipping_fee: Decimal):
     order.delivery_method = delivery_method
     order.tracking_no = tracking_no
+    order.shipping_fee = shipping_fee
     order.save()
 
     sm = OrderStateMachine(order, request.user)
@@ -51,4 +53,4 @@ class View(BaseApi):
         if order.order_status != OrderStatusChoices.FINISHED:
             raise BusinessException("002", {"status_name": OrderStatusChoices(order.order_status).label})
         
-        await sync_to_async(do)(request, order, data.delivery_method, data.tracking_no)
+        await sync_to_async(do)(request, order, data.delivery_method, data.tracking_no, data.shipping_fee)

@@ -43,4 +43,5 @@ class OrderShipSchema(BaseModel):
     order_id: int = Field(..., description="订单ID")
     delivery_method: int = Field(..., description="配送方式")
     tracking_no: str = Field(..., description="物流单号")
+    shipping_fee: Decimal = Field(..., description="运费")
 

@@ -109,6 +109,13 @@
                 <el-form-item label="请输入快递单号" v-if="pageData.formData.delivery_method == 2" prop="tracking_no">
                     <el-input v-model="pageData.formData.tracking_no" placeholder="请输入快递单号: "></el-input>
                 </el-form-item>
+                <el-form-item label="请输入运费" prop="shipping_fee">
+                    <el-input-number v-model="pageData.formData.shipping_fee" :precision="2" :step="0.1" placeholder="请输入运费: ">
+                        <template #suffix>
+                            <span>元</span>
+                        </template>
+                    </el-input-number>
+                </el-form-item>
                 <el-form-item class="submit-btn">
                     <el-button type="default" @click="resetForm(formRef)">取消</el-button>
                     <el-button type="primary" @click="submitForm(formRef)">确定</el-button>
@@ -133,7 +140,8 @@
                 formData: {
                     order_id: orderId,
                     delivery_method: "",
-                    tracking_no: ""
+                    tracking_no: "",
+                    shipping_fee: 0,
                 },
                 fromRules: {
                     delivery_method: [
