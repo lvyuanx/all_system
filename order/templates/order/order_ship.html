@@ -12,7 +12,7 @@
     .ship-data-container {
         display: flex;
         flex-direction: row;
-        align-items: center;
+        align-items: stretch;
         justify-content: space-between;
     }
 
@@ -25,6 +25,10 @@
         border: 1px solid #ebebeb;
         border-radius: 8px;
         padding: 8px;
+    }
+
+    .pay-info-row + .pay-info-row {
+        margin-top: 12px;
     }
 
     .ship-info-row {

@@ -45,3 +45,20 @@ class OrderShipSchema(BaseModel):
     tracking_no: str = Field(..., description="物流单号")
     shipping_fee: Decimal = Field(..., description="运费")
 
+
+class OrderPayCaListItemSchema(BaseModel):
+    """订单支付流水"""
+    ca_no: str = Field(..., description="支付流水号码")
+    pay_amount: Decimal = Field(..., description="支付金额")
+    pay_method_str: str = Field(..., description="支付方式")
+    operator_info: str = Field(..., description="操作信息")
+    operator_time_str: str = Field(..., description="操作时间")
+    operator_memo: str = Field(description="备注")
+
+
+class OrderPaySchema(BaseModel):
+    """订单支付"""
+    order_id: int = Field(..., description="订单ID")
+    pay_amount: Decimal = Field(..., description="支付金额")
+    operator_memo: str = Field(description="备注")
+    pay_method: int = Field(..., description="支付方式")

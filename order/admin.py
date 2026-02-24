@@ -94,6 +94,15 @@ class OrderAdmin(
     def get_operate_buttons_config(self, obj: Order):
         operate_buttons_config = [
             {
+                "name": "支付",
+                "type": "text",
+                "mode": "modal",
+                "icon": "el-icon-coin",
+                "modal_width": "75vw",
+                "modal_height": "80vh",
+                "url": lambda obj: reverse("order_pay", kwargs={"pk": obj.pk}),
+            },
+            {
                 "name": "操作日志",
                 "type": "text",
                 "mode": "modal",

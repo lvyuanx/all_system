@@ -5,6 +5,7 @@ from .page_views.order_page import (
     order_shipping,
     order_timeline,
     order_ship,
+    order_pay,
 )
 
 
@@ -14,4 +15,5 @@ urls = [
     path("order/order/shipping/", order_shipping, name="order_shipping"),
     path("order/order/<int:pk>/timeline/", order_timeline, name="order_timeline"),
     path("order/order/<int:pk>/ship/", order_ship, name="order_ship"),
+    path("order/order/<int:pk>/pay/", order_pay, name="order_pay"),
 ]

@@ -12,7 +12,7 @@ from asgiref.sync import sync_to_async
 from django.db import transaction
 from core.exceptions.base_exceptions import BusinessException
 from core.ninja_extra.api_extra import BaseApi, HttpRequest, Body
-from order.enums import OrderStatusChoices
+from order.enums import OrderPayStatusChoices, OrderStatusChoices
 from order.models import Order
 from order.machine import OrderStateMachine
 from . import schemas
@@ -23,6 +23,9 @@ def do(request: HttpRequest, order: Order, delivery_method: int, tracking_no: st
     order.delivery_method = delivery_method
     order.tracking_no = tracking_no
     order.shipping_fee = shipping_fee
+    # 订单应付金额 = 订单实付金额 + 运费
+    order.payable_amount = order.paid_amount + shipping_fee
+    order.update_pay_status()
     order.save()
 
     sm = OrderStateMachine(order, request.user)

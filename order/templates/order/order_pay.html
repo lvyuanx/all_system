@@ -1,0 +1,240 @@
+{% extends "vue_setup_base.html" %}
+{% load i18n %}
+{% load static %}
+{% load simpletags %}
+
+{% block title %}
+{{ title }}
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .pay-data-container {
+        display: flex;
+        flex-direction: row;
+        align-items: stretch;
+        justify-content: space-between;
+    }
+
+    .pay-info {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        width: 38%;
+        margin-bottom: 20px;
+        border: 1px solid #ebebeb;
+        border-radius: 8px;
+        padding: 8px;
+    }
+
+    .pay-submit {
+        width: 58%;
+    }
+
+    .pay-info-row+.pay-info-row {
+        margin-top: 12px;
+    }
+
+    .pay-info-row {
+        display: flex;
+        align-items: flex-start;
+        justify-content: flex-start;
+        width: 100%;
+        font-size: 15px;
+    }
+
+    .pay-info-title {
+        font-weight: 600;
+    }
+
+    .pay-info-data {
+        color: #413e3e;
+        margin-left: 15px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div id="app">
+    <div class="page-container">
+        <div class="pay-data-container">
+            <div class="pay-info">
+                <div class="pay-info-row">
+                    <div class="pay-info-title">订单支付状态: </div>
+                    <div class="pay-info-data">{{ pay_status_str }}</div>
+                </div>
+                <div class="pay-info-row">
+                    <div class="pay-info-title">订单原始总金额: </div>
+                    <div class="pay-info-data">{{ total_amount }} 元</div>
+                </div>
+                <div class="pay-info-row">
+                    <div class="pay-info-title">订单优惠金额: </div>
+                    <div class="pay-info-data">{{ discount_amount }} 元</div>
+                </div>
+                <div class="pay-info-row">
+                    <div class="pay-info-title">订单运费: </div>
+                    <div class="pay-info-data">{{ shipping_fee }} 元</div>
+                </div>
+                <div class="pay-info-row">
+                    <div class="pay-info-title">订单应付金额: </div>
+                    <div class="pay-info-data">{{ payable_amount }} 元</div>
+                </div>
+                <div class="pay-info-row">
+                    <div class="pay-info-title">订单实付金额: </div>
+                    <div class="pay-info-data">{{ paid_amount }} 元</div>
+                </div>
+            </div>
+            <div class="pay-submit">
+                <el-form :model="pageData.formData" ref="fromRef" :rules="pageData.formData.rules" label-width="auto">
+                    <el-form-item label="最大可支付金额: " prop="max_pay_amount">
+                        <el-input v-model="pageData.formData.max_pay_amount" disabled>
+                            <template #append>元</template>
+                        </el-input>
+                    </el-form-item>
+                    <el-form-item label="本次支付金额: " prop="pay_amount">
+                        <el-input-number v-model="pageData.formData.pay_amount" :step="10" :min="0"
+                            :max="pageData.formData.max_pay_amount" :precision="2" style="width: 100%;" :disabled="isUnPay">
+                            <template #suffix>
+                                <span>元</span>
+                            </template>
+                        </el-input-number>
+                    </el-form-item>
+                    <el-form-item label="订单支付类型" prop="pay_method">
+                        <el-select v-model="pageData.formData.pay_method" placeholder="请选择订单支付类型" :disabled="isUnPay">
+                            <el-option v-for="item in pageData.formData.orderPayMethodTypeOptions" :key="item.value"
+                                :label="item.label" :value="item.value"/>
+                        </el-select>
+                    </el-form-item>
+                    <el-form-item label="备注: " prop="operator_memo">
+                        <el-input v-model="pageData.formData.operator_memo" :autosize="{ minRows: 2, maxRows: 4 }"
+                            type="textarea" placeholder="请输入支付备注"  :disabled="isUnPay" />
+                    </el-form-item>
+                    <el-form-item label=" ">
+                        <el-button type="primary" @click="submitForm(fromRef)" :disabled="isUnPay">支付</el-button>
+                    </el-form-item>
+                </el-form>
+            </div>
+        </div>
+
+        <common-table ref="tableRef" :data="pageData.tableData.items" :columns="pageData.tableData.columns"
+            :loading="pageData.tableData.loading" header-class-name="table-header-class" border>
+        </common-table>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script type="module">
+    import CommonTable from "{% static 'vue/js/CommonTable.js' %}";
+    import { decimalSub, decimalCompare, decimalLte} from "{% static 'vue/js/EasyDecimal.js' %}";
+    const { reactive, onMounted, ref, inject, computed } = Vue;
+    window.createApp({
+        components: { CommonTable },
+        setup() {
+            const ElMessageBox = inject("ElMessageBox");
+            const ElMessage = inject("ElMessage");
+            const payableAmount = "{{payable_amount}}"
+            const paidAmount = "{{paid_amount}}"
+            const orderId = "{{order_id}}"
+            const fromRef = ref(null)
+            const pageData = reactive({
+                tableData: {
+                    items: [],
+                    loading: true,
+                    columns: [
+                        { prop: "ca_no", label: "流水号", align: "center", width: 260 },
+                        { prop: "pay_method_str", label: "支付方式", align: "center", width: 120 },
+                        { prop: "pay_amount", label: "支付金额", align: "center", width: 120 },
+                        { prop: "operator_info", label: "操作人", align: "center", width: 220 },
+                        { prop: "operator_time_str", label: "时间", align: "center", width: 220 },
+                        { prop: "operator_memo", label: "备注", align: "center" },
+                    ],
+                },
+                formData: {
+                    orderPayMethodTypeOptions: [],
+                    rules: {
+                        pay_amount: [
+                            { required: true, message: '请输入支付金额', trigger: 'blur' }
+                        ],
+                        pay_method: [
+                            { required: true, message: '请选择支付类型', trigger: 'change' }
+                        ],
+                    },
+                    pay_amount: 0,
+                    max_pay_amount: 0,
+                    operator_memo: "",
+                }
+
+            })
+
+            // ----------------------- 初始化 -----------------------
+            onMounted(async () => {
+                pageData.formData.max_pay_amount = decimalSub(payableAmount, paidAmount)
+                pageData.formData.pay_amount = pageData.formData.max_pay_amount
+                pageData.formData.orderPayMethodTypeOptions = await request.get("/order/pay/pay_method_type_all_list")
+                pageData.tableData.items = await request.get("/order/pay/ca_list", { oid: orderId })
+                pageData.tableData.loading = false
+            })
+
+            // ----------------------- 表单操作 -----------------------
+            const submitForm = async (formEl) => {
+                if (!formEl) return
+
+                if (decimalLte(pageData.formData.pay_amount, 0)) {
+                    ElMessage.error("支付金额不能小于0！")
+                    return
+                }
+
+                const compareRes = decimalCompare(pageData.formData.pay_amount, pageData.formData.max_pay_amount)
+
+                if (compareRes == 1) {
+                    ElMessage.error("支付金额不能大于最大可支付金额！")
+                    return
+                }
+
+
+                try {
+                    await formEl.validate()
+
+                    if (compareRes == -1) {
+                        await ElMessageBox.confirm("该订单未完全支付，是否继续？", "提示", {
+                            confirmButtonText: "确定",
+                            cancelButtonText: "取消",
+                            type: "warning",
+                        });
+                    }
+
+
+                    await request.post("/order/pay/create", {
+                        order_id: orderId,
+                        pay_amount: pageData.formData.pay_amount,
+                        pay_method: pageData.formData.pay_method,
+                        operator_memo: pageData.formData.operator_memo,
+
+                    })
+
+                    window?.parent?.parent?.app?.$message?.success("操作成功！")
+                    closeModal()
+                } catch (err) {
+                    console.log("error submit!", err)
+                }
+            }
+
+            function closeModal() {
+                if (window.parent && window.parent.closeCustomModal) {
+                    window.parent.closeCustomModal(true);
+                }
+            }
+
+            const isUnPay = computed(() => {
+                return decimalLte(pageData.formData.max_pay_amount, 0)
+            })
+
+
+
+
+            return { pageData, fromRef, isUnPay, submitForm };
+        }
+    });
+</script>
+{% endblock %}

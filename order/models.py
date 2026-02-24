@@ -90,17 +90,6 @@ class Order(
         default=OrderPayStatusChoices.NOT_PAID,
         verbose_name="订单支付状态",
     )
-    pay_method = models.SmallIntegerField(
-        choices=OrderPayMehtodChoices.choices,
-        default=OrderPayMehtodChoices.ALIPAY,
-        verbose_name="订单支付方式",
-    )
-    pay_time = models.BigIntegerField(
-        null=True,
-        blank=True,
-        default=None,
-        verbose_name="订单支付时间",
-    )
 
     # 发货信息
     shipping_party = models.CharField(
@@ -199,8 +188,20 @@ class Order(
     @staticmethod
     def get_sn(count=1):
         return sn_generator.next_ids(
-            count, prefix="T", used_for="order.Order", letter_length=0
+            count, prefix="ORD", used_for="order.Order", letter_length=0
         )
+    
+    def update_pay_status(self):
+        if self.paid_amount <= 0:
+            self.pay_status = OrderPayStatusChoices.NOT_PAID
+            return
+        
+        if self.paid_amount < self.payable_amount:
+            self.pay_status = OrderPayStatusChoices.PAID_PARTIAL
+            return
+        
+        self.pay_status = OrderPayStatusChoices.PAID
+        
 
     def save(self, *args, **kwargs):
         if not self.order_no:  # 只有保存时才生成
@@ -309,4 +310,67 @@ class OrderCa(models.Model):
     
     class Meta:
         verbose_name = "订单状态流水表"
+        verbose_name_plural = verbose_name
+
+
+class OrderPayCa(models.Model):
+    
+    ca_no = models.CharField(max_length=255, verbose_name="流水编号")
+    order_no = models.CharField(max_length=255, verbose_name="订单编号")
+    order = models.ForeignKey(
+        Order,
+        on_delete=models.CASCADE,
+        db_constraint=False,
+        related_name="order_pay_ca",
+        verbose_name="订单",
+    )
+    pre_status = models.IntegerField(
+        choices=OrderStatusChoices.choices,
+        null=True,
+        default=None,
+        verbose_name="原始状态",
+    )
+    cur_status = models.IntegerField(
+        choices=OrderStatusChoices.choices,
+        verbose_name="当前状态",
+    )
+    
+    pay_method = models.SmallIntegerField(
+        choices=OrderPayMehtodChoices.choices,
+        default=OrderPayMehtodChoices.ALIPAY,
+        verbose_name="订单支付方式",
+    )
+    pay_amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=Decimal("0.00"),
+        verbose_name="本次金额",
+    )
+    
+    operator = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="order_pay_ca_operator",
+        db_constraint=False,
+        verbose_name="操作人",
+    )
+    operator_name = models.CharField(max_length=255, verbose_name="操作人姓名")
+    operator_phone = models.CharField(max_length=255, verbose_name="操作人手机号码")
+    operator_time = models.DateTimeField(verbose_name="操作时间")
+    operator_memo = models.TextField(null=True, default=None, verbose_name="操作备注")
+
+    @staticmethod
+    def get_sn(count=1):
+        return sn_generator.next_ids(
+            count, prefix="PAY", used_for="order.Order", letter_length=0
+        )
+
+    def save(self, *args, **kwargs):
+        if not self.ca_no:  # 只有保存时才生成
+            self.ca_no = self.get_sn()[0]
+        super().save(*args, **kwargs)
+    
+    class Meta:
+        verbose_name = "订单支付流水表"
         verbose_name_plural = verbose_name

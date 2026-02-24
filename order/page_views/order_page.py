@@ -1,7 +1,7 @@
 from django.http import Http404
 from django.shortcuts import render
 from core.utils import time_util
-from order.models import Order, OrderCa, OrderStatusChoices
+from order.models import Order, OrderCa, OrderStatusChoices, OrderPayStatusChoices, OrderPayMehtodChoices
 
 
 def order_add(request):
@@ -40,6 +40,25 @@ def order_ship(request, pk: int):
         "pay_status": order.pay_status,
     }
     return render(request, "order/order_ship.html", context)
+
+
+def order_pay(request, pk: int):
+    try:
+        order = Order.objects.get(pk=pk)
+    except Order.DoesNotExist:
+        raise Http404()
+    
+    context = {
+        "title": "订单发货",
+        "order_id": pk,
+        "pay_status_str": OrderPayStatusChoices(order.pay_status).label,
+        "total_amount": order.total_amount,
+        "discount_amount": order.discount_amount,
+        "shipping_fee": order.shipping_fee,
+        "payable_amount": order.payable_amount,
+        "paid_amount": order.paid_amount,
+    }
+    return render(request, "order/order_pay.html", context)
 
 
 

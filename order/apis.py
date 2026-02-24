@@ -5,6 +5,11 @@ from .views import (
     order_info_view,
     order_ship_view,
 )
+from .views.pay import (
+    order_pay_ca_list_view,
+    order_pay_view,
+    order_pay_method_type_all_list_view,
+)
 
 apis = {
     "": [
@@ -39,4 +44,24 @@ apis = {
             "订单发货",
         ),
     ],
+    "pay": [
+        (
+            "B0",
+            "ca_list",
+            order_pay_ca_list_view.View,
+            "查询订单支付流水",
+        ),
+        (
+            "B1",
+            "create",
+            order_pay_view.View,
+            "创建订单支付流水",
+        ),
+        (
+            "B2",
+            "pay_method_type_all_list",
+            order_pay_method_type_all_list_view.View,
+            "查询所有订单支付类型",
+        ),
+    ]
 }
