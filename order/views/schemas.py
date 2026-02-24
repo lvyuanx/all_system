@@ -35,3 +35,12 @@ class OrderInfoSchema(OrderCreateSchema):
     """订单信息"""
 
     order_id: int = Field(..., description="订单ID")
+
+
+class OrderShipSchema(BaseModel):
+    """订单发货"""
+
+    order_id: int = Field(..., description="订单ID")
+    delivery_method: int = Field(..., description="配送方式")
+    tracking_no: str = Field(..., description="物流单号")
+

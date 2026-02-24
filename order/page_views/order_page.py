@@ -19,6 +19,28 @@ def order_change(request, oid: int):
     }
     return render(request, "order/order_add.html", context)
 
+def order_ship(request, pk: int):
+    try:
+        order = Order.objects.get(pk=pk)
+    except Order.DoesNotExist:
+        raise Http404()
+    
+    context = {
+        "title": "订单发货",
+        "order_id": pk,
+        "shipping_party": order.shipping_party,
+        "shipping_party_company": order.shipping_party_company,
+        "shipping_party_phone": order.shipping_party_phone,
+        "shipping_party_address": order.shipping_party_address,
+        "receiver_name": order.receiver_name,
+        "receiver_company": order.receiver_company,
+        "receiver_phone": order.receiver_phone,
+        "receiver_address": order.receiver_address,
+        "delivery_method": order.delivery_method,
+        "pay_status": order.pay_status,
+    }
+    return render(request, "order/order_ship.html", context)
+
 
 
 def order_shipping(request):

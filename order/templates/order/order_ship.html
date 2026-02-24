@@ -1,0 +1,201 @@
+{% extends "vue_setup_base.html" %}
+{% load i18n %}
+{% load static %}
+{% load simpletags %}
+
+{% block title %}
+{{ title }}
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .ship-data-container {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .ship-info {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        width: 48%;
+        margin-bottom: 20px;
+        border: 1px solid #ebebeb;
+        border-radius: 8px;
+        padding: 8px;
+    }
+
+    .ship-info-row {
+        display: flex;
+        align-items: flex-start;
+        justify-content: flex-start;
+        width: 100%;
+        font-size: 15px;
+    }
+
+    .ship-info-title {
+        font-weight: 600;
+    }
+
+    .ship-info-data {
+        color: #413e3e;
+        margin-left: 5px;
+    }
+
+    .submit-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-top: 30px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div id="app">
+    <div class="page-container">
+        <div class="ship-data-container">
+            <div class="ship-info">
+                <div class="ship-info-row">
+                    <div class="ship-info-title">发货方: </div>
+                    <div class="ship-info-data">{{ shipping_party }}</div>
+                </div>
+                <div class="ship-info-row">
+                    <div class="ship-info-title">公司: </div>
+                    <div class="ship-info-data">{{ shipping_party_company }}</div>
+                </div>
+                <div class="ship-info-row">
+                    <div class="ship-info-title">电话: </div>
+                    <div class="ship-info-data">{{ shipping_party_phone }}</div>
+                </div>
+                <div class="ship-info-row">
+                    <div class="ship-info-title">地址: </div>
+                    <div class="ship-info-data">{{ shipping_party_address }}</div>
+                </div>
+            </div>
+            <div class="ship-info">
+                <div class="ship-info-row">
+                    <div class="ship-info-title">收货方: </div>
+                    <div class="ship-info-data">{{ receiver_name }}</div>
+                </div>
+                <div class="ship-info-row">
+                    <div class="ship-info-title">公司: </div>
+                    <div class="ship-info-data">{{ receiver_company }}</div>
+                </div>
+                <div class="ship-info-row">
+                    <div class="ship-info-title">电话: </div>
+                    <div class="ship-info-data">{{ receiver_phone }}</div>
+                </div>
+                <div class="ship-info-row">
+                    <div class="ship-info-title">地址: </div>
+                    <div class="ship-info-data">{{ receiver_address }}</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="select-ship-type">
+            <el-form :model="pageData.formData" label-width="auto" label-position="top" :rules="pageData.fromRules"
+                ref="formRef">
+                <el-form-item label="发货方式" prop="delivery_method">
+                    <el-radio-group v-model="pageData.formData.delivery_method">
+                        <el-radio :value="1">送货上门</el-radio>
+                        <el-radio :value="2">快递</el-radio>
+                        <el-radio :value="3">自提</el-radio>
+                        <el-radio :value="4">其它</el-radio>
+                    </el-radio-group>
+                </el-form-item>
+                <el-form-item label="请输入快递单号" v-if="pageData.formData.delivery_method == 2" prop="tracking_no">
+                    <el-input v-model="pageData.formData.tracking_no" placeholder="请输入快递单号: "></el-input>
+                </el-form-item>
+                <el-form-item class="submit-btn">
+                    <el-button type="default" @click="resetForm(formRef)">取消</el-button>
+                    <el-button type="primary" @click="submitForm(formRef)">确定</el-button>
+                </el-form-item>
+            </el-form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const { reactive, ref, onMounted, inject } = Vue;
+    window.createApp({
+        setup() {
+            const ElMessageBox = inject("ElMessageBox");
+            const deliveryMethod = "{{delivery_method}}"
+            const pay_status = "{{pay_status}}"
+            const orderId = "{{order_id}}"
+            const formRef = ref(null)
+            const pageData = reactive({
+                formData: {
+                    order_id: orderId,
+                    delivery_method: "",
+                    tracking_no: ""
+                },
+                fromRules: {
+                    delivery_method: [
+                        { required: true, message: '请选择发货方式', trigger: 'change' }
+                    ],
+                    tracking_no: [{ required: true, validator: validateTrackingNo, trigger: 'blur' }],
+                }
+            })
+
+
+            // ------------------------- 初始化 -------------------------
+            onMounted(() => {
+                pageData.formData.delivery_method = Number(deliveryMethod)
+            })
+
+            // ------------------------- 表单函数 -------------------------
+            function validateTrackingNo(rule, value, callback) {
+                if (pageData.formData.delivery_method == 2 && value == "") {
+                    callback(new Error('请输入快递单号'));
+                } else {
+                    callback();
+                }
+            };
+
+            const submitForm = async (formEl) => {
+                if (!formEl) return
+
+                try {
+                    await formEl.validate()
+
+                    if (pay_status == 1) {
+                        await ElMessageBox.confirm("该订单未完成支付，确定要发货吗？", "提示", {
+                            confirmButtonText: "确定",
+                            cancelButtonText: "取消",
+                            type: "warning",
+                        });
+                    }
+
+
+                    await request.put("/order/ship", pageData.formData)
+
+                    window?.parent?.parent?.app?.$message?.success("操作成功！")
+                    closeModal()
+                } catch (err) {
+                    console.log("error submit!", err)
+                }
+            }
+
+            function closeModal() {
+                if (window.parent && window.parent.closeCustomModal) {
+                    window.parent.closeCustomModal(true);
+                }
+            }
+
+            const resetForm = (formEl) => {
+                if (!formEl) return
+                formEl.resetFields()
+                closeModal()
+            }
+
+            return { pageData, formRef, submitForm, resetForm };
+        }
+    });
+</script>
+{% endblock %}

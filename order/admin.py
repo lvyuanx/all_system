@@ -13,7 +13,9 @@ from django.db import transaction
 
 
 @admin.register(Order)
-class OrderAdmin(AdminBaseMixin, FilterChangeListMixin, OperateButtonsMixin, admin.ModelAdmin):
+class OrderAdmin(
+    AdminBaseMixin, FilterChangeListMixin, OperateButtonsMixin, admin.ModelAdmin
+):
 
     list_display = (
         "order_no",
@@ -24,10 +26,9 @@ class OrderAdmin(AdminBaseMixin, FilterChangeListMixin, OperateButtonsMixin, adm
         "create_time",
         "pay_status",
         "ship_status",
-        "operate_buttons"
+        "operate_buttons",
     )
-    search_fields = ("receiver_name", "receiver_phone")
-    list_filter = ("receiver_name",)
+    search_fields = ("receiver_name", "receiver_phone", "order_no")
 
     # ------------------------------ 通用方法 ------------------------------
     def get_status_by_request(self, request: HttpRequest):
@@ -44,24 +45,41 @@ class OrderAdmin(AdminBaseMixin, FilterChangeListMixin, OperateButtonsMixin, adm
             return True
         return False
 
-
     # ------------------------------ 字段超链接配置 ------------------------------
     list_display_links = ["order_no"]
 
     # def get_list_display_links(self, request, list_display):
     #     links = super().get_list_display_links(request, list_display) or []
-        
+
     #     status = self.get_status_by_request(request)
-        
+
     #     if OrderStatusChoices.CREATED not in status:
     #         if "order_no" in links:
     #             links.remove("order_no")
 
     #     return links
-    
-    
+
+    # ------------------------------ 过滤器配置配置 ------------------------------
+    # list_filter = ["receiver_name"]
+
+    def get_list_filter(self, request):
+        list_filter = ["receiver_name"]
+        status = self.get_status_by_request(request)
+        if any(s >= OrderStatusChoices.FINISHED for s in status):
+            list_filter.extend(["pay_status", "ship_status"])
+        return list_filter
+
     # ------------------------------ 行操作按钮 ------------------------------
     operate_buttons_config = [
+        {
+            "name": "发货",
+            "type": "text",
+            "mode": "modal",
+            "icon": "el-icon-box",
+            "modal_width": "50vw",
+            "modal_height": "60vh",
+            "url": lambda obj: reverse("order_ship", kwargs={"pk": obj.pk}),
+        },
         {
             "name": "操作日志",
             "type": "text",
@@ -70,8 +88,35 @@ class OrderAdmin(AdminBaseMixin, FilterChangeListMixin, OperateButtonsMixin, adm
             "modal_width": "35vw",
             "modal_height": "80vh",
             "url": lambda obj: reverse("order_timeline", kwargs={"pk": obj.pk}),
-        }
+        },
     ]
+
+    def get_operate_buttons_config(self, obj: Order):
+        operate_buttons_config = [
+            {
+                "name": "操作日志",
+                "type": "text",
+                "mode": "modal",
+                "icon": "el-icon-date",
+                "modal_width": "35vw",
+                "modal_height": "80vh",
+                "url": lambda obj: reverse("order_timeline", kwargs={"pk": obj.pk}),
+            }
+        ]
+        if obj.order_status == OrderStatusChoices.FINISHED:
+            operate_buttons_config = [
+                {
+                    "name": "发货",
+                    "type": "text",
+                    "mode": "modal",
+                    "icon": "el-icon-box",
+                    "modal_width": "50vw",
+                    "modal_height": "60vh",
+                    "url": lambda obj: reverse("order_ship", kwargs={"pk": obj.pk}),
+                }
+            ] + operate_buttons_config
+        
+        return operate_buttons_config
 
     # ------------------------------ 批量操作按钮配置 ------------------------------
     actions = [
@@ -95,16 +140,16 @@ class OrderAdmin(AdminBaseMixin, FilterChangeListMixin, OperateButtonsMixin, adm
 
         if OrderStatusChoices.CREATED not in status:
             del actions["batch_confirm"]
-        
+
         if OrderStatusChoices.CONFIRMED not in status:
             del actions["batch_scheduled"]
-        
+
         if OrderStatusChoices.SCHEDULED not in status:
             del actions["batch_producing"]
-        
+
         if OrderStatusChoices.PRODUCING not in status:
             del actions["batch_finished"]
-        
+
         return actions
 
     @admin_util.btn(
@@ -161,8 +206,7 @@ class OrderAdmin(AdminBaseMixin, FilterChangeListMixin, OperateButtonsMixin, adm
                 count += 1
                 admin_util.log_custom_actions(request, [obj], "订单确认", 2)
         messages.success(request, f"{count} 条记录已批量确认。")
-    
-    
+
     @admin_util.btn(
         short_description="批量排产",
         type="primary",
@@ -190,7 +234,6 @@ class OrderAdmin(AdminBaseMixin, FilterChangeListMixin, OperateButtonsMixin, adm
                 admin_util.log_custom_actions(request, [obj], "订单排产", 2)
         messages.success(request, f"{count} 条记录已批量排产。")
 
-    
     @admin_util.btn(
         short_description="批量生产",
         type="primary",
@@ -217,8 +260,7 @@ class OrderAdmin(AdminBaseMixin, FilterChangeListMixin, OperateButtonsMixin, adm
                 count += 1
                 admin_util.log_custom_actions(request, [obj], "订单生产", 2)
         messages.success(request, f"{count} 条记录已批量生产。")
-    
-    
+
     @admin_util.btn(
         short_description="批量生产完成",
         type="primary",

@@ -3,6 +3,7 @@ from .views import (
     order_type_all_list_view,
     order_create_view,
     order_info_view,
+    order_ship_view,
 )
 
 apis = {
@@ -31,5 +32,11 @@ apis = {
             order_info_view.View,
             "查询订单详情",
         ),
-    ]
+        (
+            "A4",
+            "ship",
+            order_ship_view.View,
+            "订单发货",
+        ),
+    ],
 }

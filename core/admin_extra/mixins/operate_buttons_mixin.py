@@ -37,7 +37,13 @@ class OperateButtonsMixin:
     def operate_buttons(self, obj):
         buttons = []
 
-        for conf in getattr(self, "operate_buttons_config", []):
+        cfg = []
+        if hasattr(self, "get_operate_buttons_config"):
+            cfg = getattr(self, "get_operate_buttons_config")(obj)
+        elif hasattr(self, "operate_buttons_config"):
+            cfg = self.operate_buttons_config
+
+        for conf in cfg:
             label = conf.get("name", "按钮")
             btn_type = conf.get(
                 "type", "default"
