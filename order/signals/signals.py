@@ -9,11 +9,17 @@
 """
 from django.dispatch import Signal
 
+# 订单取消
 order_canceled_signal = Signal()
+
+# 订单创建
 order_created_signal = Signal()
-order_confirmed_signal = Signal()
-order_scheduled_signal = Signal()
-order_producing_signal = Signal()
-order_finished_signal = Signal()
-order_shipped_signal = Signal()
-order_completed_signal = Signal()
+
+# 订单发货
+order_ship_singal = Signal()
+
+# 订单支付
+order_pay_signal = Signal()
+
+# 订单完成
+order_complete_signal = Signal()

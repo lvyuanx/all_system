@@ -177,13 +177,18 @@
                     await formEl.validate()
 
                     if (pay_status == 1) {
-                        await ElMessageBox.confirm("该订单未完成支付，确定要发货吗？", "提示", {
-                            confirmButtonText: "确定",
+                        await ElMessageBox.confirm("该订单未完成支付，确定继续吗？", "提示", {
+                            confirmButtonText: "继续",
                             cancelButtonText: "取消",
                             type: "warning",
                         });
                     }
 
+                    await ElMessageBox.confirm("确定发货？", "提示", {
+                        confirmButtonText: "确定",
+                        cancelButtonText: "取消",
+                        type: "info",
+                    });
 
                     await request.put("/order/ship", pageData.formData)
 

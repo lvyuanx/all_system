@@ -10,6 +10,7 @@ from order.enums import OrderStatusChoices
 from order.machine import OrderStateMachine
 from order.models import Order
 from django.db import transaction
+from .signals.signals import order_canceled_signal, order_complete_signal
 
 
 @admin.register(Order)
@@ -168,7 +169,7 @@ class OrderAdmin(
     @admin_util.btn(
         short_description="批量取消",
         icon="fa-solid fa-power-off",
-        type="default",
+        type="danger",
         confirm="确定取消选中的记录吗？",
     )
     def batch_cancel(modeladmin, request, queryset):
@@ -191,6 +192,9 @@ class OrderAdmin(
                 sm.save_state()
                 count += 1
                 admin_util.log_custom_actions(request, [obj], "订单取消", 2)
+
+                order_canceled_signal.send(sender=Order, instance=obj)
+                
         messages.success(request, f"{count} 条记录已批量取消。")
 
     @admin_util.btn(
@@ -327,5 +331,7 @@ class OrderAdmin(
                 sm.save_state()
                 count += 1
                 admin_util.log_custom_actions(request, [obj], "订单签收完成", 2)
+
+                order_complete_signal.send(sender=Order, instance=obj)
         messages.success(request, f"{count} 条记录已批量签收完成。")
 

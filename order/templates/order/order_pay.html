@@ -198,12 +198,17 @@
 
                     if (compareRes == -1) {
                         await ElMessageBox.confirm("该订单未完全支付，是否继续？", "提示", {
-                            confirmButtonText: "确定",
+                            confirmButtonText: "继续",
                             cancelButtonText: "取消",
                             type: "warning",
                         });
                     }
-
+                    
+                    await ElMessageBox.confirm(`您的操作将被记录，请务必确认支付的真实性，核对好支付金额！（本次支付金额为：${pageData.formData.pay_amount}元）`, "警告", {
+                            confirmButtonText: "确认",
+                            cancelButtonText: "取消",
+                            type: "warning",
+                        });
 
                     await request.post("/order/pay/create", {
                         order_id: orderId,

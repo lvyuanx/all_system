@@ -116,6 +116,9 @@ class ClientAdmin(AdminBaseMixin, AdminListImagePreviewMixin, SiteFilterMixin, a
         "client_sex",
         "company_name",
         "full_address",
+        "total_amount",
+        "total_arrears",
+        "total_order_count",
         "unfinished_order_total",
         "is_active",
     )

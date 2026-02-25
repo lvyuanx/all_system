@@ -14,6 +14,7 @@ from core.utils import time_util
 from order.models import Order, OrderPayCa
 from django.db import transaction
 from .. import schemas
+from ...signals.signals import order_pay_signal
 
 
 @transaction.atomic
@@ -47,10 +48,14 @@ def do(request: HttpRequest, data: schemas.OrderPaySchema):
         operator_name = user.full_name,
         operator_phone = user.phone,
         operator_time = time_util.now(),
-        operator_memo = data.operator_memo
+        operator_memo = data.operator_memo,
+        receiver_name = order.receiver_name,
+        receiver_phone = order.receiver_phone,
     )
 
     pay_ca.save()
+
+    order_pay_signal.send(sender=OrderPayCa, instance=pay_ca)
 
     
     

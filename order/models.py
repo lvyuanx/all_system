@@ -347,6 +347,9 @@ class OrderPayCa(models.Model):
         verbose_name="本次金额",
     )
     
+    receiver_name = models.CharField(max_length=255, verbose_name="收货人姓名")
+    receiver_phone = models.CharField(max_length=255, verbose_name="收货人手机号码")
+    
     operator = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
