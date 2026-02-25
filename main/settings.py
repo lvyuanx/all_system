@@ -270,6 +270,7 @@ SIMPLEUI_CONFIG = {
 SIMPLEUI_LOGO = "/media/client/site_logos/fd0bc8c080424abe86bdaa44cb431913.png"
 SIMPLEUI_CUSTOM_CSS = "static/admin/simpleui-x/css/custom.css"
 SIMPLEUI_HOME_INFO = False  # 去掉右侧多余部分
+SIMPLEUI_HOME_ACTION = False  # 去掉最近动作
 # endregion ****************** simpleui end ********************* #
 
 # region ******************** 权限 start ******************** #
