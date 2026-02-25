@@ -26,12 +26,15 @@ class Pagination(AsyncLimitOffsetPagination):
     async def afilter_queryset(self, queryset: QuerySet, input_filter: dict):
         """过滤数据，根据前端传入的参数进行过滤"""
         search = input_filter.get("search")
-        if not search:  # 搜索条件为空
-            return queryset
-        queryset = queryset.filter(
-            Q(site_person_in_charge__full_name__contains=search) |
-            Q(contact_number__contains=search)
-        )
+        if search:  # 搜索条件为空
+            queryset = queryset.filter(
+                Q(site_person_in_charge__full_name__contains=search) |
+                Q(contact_number__contains=search)
+            )
+
+        site_id = input_filter.get("site_id")
+        if site_id:  # 站点ID
+            queryset = queryset.filter(site_id=site_id)
         return queryset
 
     async def aprocess_result(self, results: List) -> List:

@@ -1,4 +1,5 @@
-{% extends "vue_setup_base.html" %} {% load i18n %} {% load static %} {% load simpletags %} {% block title %} {{ title }} {% endblock %} {% block extra_css %}
+{% extends "vue_setup_base.html" %} {% load i18n %} {% load static %} {% load simpletags %} {% block title %} {{ title
+}} {% endblock %} {% block extra_css %}
 <style>
     .el-from {
         width: 100% !important;
@@ -68,7 +69,7 @@
         padding: 8px;
     }
 
-    .checkout-item-container + .checkout-item-container {
+    .checkout-item-container+.checkout-item-container {
         margin-top: 10px;
     }
 
@@ -92,7 +93,6 @@
     .checkout-item-lable {
         font-weight: 600;
     }
-
 </style>
 {% endblock %} {% block content %}
 <div id="app">
@@ -103,7 +103,7 @@
             <el-button type="primary" @click="onSubmit" :disabled="isDisabledMode">提交</el-button>
         </div>
     </div>
-    <div class="page-container"  v-loading="pageData.pageLoading">
+    <div class="page-container" v-loading="pageData.pageLoading">
         <el-form ref="orderFormRef" :model="pageData.fromData" :rules="pageData.fromData.rules" label-width="auto"
             size="default">
             <div class="order-info-container">
@@ -120,7 +120,7 @@
                     <el-form-item label="订单类型" prop="order_type">
                         <el-select v-model="pageData.fromData.order_type" placeholder="请选择订单类型">
                             <el-option v-for="item in pageData.orderTpyeOptions" :key="item.value" :label="item.label"
-                                :value="item.value" :disabled="isDisabledMode"/>
+                                :value="item.value" :disabled="isDisabledMode" />
                         </el-select>
                     </el-form-item>
                     <!-- <el-form-item label="订单工作流" prop="flow_definition">
@@ -132,18 +132,19 @@
                     <el-form-item label="订单配送方式" prop="delivery_method">
                         <el-select v-model="pageData.fromData.delivery_method" placeholder="请选择订单配送方式">
                             <el-option v-for="item in pageData.deliveryMethodOptions" :key="item.value"
-                                :label="item.label" :value="item.value" :disabled="isDisabledMode"/>
+                                :label="item.label" :value="item.value" :disabled="isDisabledMode" />
                         </el-select>
                     </el-form-item>
                     <el-form-item label="订单备注" prop="memo">
                         <el-input v-model="pageData.fromData.memo" :autosize="{ minRows: 2, maxRows: 4 }"
-                            type="textarea" placeholder="请输入订单备注" :disabled="isDisabledMode"/>
+                            type="textarea" placeholder="请输入订单备注" :disabled="isDisabledMode" />
                     </el-form-item>
                 </div>
                 <div class="order-items-container">
                     <div class="from-title">
                         <span>订单发货方</span>
-                        <el-button type="info" round plain size="small" @click="onSelectShipping" :disabled="isEditMode || isDisabledMode">
+                        <el-button type="info" round plain size="small" @click="onSelectShipping"
+                            :disabled="isEditMode || isDisabledMode">
                             导入
                             <el-icon>
                                 <search />
@@ -151,23 +152,28 @@
                         </el-button>
                     </div>
                     <el-form-item label="订单发货方" prop="shipping_party">
-                        <el-input v-model="pageData.fromData.shipping_party" placeholder="请输入发货方名称" :disabled="isEditMode || isDisabledMode" />
+                        <el-input v-model="pageData.fromData.shipping_party" placeholder="请输入发货方名称"
+                            :disabled="isEditMode || isDisabledMode" />
                     </el-form-item>
                     <el-form-item label="发货方公司" prop="shipping_party_company">
-                        <el-input v-model="pageData.fromData.shipping_party_company" placeholder="请输入发货方公司名称" :disabled="isEditMode || isDisabledMode" />
+                        <el-input v-model="pageData.fromData.shipping_party_company" placeholder="请输入发货方公司名称"
+                            :disabled="isEditMode || isDisabledMode" />
                     </el-form-item>
                     <el-form-item label="发货方电话" prop="shipping_party_phone">
-                        <el-input v-model="pageData.fromData.shipping_party_phone" placeholder="请输入发货方电话" :disabled="isEditMode || isDisabledMode" />
+                        <el-input v-model="pageData.fromData.shipping_party_phone" placeholder="请输入发货方电话"
+                            :disabled="isEditMode || isDisabledMode" />
                     </el-form-item>
                     <el-form-item label="发货方地址" prop="shipping_party_address">
                         <el-input v-model="pageData.fromData.shipping_party_address"
-                            :autosize="{ minRows: 2, maxRows: 4 }" type="textarea" placeholder="请输入发货方地址" :disabled="isDisabledMode"/>
+                            :autosize="{ minRows: 2, maxRows: 4 }" type="textarea" placeholder="请输入发货方地址"
+                            :disabled="isDisabledMode" />
                     </el-form-item>
                 </div>
                 <div class="order-items-container">
                     <div class="from-title">
                         <span>订单收货方</span>
-                        <el-button type="info" round plain size="small" @click="onSelectReceiver" :disabled="isEditMode || isDisabledMode">
+                        <el-button type="info" round plain size="small" @click="onSelectReceiver"
+                            :disabled="isEditMode || isDisabledMode">
                             导入
                             <el-icon>
                                 <search />
@@ -175,28 +181,32 @@
                         </el-button>
                     </div>
                     <el-form-item label="收货方" prop="receiver_name">
-                        <el-input v-model="pageData.fromData.receiver_name" placeholder="请输入收货方名称" :disabled="isEditMode || isDisabledMode"/>
+                        <el-input v-model="pageData.fromData.receiver_name" placeholder="请输入收货方名称"
+                            :disabled="isEditMode || isDisabledMode" />
                     </el-form-item>
                     <el-form-item label="收货方公司" prop="receiver_company">
-                        <el-input v-model="pageData.fromData.receiver_company" placeholder="请输入收货方公司名称" :disabled="isEditMode || isDisabledMode"/>
+                        <el-input v-model="pageData.fromData.receiver_company" placeholder="请输入收货方公司名称"
+                            :disabled="isEditMode || isDisabledMode" />
                     </el-form-item>
                     <el-form-item label="收货方电话" prop="receiver_phone">
-                        <el-input v-model="pageData.fromData.receiver_phone" placeholder="请输入收货方电话" :disabled="isEditMode || isDisabledMode"/>
+                        <el-input v-model="pageData.fromData.receiver_phone" placeholder="请输入收货方电话"
+                            :disabled="isEditMode || isDisabledMode" />
                     </el-form-item>
                     <el-form-item label="收货方地址" prop="receiver_address">
                         <el-input v-model="pageData.fromData.receiver_address" :autosize="{ minRows: 2, maxRows: 4 }"
-                            type="textarea" placeholder="请输入收货方地址" :disabled="isDisabledMode"/>
+                            type="textarea" placeholder="请输入收货方地址" :disabled="isDisabledMode" />
                     </el-form-item>
                 </div>
             </div>
-            
+
             <div class="from-title">
                 <span>订单项</span>
                 <div>
                     <!-- <el-button type="primary" round plain size="small" @click="toggle">
                         [[ isFullscreen ? '取消全屏' : '全屏显示']]
                     </el-button> -->
-                    <el-button type="info" round plain size="small" @click="onAddOrderItem" :disabled="isEditMode || isDisabledMode">
+                    <el-button type="info" round plain size="small" @click="onAddOrderItem"
+                        :disabled="isEditMode || isDisabledMode">
                         添加
                         <el-icon>
                             <Plus />
@@ -208,7 +218,8 @@
                 <common-table ref="tableRef" :data="pageData.fromData.items" :columns="pageData.columns"
                     :loading="pageData.loading" header-class-name="table-header-class" border>
                     <template #actions="{ row, idx }">
-                        <el-button type="primary" size="small" @click="onEditOrderItem(row, idx)" :disabled="isEditMode || isDisabledMode">编辑</el-button>
+                        <el-button type="primary" size="small" @click="onEditOrderItem(row, idx)"
+                            :disabled="isEditMode || isDisabledMode">编辑</el-button>
                     </template>
                 </common-table>
 
@@ -309,7 +320,7 @@
 
 
     <el-dialog v-model="checkoutData.dialogVisible" title="请确认订单内容" align-center width="700px">
-        
+
         <div class="checkout-container">
             <div class="checkout-item-container">
                 <div class="checkout-item-title">基础信息</div>
@@ -333,7 +344,8 @@
                     <div class="checkout-item-value">[[pageData.fromData.shipping_party_company]]</div>
                 </div>
                 <div class="checkout-item-content">
-                    <div class="checkout-item-value">[[pageData.fromData.shipping_party]] [[pageData.fromData.shipping_party_phone]] [[pageData.fromData.shipping_party_address]]</div>
+                    <div class="checkout-item-value">[[pageData.fromData.shipping_party]]
+                        [[pageData.fromData.shipping_party_phone]] [[pageData.fromData.shipping_party_address]]</div>
                 </div>
             </div>
             <div class="checkout-item-container">
@@ -343,17 +355,20 @@
                     <div class="checkout-item-value">[[pageData.fromData.receiver_company]]</div>
                 </div>
                 <div class="checkout-item-content">
-                    <div class="checkout-item-value">[[pageData.fromData.receiver_name]] [[pageData.fromData.receiver_phone]] [[pageData.fromData.receiver_address]]</div>
+                    <div class="checkout-item-value">[[pageData.fromData.receiver_name]]
+                        [[pageData.fromData.receiver_phone]] [[pageData.fromData.receiver_address]]</div>
                 </div>
             </div>
             <div class="checkout-item-container">
                 <div class="checkout-item-title">订单项</div>
                 <div class="checkout-item-content" v-for="(item, index) in pageData.fromData.items">
-                    <div class="checkout-item-value">[[index + 1]]. [[item.pattern_code]] / [[item.color]] / [[item.subtotal]][[item.total_unit]]</div>
+                    <div class="checkout-item-value">[[index + 1]]. [[item.pattern_code]] / [[item.color]] /
+                        [[item.subtotal]][[item.total_unit]]</div>
                 </div>
                 <div class="checkout-item-content">
                     <div class="checkout-item-lable">总计：</div>
-                    <div class="checkout-item-value">[[orderItemData.total]][[pageData.fromData.items[0].total_unit]]</div>
+                    <div class="checkout-item-value">[[orderItemData.total]][[pageData.fromData.items[0].total_unit]]
+                    </div>
                 </div>
             </div>
         </div>
@@ -371,7 +386,7 @@
 {% endblock %} {% block extra_js %}
 <script type="module">
     import CommonTable from "{% static 'vue/js/CommonTable.js' %}";
-    import { decimalAdd, decimalMul, decimalSub} from "{% static 'vue/js/EasyDecimal.js' %}";
+    import { decimalAdd, decimalMul, decimalSub } from "{% static 'vue/js/EasyDecimal.js' %}";
     import { useFullscreen } from "{% static 'vue/js/useFullscreen.js' %}";
     const { inject, reactive, ref, watch, onMounted, computed } = Vue;
     window.createApp({
@@ -379,7 +394,7 @@
         setup() {
             const orderId = "{{order_id}}"
             const isEditMode = orderId != ""
-            const isDisabledMode ="{{is_disabled_mode}}" == "1"
+            const isDisabledMode = "{{is_disabled_mode}}" == "1"
             const goBack = () => {
                 window.location.href = "{% get_previous_url %}"
             };
@@ -443,7 +458,6 @@
                     shipping_party_phone: "",
                     shipping_party_address: "",
                     delivery_method: "",
-                    site_id: "",
                     receiver_name: "",
                     receiver_company: "",
                     receiver_phone: "",
@@ -475,7 +489,7 @@
             const getOrderById = async () => {
                 if (!orderId) return
                 const res = await request.get("/order/info", { order_id: orderId })
-                for (const item of res.items) { 
+                for (const item of res.items) {
                     item.total = decimalMul(item.unit_price, item.count).toFixed(2)
                     item.subtotal = decimalSub(item.total, item.discount_price).toFixed(2)
                 }
@@ -527,7 +541,24 @@
                 await changeDict[dialogData.select_type]();
             }
 
+            watch(() => pageData.fromData.site_id, (n, o) => {
+                dialogData.tableFilter.site_id = n
+                pageData.fromData.shipping_party = ""
+                pageData.fromData.shipping_party_company = ""
+                pageData.fromData.shipping_party_phone = ""
+                pageData.fromData.shipping_party_address = ""
+                pageData.fromData.receiver_name = ""
+                pageData.fromData.receiver_company = ""
+                pageData.fromData.receiver_phone = ""
+                pageData.fromData.receiver_address = ""
+             })
+
             const onSelectShipping = async () => {
+                if (!pageData.fromData.site_id) {
+                    ElMessage.warning("请先选择订单站点")
+                    return
+                }
+
                 dialogData.select_type = "发货";
                 dialogData.title = "选择发货方";
                 dialogData.searchLabel = "姓名/电话号码";
@@ -558,6 +589,10 @@
             }
 
             const onSelectReceiver = async () => {
+                if (!pageData.fromData.site_id) {
+                    ElMessage.warning("请先选择订单站点")
+                    return
+                }
                 dialogData.select_type = "收货";
                 dialogData.title = "选择收货方";
                 dialogData.searchLabel = "姓名/电话号码";
@@ -691,7 +726,7 @@
                 (newVal, oldVal) => {
                     let total = new Decimal(0);
 
-                    for(const item of newVal) {
+                    for (const item of newVal) {
                         const lineSubtotal = decimalSub(
                             decimalMul(item.unit_price, item.count),
                             item.discount_price
