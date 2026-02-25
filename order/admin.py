@@ -134,6 +134,7 @@ class OrderAdmin(
         "batch_scheduled",
         "batch_producing",
         "batch_finished",
+        "batch_complete",
     ]
 
     def get_actions(self, request):
@@ -158,6 +159,9 @@ class OrderAdmin(
 
         if OrderStatusChoices.PRODUCING not in status:
             del actions["batch_finished"]
+        
+        if OrderStatusChoices.SHIPPED not in status:
+            del actions["batch_complete"]
 
         return actions
 
@@ -296,3 +300,32 @@ class OrderAdmin(
                 count += 1
                 admin_util.log_custom_actions(request, [obj], "订单生产完成", 2)
         messages.success(request, f"{count} 条记录已批量生产完成。")
+    
+    
+    @admin_util.btn(
+        short_description="批量签收",
+        type="primary",
+        confirm="确定批量签收选中的记录吗？",
+    )
+    def batch_complete(modeladmin, request, queryset):
+        if not queryset.filter(
+            order_status__in=[
+                OrderStatusChoices.SHIPPED,
+            ]
+        ).exists():
+            messages.warning(
+                request,
+                "只有[已发货]状态的订单才能签收,请检查勾选项！",
+            )
+            return
+
+        count = 0
+        with transaction.atomic():
+            for obj in queryset:
+                sm = OrderStateMachine(obj, request.user)
+                sm.complete()
+                sm.save_state()
+                count += 1
+                admin_util.log_custom_actions(request, [obj], "订单签收完成", 2)
+        messages.success(request, f"{count} 条记录已批量签收完成。")
+
