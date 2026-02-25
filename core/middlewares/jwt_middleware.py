@@ -10,6 +10,9 @@
 import logging
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from jwt import ExpiredSignatureError
+from django.contrib.auth import logout
+from django.shortcuts import redirect
+from django.urls import reverse
 
 from core.utils import token_util
 from core.conf import settings
@@ -31,53 +34,66 @@ class JWTMiddleware:
         
         
     def __call__(self, request: HttpRequest):
-        if not request.path.startswith(f"/{NINJA_BASE_URL}"):  # 只拦截ninja
+
+        req_paht = request.path
+        if req_paht.startswith("/admin/login/"):
             return self.get_response(request)
-        
+
+        is_admin = req_paht.startswith("/admin/")
         token = token_handler.get(request, TOKEN_TAG)  # 去指定来源获取token
         if not token and hasattr(request, "new_token"):
             token = request.new_token  # token 可能是上层拦截器生成的
             
         if not token:
-            return JsonResponse(
-                ErrorResponse(
-                    code="401", 
-                    msg="未登录",
-                    level=ResponseLevel.ERROR
-                ).model_dump(), 
-                status=200
-            )
+            if is_admin:
+                # 先退出登录
+                if request.user.is_authenticated:
+                    logout(request)
+                    return redirect(reverse("admin:login"))  # 跳转登录页
+            else:
+                return JsonResponse(
+                    ErrorResponse(
+                        code="401", 
+                        msg="未登录",
+                        level=ResponseLevel.ERROR
+                    ).model_dump(), 
+                    status=200
+                )
         
         try:
             token  = token_util.verify_token(token, SECRET_KEY)
         except ExpiredSignatureError:
             logger.warning(f'token已过期 - {token}')
-            return JsonResponse(
-                ErrorResponse(
-                    code="401", 
-                    msg="未登录",
-                    level=ResponseLevel.ERROR
-                ).model_dump(), 
-                status=200
-            )
+            if is_admin:
+                # 先退出登录
+                if request.user.is_authenticated:
+                    logout(request)
+                    return redirect(reverse("admin:login"))  # 跳转登录页
+            else:
+                return JsonResponse(
+                    ErrorResponse(
+                        code="401", 
+                        msg="未登录",
+                        level=ResponseLevel.ERROR
+                    ).model_dump(), 
+                    status=200
+                )
         except Exception:
             logger.error(f'token验证失败 - {token}', exc_info=True)
-            return JsonResponse(
-                ErrorResponse(
-                    code="404", 
-                    msg="未登录",
-                    level=ResponseLevel.ERROR
-                ).model_dump(), 
-                status=200
-            )
+            if is_admin:
+                # 先退出登录
+                if request.user.is_authenticated:
+                    logout(request)
+                    return redirect(reverse("admin:login"))  # 跳转登录页
+            else:
+                return JsonResponse(
+                    ErrorResponse(
+                        code="404", 
+                        msg="未登录",
+                        level=ResponseLevel.ERROR
+                    ).model_dump(), 
+                    status=200
+                )
     
         return self.get_response(request)
 
-    
-    
-    def return_login_response(self):
-        response = HttpResponse("Unauthorized", status=401)
-        # 创建一个401未授权响应
-        response['WWW-Authenticate'] = 'Basic realm="DjangoRealm"'
-        # 设置WWW-Authenticate头，提示浏览器弹出认证对话框
-        return response
