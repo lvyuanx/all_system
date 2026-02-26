@@ -296,6 +296,62 @@ PERM_PAKC = {
             "client_mgmt.client": ["add", "change", "view"],
         },
     },
+    "PATTERN_LIBRARY_MANAGE": {
+        "name": "版式库管理权限",
+        "models": {
+            "pattern_library.pattern": ["add", "change", "view"],
+        },
+    },
+    "SITE_MANAGE": {
+        "name": "站点管理权限",
+        "models": {
+            "site_mgmt.syssite": ["add", "change", "view"],
+            "site_mgmt.siteaddress": ["add", "change", "view"],
+        },
+    },
+    "ORDER_CREATE_MANAGE": {
+        "name": "订单创建/取消权限",
+        "models": {
+            "order.order": ["add", "canceled", "view"],
+        },
+    },
+    "ORDER_CONFIRM_MANAGE": {
+        "name": "订单确认权限",
+        "models": {
+            "order.order": ["confirm", "view"],
+        },
+    },
+    "ORDER_SCHEDULE_MANAGE": {
+        "name": "订单排产权限",
+        "models": {
+            "order.order": ["schedule", "view"],
+        },
+    },
+    "ORDER_PRODUCTION_MANAGE": {
+        "name": "订单生产权限",
+        "models": {
+            "order.order": ["production", "view"],
+        },
+    },
+    "ORDER_SHIP_MANAGE": {
+        "name": "订单发货权限",
+        "models": {
+            "order.order": ["ship", "view"],
+        },
+    },
+    "ORDER_COMPLETE_MANAGE": {
+        "name": "订单签收权限",
+        "models": {
+            "order.order": ["complete", "view"],
+        },
+    },
+    "ORDER_PAY_MANAGE": {
+        "name": "订单支付权限",
+        "models": {
+            "order.order": ["pay", "view"],
+            "order.orderpayca": ["add", "view"],
+        },
+    },
 }
 # endregion ****************** 权限 end ********************* #
 

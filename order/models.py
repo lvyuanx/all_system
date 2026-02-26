@@ -20,6 +20,20 @@ class Order(
 ):
     """订单表"""
 
+    _default_perm_types = (
+        "add",
+        "change",
+        "delete",
+        "view",
+        "canceled",
+        "confirm",
+        "schedule",
+        "production",
+        "ship",
+        "complete",
+        "pay",
+    )
+
     order_no = models.CharField(max_length=255, verbose_name="订单编号")
     order_type = models.IntegerField(
         choices=OrderTypeChoices.choices,
@@ -31,7 +45,7 @@ class Order(
         default=OrderStatusChoices.CREATED,
         verbose_name="订单状态",
     )
-    
+
     # 流程相关
     flow_definition = models.ForeignKey(
         "flow_engine.FlowDefinition",
@@ -190,18 +204,17 @@ class Order(
         return sn_generator.next_ids(
             count, prefix="ORD", used_for="order.Order", letter_length=0
         )
-    
+
     def update_pay_status(self):
         if self.paid_amount <= 0:
             self.pay_status = OrderPayStatusChoices.NOT_PAID
             return
-        
+
         if self.paid_amount < self.payable_amount:
             self.pay_status = OrderPayStatusChoices.PAID_PARTIAL
             return
-        
+
         self.pay_status = OrderPayStatusChoices.PAID
-        
 
     def save(self, *args, **kwargs):
         if not self.order_no:  # 只有保存时才生成
@@ -273,7 +286,6 @@ class OrderItem(
         verbose_name_plural = verbose_name
 
 
-
 class OrderCa(models.Model):
 
     order_no = models.CharField(max_length=255, verbose_name="订单编号")
@@ -284,7 +296,7 @@ class OrderCa(models.Model):
         related_name="order_ca",
         verbose_name="订单",
     )
-    
+
     pre_status = models.IntegerField(
         choices=OrderStatusChoices.choices,
         null=True,
@@ -307,14 +319,14 @@ class OrderCa(models.Model):
     operator_phone = models.CharField(max_length=255, verbose_name="操作人手机号码")
     operator_time = models.DateTimeField(verbose_name="操作时间")
     operator_memo = models.TextField(null=True, default=None, verbose_name="操作备注")
-    
+
     class Meta:
         verbose_name = "订单状态流水表"
         verbose_name_plural = verbose_name
 
 
 class OrderPayCa(models.Model):
-    
+
     ca_no = models.CharField(max_length=255, verbose_name="流水编号")
     order_no = models.CharField(max_length=255, verbose_name="订单编号")
     order = models.ForeignKey(
@@ -334,7 +346,7 @@ class OrderPayCa(models.Model):
         choices=OrderStatusChoices.choices,
         verbose_name="当前状态",
     )
-    
+
     pay_method = models.SmallIntegerField(
         choices=OrderPayMehtodChoices.choices,
         default=OrderPayMehtodChoices.ALIPAY,
@@ -346,10 +358,10 @@ class OrderPayCa(models.Model):
         default=Decimal("0.00"),
         verbose_name="本次金额",
     )
-    
+
     receiver_name = models.CharField(max_length=255, verbose_name="收货人姓名")
     receiver_phone = models.CharField(max_length=255, verbose_name="收货人手机号码")
-    
+
     operator = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
@@ -373,7 +385,7 @@ class OrderPayCa(models.Model):
         if not self.ca_no:  # 只有保存时才生成
             self.ca_no = self.get_sn()[0]
         super().save(*args, **kwargs)
-    
+
     class Meta:
         verbose_name = "订单支付流水表"
         verbose_name_plural = verbose_name

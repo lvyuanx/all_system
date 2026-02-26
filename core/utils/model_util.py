@@ -163,13 +163,52 @@ class PermissionHelperMixin(models.Model):
         return [cls._perm_wrapper(p).codename for p in perm_types]
 
     @classmethod
-    def get_perm_objs(cls, perm_types):
-        """传入权限类型列表，返回权限 Permission 对象列表"""
+    def get_perm_objs(cls, perm_types, auto_create=True):
+        """
+        传入权限类型列表，返回权限 Permission 对象列表
+        如果不存在权限且 auto_create=True，则自动创建
+        """
         from django.contrib.auth.models import Permission
         from django.contrib.contenttypes.models import ContentType
+        from django.db import transaction
+
         ct = ContentType.objects.get_for_model(cls)
-        codenames = [cls._perm_wrapper(p).codename for p in perm_types]
-        return list(Permission.objects.filter(content_type=ct, codename__in=codenames))   
+
+        # 计算期望的 codenames
+        wrappers = [cls._perm_wrapper(p) for p in perm_types]
+        codenames = [w.codename for w in wrappers]
+
+        # 已存在权限
+        existing_perms = {
+            perm.codename: perm
+            for perm in Permission.objects.filter(
+                content_type=ct,
+                codename__in=codenames
+            )
+        }
+
+        if not auto_create:
+            return list(existing_perms.values())
+
+        # 自动创建不存在的
+        created_perms = []
+        missing_wrappers = [
+            w for w in wrappers if w.codename not in existing_perms
+        ]
+
+        if missing_wrappers:
+            with transaction.atomic():
+                for w in missing_wrappers:
+                    perm, _ = Permission.objects.get_or_create(
+                        content_type=ct,
+                        codename=w.codename,
+                        defaults={
+                            "name": f"Can {w.perm_type} {cls._meta.verbose_name}"
+                        }
+                    )
+                    created_perms.append(perm)
+
+        return list(existing_perms.values()) + created_perms
 # endregion ****************** 权限 end ********************* #
 
 
