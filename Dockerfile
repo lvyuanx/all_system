@@ -12,9 +12,9 @@ WORKDIR /app
 # 复制项目依赖文件
 COPY requirements.txt .
 
-RUN pip install --upgrade pip -i http://mirrors.aliyun.com/pypi/simple/
+RUN pip install --upgrade pip -i https://mirrors.aliyun.com/pypi/simple/
 
-RUN pip install -r requirements.txt -i http://mirrors.aliyun.com/pypi/simple/
+RUN pip install -r requirements.txt -i https://mirrors.aliyun.com/pypi/simple/
 
 
 # 容器默认启动命令（可按需修改）
