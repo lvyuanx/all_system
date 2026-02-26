@@ -36,7 +36,7 @@ class JWTMiddleware:
     def __call__(self, request: HttpRequest):
 
         req_paht = request.path
-        if req_paht.startswith("/admin/login/"):
+        if req_paht.startswith("/admin/login/") or req_paht.startswith(settings.STATIC_URL):
             return self.get_response(request)
 
         is_admin = req_paht.startswith("/admin/")
