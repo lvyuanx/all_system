@@ -130,7 +130,7 @@ class UserAdmin(AdminBaseMixin, AdminListImagePreviewMixin, admin.ModelAdmin):
 
 
 @admin.register(SimpleuiMenus)
-class UserAdmin(AdminBaseMixin, admin.ModelAdmin):
+class SimpleuiMenusAdmin(AdminBaseMixin, admin.ModelAdmin):
     list_display = ("id", "name", "icon", "url", "path", "depath", "is_active")
     list_display_links = ("id",)
     """排序字段"""
@@ -138,6 +138,8 @@ class UserAdmin(AdminBaseMixin, admin.ModelAdmin):
 
     """定义哪个字段可以编辑"""
     list_editable = ("name", "icon", "url", "path", "depath", "is_active")
+
+    search_fields = ("name", "path")
 
 
 admin.site.unregister(Group)

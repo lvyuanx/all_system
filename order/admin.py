@@ -42,7 +42,7 @@ class OrderAdmin(
 
     def has_add_permission(self, request, obj=None):
         status = self.get_status_by_request(request)
-        if OrderStatusChoices.CREATED in status:
+        if  OrderStatusChoices.CREATED in status:
             return True
         return False
 

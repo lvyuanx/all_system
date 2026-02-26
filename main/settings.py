@@ -277,11 +277,26 @@ SIMPLEUI_HOME_ACTION = False  # 去掉最近动作
 PERM_PAKC = {
     "STAFF_MANAGE": {
         "name": "员工管理权限",
-        "models": {"staff.staff": ["add", "change", "view"]},
+        "models": {
+            "staff.staff": ["add", "change", "view"],
+            "core_auth.user": ["add", "change", "view"],
+            "core_auth.permissionpack": ["add", "change", "view"],
+            "auth.group": ["add", "change", "view"],
+            "auth.permission": ["add", "change", "view"],
+        },
     },
     "FINANCE_MANAGE": {
         "name": "财务管理权限",
-        "models": {"staff.staffsalary": ["add", "change", "view"]},
+        "models": {
+            "staff.staffsalary": ["add", "change", "view"],
+            "staff.staffsalaryca": ["add", "change", "view"],
+        },
+    },
+    "FINANCE_AUDIT_MANAGE": {
+        "name": "财务审核权限",
+        "models": {
+            "staff.staffsalary": ["audit", "change", "view"],
+        },
     },
     "BILL_MANAGE": {
         "name": "票据管理权限",
@@ -309,46 +324,53 @@ PERM_PAKC = {
             "site_mgmt.siteaddress": ["add", "change", "view"],
         },
     },
+    "PATTERN_LIBRARY_MANAGE": {
+        "name": "版式库管理权限",
+        "models": {
+            "pattern_library.pattern": ["add", "change", "view"],
+        },
+    },
     "ORDER_CREATE_MANAGE": {
         "name": "订单创建/取消权限",
         "models": {
-            "order.order": ["add", "canceled", "view"],
+            "order.order": ["add", "change", "cancel", "view"],
+            "order.orderitem": ["add", "change", "delete", "view"],
         },
     },
     "ORDER_CONFIRM_MANAGE": {
         "name": "订单确认权限",
         "models": {
-            "order.order": ["confirm", "view"],
+            "order.order": ["confirm", "change", "view"],
         },
     },
     "ORDER_SCHEDULE_MANAGE": {
         "name": "订单排产权限",
         "models": {
-            "order.order": ["schedule", "view"],
+            "order.order": ["schedule", "change", "view"],
         },
     },
     "ORDER_PRODUCTION_MANAGE": {
         "name": "订单生产权限",
         "models": {
-            "order.order": ["production", "view"],
+            "order.order": ["production", "change", "view"],
         },
     },
     "ORDER_SHIP_MANAGE": {
         "name": "订单发货权限",
         "models": {
-            "order.order": ["ship", "view"],
+            "order.order": ["ship", "change", "view"],
         },
     },
     "ORDER_COMPLETE_MANAGE": {
         "name": "订单签收权限",
         "models": {
-            "order.order": ["complete", "view"],
+            "order.order": ["complete", "change", "view"],
         },
     },
     "ORDER_PAY_MANAGE": {
         "name": "订单支付权限",
         "models": {
-            "order.order": ["pay", "view"],
+            "order.order": ["pay",  "change", "view"],
             "order.orderpayca": ["add", "view"],
         },
     },
@@ -360,8 +382,9 @@ PERM_PAKC = {
 INIT_SCRIPTS = merge_config(
     "INIT_SCRIPTS",
     [
-        "main.init.init_csv_sql:init_csv_sql",
+        # "main.init.init_csv_sql:init_csv_sql",
         "main.init.init_perm_pack:init_perm_pack",
+        "main.init.init_menus_perm:init_menus_perm",
     ],
 )
 DB_CSVS = merge_config(

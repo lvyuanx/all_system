@@ -25,7 +25,7 @@ class Order(
         "change",
         "delete",
         "view",
-        "canceled",
+        "cancel",
         "confirm",
         "schedule",
         "production",

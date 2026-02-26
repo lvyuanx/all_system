@@ -72,7 +72,7 @@ def get_dynamic_menus(request: HttpRequest):
     return [
         node for node in
         (build_node(top) for top in children_map.get(None, []))
-        if node is not None
+        if node is not None and node.get("models")
     ]
 
 

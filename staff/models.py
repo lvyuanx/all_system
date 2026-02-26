@@ -56,6 +56,8 @@ class Staff(model_util.PermissionHelperMixin, models.Model):
 class StaffSalary(
     model_util.PermissionHelperMixin, model_util.StructureMoelMixin, models.Model
 ):
+    
+    _default_perm_types = ("add", "change", "delete", "view", "audit")
 
     staff = models.ForeignKey(
         Staff,
