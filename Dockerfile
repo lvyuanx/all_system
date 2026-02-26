@@ -1,21 +1,24 @@
-# 使用官方 Python 3.11 镜像（体积较小的 slim 版本）
 FROM python:3.11-slim
 
-# 设置环境变量
-ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
-
-# 设置工作目录
 WORKDIR /app
 
+# 安装 mysqlclient 需要的系统依赖
+RUN apt-get update && apt-get install -y \
+    gcc \
+    pkg-config \
+    default-libmysqlclient-dev \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
 
-# 复制项目依赖文件
 COPY requirements.txt .
 
-RUN pip install --upgrade pip -i https://mirrors.aliyun.com/pypi/simple/
+RUN pip install --upgrade pip \
+    -i https://mirrors.aliyun.com/pypi/simple/ \
+    --trusted-host mirrors.aliyun.com
 
-RUN pip install -r requirements.txt -i https://mirrors.aliyun.com/pypi/simple/
+RUN pip install -r requirements.txt \
+    -i https://mirrors.aliyun.com/pypi/simple/ \
+    --trusted-host mirrors.aliyun.com
 
 
-# 容器默认启动命令（可按需修改）
-CMD ["python manage.py uvserver"]
+CMD ["python", "manage.py", "uvserver"]
