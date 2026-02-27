@@ -1,0 +1,17 @@
+version: "3.9"
+
+services:
+  all_system:
+    image: all_system:latest
+    container_name: all_system_temp
+    ports:
+      - "8801:8000"
+    volumes:
+      - /home/applications/www/all_system:/app
+    networks:
+      - 1panel-network
+    restart: unless-stopped   # 后台运行并自动重启
+
+networks:
+  1panel-network:
+    external: true
