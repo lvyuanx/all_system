@@ -15,7 +15,7 @@ DEBUG = merge_config("DEBUG", True)
 
 # 允许访问该 Django 项目的主机列表
 # 在生产环境中需要设置具体的域名或 IP 地址
-ALLOWED_HOSTS = merge_config("DEBUG", ["*"])
+ALLOWED_HOSTS = merge_config("ALLOWED_HOSTS", ["*"])
 CSRF_TRUSTED_ORIGINS = merge_config("CSRF_TRUSTED_ORIGINS", [])
 
 # 已安装的应用列表
