@@ -35,9 +35,9 @@ urlpatterns = [
     path('admin/', admin.site.urls),
 ] + NINJA_URLS
 
+# 服务媒体文件
+urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+
 if settings.DEBUG:
     # 开发环境下服务静态文件
     urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
-    
-    # 服务媒体文件
-    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
