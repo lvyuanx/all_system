@@ -150,31 +150,31 @@
                 <div class="quick-action-item">
                     <div class="container quick-card quick-card1">
                         <div class="quick-title">本月基础工资待发放</div>
-                        <div class="quick-conut">0人</div>
+                        <div class="quick-conut">[[wait_distribution_basic_count]]人</div>
                     </div>
                 </div>
             </el-col>
             <el-col :span="6">
                 <div class="quick-action-item">
                     <div class="container quick-card quick-card2">
-                        <div class="quick-title">本月工时待发放</div>
-                        <div class="quick-conut">0人</div>
+                        <div class="quick-title">待审批工资</div>
+                        <div class="quick-conut">[[wait_audit_count]]条</div>
                     </div>
                 </div>
             </el-col>
             <el-col :span="6">
                 <div class="quick-action-item">
                     <div class="container quick-card quick-card3">
-                        <div class="quick-title">本月已发放奖金</div>
-                        <div class="quick-conut">0元</div>
+                        <div class="quick-title">待修正工资</div>
+                        <div class="quick-conut">[[wait_correction_count]]条</div>
                     </div>
                 </div>
             </el-col>
             <el-col :span="6">
                 <div class="quick-action-item">
                     <div class="container quick-card quick-card4">
-                        <div class="quick-title">本月预支工资</div>
-                        <div class="quick-conut">0元</div>
+                        <div class="quick-title">待发放工资</div>
+                        <div class="quick-conut">[[wait_release_count]]条</div>
                     </div>
                 </div>
             </el-col>
@@ -349,6 +349,10 @@
                 startOfMonth: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
                 endOfMonth: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0),
                 quickBtns: [true, false, false, false, false, false],
+                wait_distribution_basic_count: 0,
+                wait_audit_count: 0,
+                wait_release_count: 0,
+                wait_correction_count: 0,
             };
         },
         mounted() {
@@ -360,8 +364,30 @@
             window.addEventListener('resize', () => {
                 this.chart.resize();
             });
+
+            this.initPage()
         },
         methods: {
+            async initPage(start, end) {
+                const pageData = await request.post("/staff/salary/staff_salary_quick_data", {
+                    start, end
+                });
+                this.wait_distribution_basic_count = pageData.wait_distribution_basic_count;
+                this.wait_audit_count = pageData.wait_audit_count;
+                this.wait_release_count = pageData.wait_release_count;
+                this.wait_correction_count = pageData.wait_correction_count;
+                this.updateChartData([
+                    { value: pageData.basic_salary, name: '基本工资' },
+                    { value: pageData.overtime_salary, name: '加班工资' },
+                    { value: pageData.hourly_salary, name: '时薪工资' },
+                    { value: pageData.bonus_salary, name: '奖金' },
+                    { value: pageData.performance_evaluation_salary, name: '绩效' },
+                    { value: pageData.commission_salary, name: '提成' },
+                    { value: pageData.other_salary, name: '其他' },
+                ]);
+            },
+
+
             // 更新图表数据
             updateChartData(newData) {
                 this.chartOption.series[0].data = newData;
@@ -411,7 +437,7 @@
 
             // 根据时间范围获取数据
             async getSalaryByRangeDate(start, end) {
-                console.log(start, end);
+                await this.initPage(start, end);
             },
 
             // 跳转到工资发放页面

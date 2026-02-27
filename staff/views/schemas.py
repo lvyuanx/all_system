@@ -54,3 +54,22 @@ class SalaryBatchDisbursementSchema(BaseModel):
     data: list[SalaryListItemSchema] = Field(..., description="发放工资列表")
     salary_type: StaffSalaryTypeChoices = Field(..., description="发放工资类型")
 
+
+
+
+class SalaryQuickDataReqSchema(BaseModel):
+    start: datetime | None = Field(default=None, description="开始时间")
+    end: datetime | None = Field(default=None, description="结束时间")
+
+class SalaryQuickDataSchema(BaseModel):
+    wait_distribution_basic_count: int = Field(..., description="本月基础工资待发放")
+    wait_audit_count: int = Field(..., description="待审批数量")
+    wait_release_count: int = Field(..., description="待发放数量")
+    wait_correction_count: int = Field(..., description="待修正数量")
+    basic_salary: Decimal = Field(..., description="基础工资")
+    overtime_salary: Decimal = Field(..., description="加班工资")
+    bonus_salary: Decimal = Field(..., description="奖金")
+    hourly_salary: Decimal = Field(..., description="时薪工资")
+    performance_evaluation_salary: Decimal = Field(..., description="绩效")
+    commission_salary: Decimal = Field(..., description="提成")
+    other_salary: Decimal = Field(..., description="其他")

@@ -5,6 +5,7 @@ from .views.salary import (
     staff_salary_hourly_batch_disbursement_view,
     staff_salary_disbursement_list_view,
     staff_salary_batch_disbursement_view,
+    staff_salary_quick_data_view
 )
 
 apis = {
@@ -44,6 +45,12 @@ apis = {
             "salary_disbursement",
             staff_salary_batch_disbursement_view.View,
             "工资批量发放",
+        ),
+        (
+            "A6",
+            "staff_salary_quick_data",
+            staff_salary_quick_data_view.View,
+            "工资快捷面板数据",
         ),
     ]
 }
