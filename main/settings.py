@@ -16,7 +16,7 @@ DEBUG = merge_config("DEBUG", True)
 # 允许访问该 Django 项目的主机列表
 # 在生产环境中需要设置具体的域名或 IP 地址
 ALLOWED_HOSTS = merge_config("ALLOWED_HOSTS", ["*"])
-# CSRF_TRUSTED_ORIGINS = merge_config("CSRF_TRUSTED_ORIGINS", [])
+CSRF_TRUSTED_ORIGINS = merge_config("CSRF_TRUSTED_ORIGINS", [])
 
 # 已安装的应用列表
 # Django 会自动在这些应用中查找模型、视图、模板等
@@ -48,7 +48,7 @@ MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",  # 安全相关中间件
     "django.contrib.sessions.middleware.SessionMiddleware",  # 会话中间件
     "django.middleware.common.CommonMiddleware",  # 通用中间件
-    # "django.middleware.csrf.CsrfViewMiddleware",  # CSRF 保护中间件
+    "django.middleware.csrf.CsrfViewMiddleware",  # CSRF 保护中间件
     "django.contrib.auth.middleware.AuthenticationMiddleware",  # 认证中间件
     "django.contrib.messages.middleware.MessageMiddleware",  # 消息中间件
     "django.middleware.clickjacking.XFrameOptionsMiddleware",  # 点击劫持保护中间件
