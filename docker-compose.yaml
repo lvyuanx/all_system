@@ -2,12 +2,12 @@ version: "3.9"
 
 services:
   all_system:
-    image: all_system:latest
-    container_name: all_system_temp
+    image: all_system:${IMAGE_TAG:-latest}
+    container_name: all_system_${IMAGE_PORT:-27001}
     ports:
-      - "8801:8000"
+      - "${IMAGE_PORT:-27001}:8000"
     volumes:
-      - /home/applications/www/all_system:/app
+      - ${IMAGE_APP_PATH}:/app
     networks:
       - 1panel-network
     restart: unless-stopped   # 后台运行并自动重启
