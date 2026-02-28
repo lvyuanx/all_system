@@ -116,3 +116,6 @@ oss/media/*
 !oss/media/system/
 !oss/media/system/**
 main/config.py
+
+
+.env.dockercompose

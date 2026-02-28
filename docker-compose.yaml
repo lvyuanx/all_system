@@ -7,7 +7,7 @@ services:
     ports:
       - "${IMAGE_PORT:-27001}:8000"
     volumes:
-      - ${IMAGE_APP_PATH}:/app
+      - ${IMAGE_APP_PATH:-/home/applications/www/all_system}:/app
     networks:
       - 1panel-network
     restart: unless-stopped   # 后台运行并自动重启
