@@ -185,20 +185,30 @@ class ImageSearchEngine:
         return len(new_files_info)
 
     def search_image(self, img_bytes: bytes, top_k: int = 5):
-        """以图搜图"""
+        """以图搜图（修复图库数量少于 top_k 时返回负无穷的问题）"""
+        # 如果图库为空，直接返回空列表
+        if len(self.filenames) == 0:
+            return []
+
+        # 限制 top_k 不超过图库大小
+        real_top_k = min(top_k, len(self.filenames))
+
+        # 提取查询图片特征
         img = Image.open(io.BytesIO(img_bytes)).convert("RGB")
         query_vec = self._extract_feature(img)
-        D, I = self.index.search(query_vec, top_k)
+
+        # 在索引中搜索
+        D, I = self.index.search(query_vec, real_top_k)
+
         results = []
         for idx, score in zip(I[0], D[0]):
             info = self.filenames[idx]
-            results.append(
-                {
-                    "stored_name": info["stored_name"],
-                    "original_name": info["original_name"],
-                    "score": float(score),
-                }
-            )
+            results.append({
+                "stored_name": info["stored_name"],
+                "original_name": info["original_name"],
+                "score": float(score),
+            })
+
         return results
 
     def search_name(self, keyword: str, limit: int = 10):
@@ -234,18 +244,23 @@ class ImageSearchEngine:
 
 
 BASE_DIR = settings.BASE_DIR
-image_search_workspace = BASE_DIR / "oss" / "media" / "image_search_workspaces"
-image_search_engine: ImageSearchEngine = None
+_image_search_workspace = BASE_DIR / "oss" / "media" / "image_search_workspaces"
+_image_search_engine: ImageSearchEngine = None
+_get_lock = threading.Lock()
 
 
-def init_image_search_engine():
+def get_image_search_engine():
     """初始化图片搜索引擎"""
-    global image_search_engine
-    if image_search_engine:
-        return
 
-    image_search_engine = ImageSearchEngine(
-        gallery_dir=image_search_workspace / "gallery",
-        data_dir=image_search_workspace / "data",
-        deleted_dir=image_search_workspace / "deleted",
-    )
+    with _get_lock:
+        global _image_search_engine
+        if _image_search_engine:
+            return _image_search_engine
+
+        _image_search_engine = ImageSearchEngine(
+            gallery_dir=_image_search_workspace / "gallery",
+            data_dir=_image_search_workspace / "data",
+            deleted_dir=_image_search_workspace / "deleted",
+        )
+
+        return _image_search_engine

@@ -11,7 +11,7 @@ from enum import StrEnum
 from functools import wraps
 import logging
 from typing import Dict, List, Tuple, cast
-from ninja import NinjaAPI, Router, Body, Query, Path, Schema, Header
+from ninja import NinjaAPI, Router, Body, Query, Path, Schema, Header, UploadedFile, File
 from django.http.request import HttpRequest
 from core.exceptions.base_exceptions import (
     SysException,
