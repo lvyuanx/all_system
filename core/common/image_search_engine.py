@@ -313,6 +313,19 @@ class ImageSearchManager:
 
     def list_groups(self):
         return os.listdir(self.groups_dir)
+    
+    def add_images(
+        self,
+        files: List[tuple[str, bytes]],
+        group: str = "default",
+    ) -> int:
+        """
+        files: [(filename, bytes), ...]
+        group: 分组名称
+        """
+
+        engine = self.get_engine(group)
+        return engine.add_images(files)
 
     def delete_image(self, stored_name: str, group: Optional[str] = None):
         if group:
