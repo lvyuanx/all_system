@@ -9,7 +9,7 @@
 """
 
 from ninja import Query
-from core.common.image_search_engine import get_image_search_engine
+from core.common.image_search_engine import get_image_search_manager
 from core.ninja_extra.api_extra import BaseApi, HttpRequest
 from .. import schemas
 
@@ -28,6 +28,7 @@ class View(BaseApi):
         page: int = Query(1, description="页码"),
         page_size: int = Query(10, description="每页数量"),
         original_name: str = Query(None, description="图片名称"),
+        group: str = Query(None, description="图库分组名称"),
     ):
-        image_search_engine = get_image_search_engine()
-        return image_search_engine.list_gallery(page, page_size, original_name)
+        image_search_manager = get_image_search_manager()
+        return image_search_manager.list_gallery(group, page, page_size, original_name)

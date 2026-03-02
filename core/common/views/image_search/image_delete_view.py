@@ -9,7 +9,7 @@
 """
 
 from ninja import Query
-from core.common.image_search_engine import get_image_search_engine
+from core.common.image_search_engine import get_image_search_manager
 from core.ninja_extra.api_extra import BaseApi, HttpRequest
 
 
@@ -22,6 +22,6 @@ class View(BaseApi):
     error_codes = []
 
     @staticmethod
-    async def api(request: HttpRequest, image_name: str = Query(..., description="图片名称")):
-        image_search_engine = get_image_search_engine()
-        image_search_engine.delete_image(image_name)
+    async def api(request: HttpRequest, image_name: str = Query(..., description="图片名称"), group: str = Query(default=None, description="图库分组名称")):
+        image_search_manager = get_image_search_manager()
+        image_search_manager.delete_image(image_name)

@@ -8,9 +8,10 @@
 # Description: 上传图片到图库
 """
 
+from ninja import Query
 from core.ninja_extra.api_extra import BaseApi, HttpRequest, UploadedFile, File
 
-from core.common.image_search_engine import get_image_search_engine
+from core.common.image_search_engine import get_image_search_manager
 
 
 class View(BaseApi):
@@ -22,8 +23,10 @@ class View(BaseApi):
     error_codes = []
 
     @staticmethod
-    async def api(request: HttpRequest, image: UploadedFile = File(...)):
-        image_search_engine = get_image_search_engine()
+    async def api(request: HttpRequest, image: UploadedFile = File(...), group: str = Query(default="default", description="图库分组名称")):
+        image_search_manager = get_image_search_manager()
+        
+        engine = image_search_manager.get_engine(group)
 
         # Django 的 UploadedFile 对象用 .name
         file_name = image.name
@@ -32,4 +35,4 @@ class View(BaseApi):
         file_bytes = image.read()  # Django 的 UploadedFile.read() 是同步方法
 
         # 添加图片
-        image_search_engine.add_images([(file_name, file_bytes)])
+        engine.add_images([(file_name, file_bytes)])
