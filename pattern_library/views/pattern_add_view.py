@@ -40,11 +40,12 @@ def do(
     tags: Optional[List[str]],
     main_image: Optional[UploadedFile],
     images: Optional[List[UploadedFile]],
+    is_active: Optional[bool],
 ):
     
     # 创建 Pattern
     
-    pattern = Pattern(code=code, memo=memo, tags=Pattern.generate_tags(*tags))
+    pattern = Pattern(code=code, memo=memo, tags=Pattern.generate_tags(*tags), is_active=is_active)
     pattern.save()  # 先保存，不然 M2M 不能添加
 
     # 处理主图
@@ -77,6 +78,7 @@ class View(BaseApi):
         memo: Optional[str] = Form(None, description="备注"),
         tags: Optional[List[str]] = Form(None, description="标签"),
         main_image: Optional[UploadedFile] = File(None, description="主图"),
+        is_active: Optional[bool] = Form(True, description="是否启用"),
         images: Optional[List[UploadedFile]] = File(None, description="辅图"),
     ):
         if await Pattern.objects.filter(code=code, is_delete=False).aexists():
@@ -89,4 +91,5 @@ class View(BaseApi):
             main_image=main_image,
             images=images,
             tags=tags,
+            is_active=is_active,
         )

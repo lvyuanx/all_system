@@ -61,4 +61,4 @@ class View(BaseApi):
 
     @staticmethod
     async def api(request: HttpRequest):
-        return Pattern.objects.all().values("code", "memo", "main_image__file")
+        return Pattern.objects.filter(is_active=True, is_delete=True).values("code", "memo", "main_image__file")

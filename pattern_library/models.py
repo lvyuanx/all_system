@@ -13,6 +13,7 @@ class Pattern(model_util.PermissionHelperMixin, model_util.StructureMoelMixin, m
         "core_common.Resource", related_name="pattern_images", verbose_name="辅图"
     )
     tags = models.CharField(max_length=255, default="", verbose_name="标签")
+    is_active = models.BooleanField(default=True, verbose_name="是否启用")
     
     
     class Meta:
@@ -25,6 +26,10 @@ class Pattern(model_util.PermissionHelperMixin, model_util.StructureMoelMixin, m
         if not tags: return
         return "," + ",".join(tags) + ","
     
+    @property
+    def tags_lst(self):
+        return [item for item in self.tags.split(",") if item]
+        
     def get_add_tags_result(self, *tags: str):
         old_tags = [item for item in self.tags.split(",") if item]
         merged_tags = list(set(old_tags + list(tags)))

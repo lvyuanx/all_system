@@ -28,6 +28,11 @@
                     <el-form-item label="标签" prop="tags">
                         <el-input-tag v-model="formData.tags" placeholder="请输入版号" aria-label="输入后请点击回车键创建标签" />
                     </el-form-item>
+                    <el-form-item label="是否启用" prop="is_active">
+                        <el-switch v-model="formData.is_active" class="ml-2" inline-prompt
+                            style="--el-switch-on-color: #13ce66; --el-switch-off-color: #ff4949" active-text="启用"
+                            inactive-text="禁用" />
+                    </el-form-item>
                     <el-form-item label="备注" prop="memo">
                         <el-input v-model="formData.memo" :autosize="{ minRows: 2, maxRows: 4 }" type="textarea"
                             placeholder="请输入备注" />
@@ -89,6 +94,7 @@
                 tags: [],
                 main_image: null,
                 images: [],
+                is_active: true,
             })
             const formConf = reactive({
                 rules: {
@@ -134,6 +140,7 @@
                 fd.append("code", formData.code)
                 fd.append("memo", formData.memo ?? "")
                 fd.append("tags", formData.tags)
+                fd.append("is_active", formData.is_active)
 
                 // 单文件
                 if (formData.main_image) {

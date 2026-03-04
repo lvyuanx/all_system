@@ -1,20 +1,21 @@
 import json
 import os
 from urllib.parse import unquote, urlparse
+
 from django import forms
 from django.contrib import admin
-
 from django.db import transaction
-from core.admin_extra.widgets import ImageUploadWidget, MultiImageUploadWidget
-from core.admin_extra.mixins import AdminListImagePreviewMixin
+from django.utils.html import format_html_join
+
+from core.admin_extra.mixins import AdminListImagePreviewMixin, AuditAdminMixin
 from core.common.utils import res_util
-from .models import Pattern
 from main.enums import ResCategoryEnum
-from core.utils import common_util
+
+from .models import Pattern
 
 
 @admin.register(Pattern)
-class PatternAdmin(AdminListImagePreviewMixin, admin.ModelAdmin):
+class PatternAdmin(AdminListImagePreviewMixin, AuditAdminMixin, admin.ModelAdmin):
     
     @transaction.atomic
     def save_model(self, request, obj, form, change):
@@ -60,7 +61,20 @@ class PatternAdmin(AdminListImagePreviewMixin, admin.ModelAdmin):
     list_display = (
         "code",
         "memo",
+        "tags_display",
+        "is_active",
         "main_image_preview",
     )
     
-    search_fields = ("code", "name")
+    search_fields = ("code", "tags", "memo")
+    
+    @admin.display(description="标签")
+    def tags_display(self, obj: Pattern):
+        tags_lst = obj.tags_lst
+        if not tags_lst:
+            return ""
+        return format_html_join(
+            '',
+            '<span style="display:inline-block; background:#ccc; color:#000; border-radius:4px; padding:4px 6px; margin:2px; font-size:12px;">{}</span>',
+            ((tag,) for tag in tags_lst)
+        )
