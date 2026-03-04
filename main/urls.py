@@ -25,6 +25,7 @@ from core.auth.urls import urls as AUTH_URLS
 from staff.urls import urls as STAFF_URLS
 from bill.urls import urls as BILL_URLS
 from order.urls import urls as ORDER_URLS
+from pattern_library.urls import urls as PATTERN_LIBRARY_URLS
 
 urlpatterns = [
     path('admin/', include(COMMON_URLS)),
@@ -32,6 +33,7 @@ urlpatterns = [
     path('admin/', include(STAFF_URLS)),
     path('admin/', include(BILL_URLS)),
     path('admin/', include(ORDER_URLS)),
+    path('admin/', include(PATTERN_LIBRARY_URLS)),
     path('admin/', admin.site.urls),
 ] + NINJA_URLS
 

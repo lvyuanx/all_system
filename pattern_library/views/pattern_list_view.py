@@ -28,7 +28,7 @@ class Pagination(AsyncLimitOffsetPagination):
         if not search:  # 搜索条件为空
             return queryset
         queryset = queryset.filter(
-            Q(name__contains=search) |
+            Q(memo__contains=search) |
             Q(code__contains=search)
         )
         return queryset
@@ -41,7 +41,6 @@ class Pagination(AsyncLimitOffsetPagination):
                     "main_image": common_util.media_url(
                         item.get("main_image__file", "")
                     ),
-                    "pattern_name": item.get("name", ""),
                     "pattern_code": item.get("code", ""),
                     "pattern_memo": item.get("memo", ""),
                 }
@@ -62,4 +61,4 @@ class View(BaseApi):
 
     @staticmethod
     async def api(request: HttpRequest):
-        return Pattern.objects.all().values("name", "code", "memo", "main_image__file")
+        return Pattern.objects.all().values("code", "memo", "main_image__file")

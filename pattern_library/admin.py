@@ -16,87 +16,6 @@ from core.utils import common_util
 @admin.register(Pattern)
 class PatternAdmin(AdminListImagePreviewMixin, admin.ModelAdmin):
     
-    
-    class AdminForm(forms.ModelForm):
-
-        image_upload = forms.FileField(
-            label="主图",
-            required=True,
-            widget=ImageUploadWidget(
-                attrs={
-                    "context": {
-                        "model_name": "pattern"
-                    }
-                }
-            ),
-        )
-        
-        images_upload = forms.FileField(
-            label="辅图",
-            required=False,
-            widget=MultiImageUploadWidget(
-                attrs={
-                    "context": {
-                        "model_name": "pattern"
-                    }
-                }
-            ),
-        )
-        
-        def clean(self):
-            cleaned_data = super().clean()
-            
-            main_image = self.files.get("image_upload")
-            main_image_url  =  self.data.get("image_upload", None)
-
-            if not main_image_url and not main_image:
-                return cleaned_data
-            
-            # 移除隐藏字段的错误
-            for field in [
-                "image_upload",
-            ]:
-                if field in self._errors:
-                    del self._errors[field]
-            return cleaned_data
-        
-        class Meta:
-            model = Pattern
-            exclude = ("main_image", "images")
-    
-    form = AdminForm
-    
-    def get_form(self, request, obj=None, **kwargs):
-        form = super().get_form(request, obj, **kwargs)
-        if obj:
-            images = obj.images.all().order_by("id")
-            image_urls = [common_util.media_url(image) for image in images]
-            form.base_fields["image_upload"].widget.attrs.update(
-                {
-                    "field_value": common_util.media_url(getattr(obj, "main_image", None)),
-                }
-            )
-            form.base_fields["images_upload"].widget.attrs.update(
-                {
-                    "field_value": image_urls,
-                }
-            )
-        else:
-            # 注意，这一步不能省略，会导致field_value出现缓存
-            form.base_fields["image_upload"].widget.attrs.update(
-                {
-                    "field_value": "",
-                }
-            )
-            form.base_fields["images_upload"].widget.attrs.update(
-                {
-                    "field_value": [],
-                }
-            )
-        
-        return form
-    
-    
     @transaction.atomic
     def save_model(self, request, obj, form, change):
         # 主图
@@ -139,7 +58,6 @@ class PatternAdmin(AdminListImagePreviewMixin, admin.ModelAdmin):
     
     image_preview = {"main_image": "主图"}
     list_display = (
-        "name",
         "code",
         "memo",
         "main_image_preview",

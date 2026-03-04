@@ -1,9 +1,10 @@
 from django.db import models
 
-class Pattern(models.Model):
+from core.utils import model_util
+
+class Pattern(model_util.PermissionHelperMixin, model_util.StructureMoelMixin, models.Model):
     
-    name = models.CharField(max_length=255, verbose_name="名称")
-    code = models.CharField(max_length=255, verbose_name="版号")
+    code = models.CharField(max_length=255, unique=True, verbose_name="版号")
     memo = models.CharField(max_length=255, null=True, blank=True, verbose_name="备注")
     main_image = models.OneToOneField(
         "core_common.Resource", on_delete=models.SET_NULL, null=True, blank=True, related_name="pattern_main_image", verbose_name="主图"
@@ -11,7 +12,28 @@ class Pattern(models.Model):
     images = models.ManyToManyField(
         "core_common.Resource", related_name="pattern_images", verbose_name="辅图"
     )
+    tags = models.CharField(max_length=255, default="", verbose_name="标签")
+    
     
     class Meta:
         verbose_name = "版式库"
         verbose_name_plural = "版式库"
+    
+    
+    @staticmethod
+    def generate_tags( *tags: str) -> str:
+        if not tags: return
+        return "," + ",".join(tags) + ","
+    
+    def get_add_tags_result(self, *tags: str):
+        old_tags = [item for item in self.tags.split(",") if item]
+        merged_tags = list(set(old_tags + list(tags)))
+        return self.__class__.generate_tags(*merged_tags)
+    
+    def get_del_tags_result(self, *tags: str):
+        old_tags = [item for item in self.tags.split(",") if item]
+        del_tags = list(set(old_tags) - set(tags))
+        return self.__class__.generate_tags(del_tags)
+
+        
+

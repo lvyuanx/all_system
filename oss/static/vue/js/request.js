@@ -93,13 +93,19 @@
       return service({ method: 'get', url, params, ...config });
     },
     async post(url, data = {}, params = {}, config = {}) {
-      return service({ method: 'post', url, data, params, ...config });
+      const isFormData = data instanceof FormData;
+      const headers = isFormData ? { 'Content-Type': 'multipart/form-data', ...config.headers } : config.headers;
+      return service({ method: 'post', url, data, params, ...config, headers });
     },
     async put(url, data = {}, params = {}, config = {}) {
-      return service({ method: 'put', url, data, params, ...config });
+      const isFormData = data instanceof FormData;
+      const headers = isFormData ? { 'Content-Type': 'multipart/form-data', ...config.headers } : config.headers;
+      return service({ method: 'put', url, data, params, ...config, headers });
     },
     async delete(url, data = {}, params = {}, config = {}) {
-      return service({ method: 'delete', url, data, params, ...config });
+      const isFormData = data instanceof FormData;
+      const headers = isFormData ? { 'Content-Type': 'multipart/form-data', ...config.headers } : config.headers;
+      return service({ method: 'delete', url, data, params, ...config, headers });
     }
   };
 

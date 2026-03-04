@@ -1,0 +1,170 @@
+{% extends "vue_setup_base.html" %}
+{% load i18n %}
+{% load static %}
+{% load simpletags %}
+
+{% block title %}
+{{ title }}
+{% endblock %}
+
+{% block extra_css %}
+<style>
+
+</style>
+{% endblock %}
+
+{% block content %}
+<div id="app">
+    <div class="page-header">
+        <el-page-header title="{% trans 'Back' %}" @back="goBack" content="{{title}}"></el-page-header>
+    </div>
+    <div class="page-container" v-loading="pageData.pageLoading">
+        <el-row justify="center">
+            <el-col :span="12">
+                <el-form :model="formData" ref="formRef" label-width="auto" :rules="formConf.rules">
+                    <el-form-item label="版号" prop="code">
+                        <el-input v-model="formData.code" placeholder="请输入版号" />
+                    </el-form-item>
+                    <el-form-item label="标签" prop="tags">
+                        <el-input-tag v-model="formData.tags" placeholder="请输入版号" aria-label="输入后请点击回车键创建标签" />
+                    </el-form-item>
+                    <el-form-item label="备注" prop="memo">
+                        <el-input v-model="formData.memo" :autosize="{ minRows: 2, maxRows: 4 }" type="textarea"
+                            placeholder="请输入备注" />
+                    </el-form-item>
+                    <el-form-item label="主图" prop="main_image">
+                        <common-image-upload v-model="mainImage" :limit="1" />
+                    </el-form-item>
+                    <el-form-item label="辅图" prop="images">
+                        <common-image-upload v-model="images" :limit="3" />
+                    </el-form-item>
+                    <el-form-item label="">
+                        <el-button type="primary" @click="onSubmit(formRef)">提交</el-button>
+                    </el-form-item>
+                </el-form>
+            </el-col>
+        </el-row>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script type="module">
+    import CommonImageUpload from "{% static 'vue/js/CommonImageUpload.js' %}";
+    const { reactive, onMounted, ref, inject } = Vue;
+    window.createApp({
+        components: { CommonImageUpload },
+        setup() {
+
+            /** 父页面弹窗 */
+            const ElMessage = inject("ElMessage");
+
+            /** 返回上级菜单 */
+            const goBack = () => {
+                window.location.href = "{% get_previous_url %}"
+            };
+
+            /** 页面数据 */
+            const pageData = reactive({
+                pageLoading: true,
+            });
+
+            // ---------------------- 初始化页面 ----------------------
+
+            /** 异步初始化页面 */
+            const asyncInit = async () => {
+                pageData.pageLoading = false;
+            };
+
+            onMounted(() => {
+                asyncInit();
+            });
+
+            // ---------------------- form 表单相关 ----------------------
+
+            const formRef = ref(null)
+            const formData = reactive({
+                code: '',
+                memo: '',
+                tags: [],
+                main_image: null,
+                images: [],
+            })
+            const formConf = reactive({
+                rules: {
+                    code: [
+                        { required: true, message: '请输入版号', trigger: 'blur' },
+                    ],
+                    main_image: [
+                        { required: true, validator: validateMainImage, trigger: 'blur' },
+                    ]
+
+                }
+            })
+            const mainImage = ref([])
+            const images = ref([])
+
+            /** 主图验证 */
+            function validateMainImage(rule, value, callback) {
+                if (!value) {
+                    callback(new Error('请上传主图'))
+                } else {
+                    callback()
+                }
+
+            }
+
+            /** 提交表单 */
+            const onSubmit = async (formEl) => {
+                if (!formEl) return
+
+                formData.main_image = (mainImage.value.length > 0) ? mainImage.value[0] : '';
+                formData.images = images.value
+                await formEl.validate()
+
+                await addPattern()
+            }
+
+            const addPattern = async (data) => {
+                console.log(formData)
+                const fd = new FormData()
+
+                // 文本字段
+                fd.append("name", formData.name)
+                fd.append("code", formData.code)
+                fd.append("memo", formData.memo ?? "")
+                fd.append("tags", formData.tags)
+
+                // 单文件
+                if (formData.main_image) {
+                    fd.append("main_image", formData.main_image.raw)
+                }
+
+                // 多文件
+                formData.images.forEach(file => {
+                    fd.append("images", file.raw)
+                })
+
+                await request.post("/pattern_library/pattern_add", fd)
+                ElMessage.success("添加成功")
+                goBack()
+            }
+
+
+            return {
+                pageData,
+                goBack,
+
+                // form表单相关
+                formRef,
+                formData,
+                formConf,
+                mainImage,
+                images,
+                onSubmit,
+
+            };
+        }
+    });
+</script>
+{% endblock %}
