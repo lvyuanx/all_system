@@ -118,4 +118,7 @@ oss/media/*
 main/config.py
 
 
-.env.dockercompose
+# ================================
+# Docker
+# ================================
+docker/.env
