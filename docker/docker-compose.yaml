@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   all_system:
     image: all_system:${IMAGE_TAG:-latest}
