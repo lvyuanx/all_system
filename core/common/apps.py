@@ -6,3 +6,6 @@ class CoreCommonConfig(AppConfig):
     name = 'core.common' 
     label = 'core_common'
     verbose_name = "公共模块"
+    
+    def ready(self):
+        from .signals import receivers

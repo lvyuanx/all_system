@@ -24,7 +24,9 @@ def upload_res(
     from ..models import Resource
 
     # 转换成列表，统一处理
+    single_file = False
     if  not isinstance(files, list):
+        single_file = True
         files = [files]
 
     if not files:
@@ -60,7 +62,7 @@ def upload_res(
             created_ids.append(res.pk)
 
     # 如果只传 1 个文件，返回 int
-    if len(created_ids) == 1:
+    if single_file:
         return created_ids[0]
 
     return created_ids
