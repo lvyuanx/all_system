@@ -23,7 +23,7 @@
             <el-col :span="12">
                 <el-form :model="formData" ref="formRef" label-width="auto" :rules="formConf.rules">
                     <el-form-item label="版号" prop="code">
-                        <el-input v-model="formData.code" placeholder="请输入版号" />
+                        <el-input v-model="formData.code" placeholder="请输入版号" :disabled="patternId" />
                     </el-form-item>
                     <el-form-item label="标签" prop="tags">
                         <el-input-tag v-model="formData.tags" placeholder="请输入版号" aria-label="输入后请点击回车键创建标签" />
@@ -61,6 +61,9 @@
         components: { CommonImageUpload },
         setup() {
 
+            /** django 注入 */
+            const patternId = "{{pattern_id}}"
+
             /** 父页面弹窗 */
             const ElMessage = inject("ElMessage");
 
@@ -79,6 +82,15 @@
             /** 异步初始化页面 */
             const asyncInit = async () => {
                 pageData.pageLoading = false;
+                if (patternId) {
+                    const res = await request.get("/pattern_library/pattern_info", { pattern_id: patternId })
+                    formData.code = res.code
+                    formData.memo = res.memo
+                    formData.tags = res.tags
+                    formData.is_active = res.is_active
+                    mainImage.value = [res.main_image]
+                    images.value = res.images || []
+                }
             };
 
             onMounted(() => {
@@ -127,38 +139,51 @@
                 formData.main_image = (mainImage.value.length > 0) ? mainImage.value[0] : '';
                 formData.images = images.value
                 await formEl.validate()
-
-                await addPattern()
+                
+                await EditPattern()
             }
 
-            const addPattern = async (data) => {
+            const EditPattern = async (data) => {
                 console.log(formData)
                 const fd = new FormData()
 
                 // 文本字段
-                fd.append("name", formData.name)
                 fd.append("code", formData.code)
                 fd.append("memo", formData.memo ?? "")
                 fd.append("tags", formData.tags)
                 fd.append("is_active", formData.is_active)
-
+                
                 // 单文件
                 if (formData.main_image) {
-                    fd.append("main_image", formData.main_image.raw)
+                    if(formData.main_image.raw) {
+                        fd.append("main_image", formData.main_image.raw)
+                    } else {
+                        fd.append("main_image_id", formData.main_image.rid)
+                    }
                 }
 
                 // 多文件
                 formData.images.forEach(file => {
-                    fd.append("images", file.raw)
+                    if(file.raw) {
+                        fd.append("images", file.raw)
+                    } else {
+                        fd.append("image_ids", file.rid)
+                    }
                 })
 
-                await request.post("/pattern_library/pattern_add", fd)
-                ElMessage.success("添加成功")
+                if (patternId) {
+                    fd.append("pattern_id", patternId)
+                    await request.post("/pattern_library/pattern_change", fd)
+                } else {
+                    await request.post("/pattern_library/pattern_add", fd)
+                }
+                ElMessage.success("操作成功")
                 goBack()
             }
 
 
             return {
+                patternId,
                 pageData,
                 goBack,
 

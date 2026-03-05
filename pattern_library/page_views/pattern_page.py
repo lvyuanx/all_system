@@ -7,4 +7,12 @@ def add_pattern(request):
     context = {
         "title": "添加版式",
     }
-    return render(request, "pattern_library/pattern_add.html", context)
+    return render(request, "pattern_library/pattern_edit.html", context)
+
+
+def change_pattern(request, pid: int):
+    context = {
+        "title": "订单编辑",
+        "pattern_id": pid,
+    }
+    return render(request, "pattern_library/pattern_edit.html", context)
