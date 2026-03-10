@@ -13,3 +13,5 @@ transitions >=0.9.3, <0.10.0
 django-adminfilters >=2.6, <2.7
 colorlog >=6.10.1, <6.11.0
 mysqlclient >=2.2.7, <2.3.0
+httpx>=0.28.1,<0.29.0
+tenacity>=9.1.4,<9.2.0
