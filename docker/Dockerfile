@@ -15,14 +15,13 @@ RUN rm -rf /etc/apt/sources.list.d/* \
     && echo "deb https://mirrors.aliyun.com/debian bookworm-updates main contrib non-free non-free-firmware" >> /etc/apt/sources.list \
     && echo "deb https://mirrors.aliyun.com/debian-security bookworm-security main contrib non-free non-free-firmware" >> /etc/apt/sources.list
 
-# 🔥 修复点1：增加 pkg-config
+# 安装编译依赖
 RUN apt-get update && apt-get install -y \
     gcc \
-    build-essential \
     pkg-config \
     default-libmysqlclient-dev \
-    curl \
     ca-certificates \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 # 复制依赖文件
@@ -33,14 +32,11 @@ COPY requirements_linux.txt .
 RUN pip install --upgrade pip \
     -i https://mirrors.aliyun.com/pypi/simple/
 
-# 安装 Python 依赖
-RUN pip install --no-cache-dir \
+# 安装 Python 依赖（使用缓存）
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install --no-cache-dir \
     --prefix=/install \
     -r requirements.txt \
-    -i https://mirrors.aliyun.com/pypi/simple/
-
-RUN pip install --no-cache-dir \
-    --prefix=/install \
     -r requirements_linux.txt \
     -i https://mirrors.aliyun.com/pypi/simple/
 
@@ -65,15 +61,15 @@ RUN rm -rf /etc/apt/sources.list.d/* \
     && echo "deb https://mirrors.aliyun.com/debian bookworm-updates main contrib non-free non-free-firmware" >> /etc/apt/sources.list \
     && echo "deb https://mirrors.aliyun.com/debian-security bookworm-security main contrib non-free non-free-firmware" >> /etc/apt/sources.list
 
-# 🔥 修复点2：改为运行时库，不用 dev 包
+# 运行时依赖
 RUN apt-get update && apt-get install -y \
     libmariadb3 \
     curl \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-# 拷贝已编译 Python 包
+# 拷贝已安装 Python 包
 COPY --from=builder /install /usr/local
 
-# 不 COPY 代码，使用 -v 挂载
+# 默认运行
 CMD ["python", "manage.py", "uvserver"]
