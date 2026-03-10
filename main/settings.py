@@ -419,3 +419,14 @@ DB_CSVS = merge_config(
     ],
 )
 # endregion ****************** 系统初始化相关 end ********************* #
+
+
+# region ******************** 图片搜索服务 start ******************** #
+IMAGE_SEARCH_APPID = merge_config("IMAGE_SEARCH_APPID")
+IMAGE_SEARCH_SECRET_KEY = merge_config("IMAGE_SEARCH_SECRET_KEY")
+IMAGE_SEARCH_BASE_URL = merge_config("IMAGE_SEARCH_BASE_URL")
+IMAGE_SEARCH_TIMEOUT = merge_config("IMAGE_SEARCH_TIMEOUT", 300)
+# endregion ****************** 图片搜索服务 end ********************* #
+
+
+

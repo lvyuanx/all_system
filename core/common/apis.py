@@ -1,6 +1,5 @@
 from django.conf import settings
 from .views import get_province_view, get_city_view, get_district_view
-from .views.image_search import image_add_view, image_delete_view, image_search_view, image_list_view
 
 apis = {
     "province": [
@@ -15,11 +14,12 @@ apis = {
 }
 
 if settings.DEBUG:
-    
+    from .views.image_search import image_list_view, image_add_view, image_rebuild_view, image_clear_view, image_delete_view, image_search_view
     apis["image_search"] = [
-        ("D1", "add", image_add_view.View, "添加图片到图库"),
-        ("D2", "del", image_delete_view.View, "从图库删除图片"),
-        ("D3", "search", image_search_view.View, "以图搜图"),
-        ("D4", "list", image_list_view.View, "查看图库中的图片列表"),
+        ("D0", "list", image_list_view.View, "分页查询图片信息"),
+        ("D1", "add", image_add_view.View, "添加图片信息"),
+        ("D2", "rebuild", image_rebuild_view.View, "重建图片索引"),
+        ("D3", "clear", image_clear_view.View, "清空图片索引"),
+        ("D4", "delete", image_delete_view.View, "删除图片信息"),
+        ("D5", "search", image_search_view.View, "以图搜图"),
     ]
-    

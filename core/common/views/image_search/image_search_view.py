@@ -1,16 +1,17 @@
 # -*-coding:utf-8 -*-
 
 """
-# File       : iamge_search_view.py
-# Time       : 2026-03-02 09:23:46
+# File       : image_search_view.py
+# Time       : 2026-03-10 10:57:24
 # Author     : lvyuanxiang
 # version    : python 3.11
 # Description: 以图搜图
 """
-from ninja import Query
-from core.common.image_search_engine import get_image_search_manager
-from core.ninja_extra.api_extra import BaseApi, HttpRequest, UploadedFile, File
-from .. import schemas
+
+from core.common.utils import res_util
+from core.common.views.schemas import ImageSearchResultListItemSchema
+from core.ninja_extra.api_extra import BaseApi, HttpRequest, UploadedFile, File, Query
+from core.common.image_search import image_search_adapter
 
 
 class View(BaseApi):
@@ -18,21 +19,15 @@ class View(BaseApi):
     api_status = BaseApi.ApiStatus.DEV_IN_PROGRESS
     methods = ["POST"]
     finally_code = "000", "以图搜图失败"
-    response_schema = list[schemas.ImageSearchResultListItemSchema]
+    response_schema = list[ImageSearchResultListItemSchema]
     error_codes = []
 
     @staticmethod
     async def api(
         request: HttpRequest,
-        image: UploadedFile = File(...),
-        top_k: int = Query(5, description="搜索结果数量"),
-        group: str | None = Query(default=None, description="图库分组名称"),
+        file: UploadedFile = File(..., description="图片"),
+        group: str = Query("default", description="分组"),
     ):
-        image_search_manager = get_image_search_manager()
-        return image_search_manager.search(
-            image.file.read(),
-            top_k=top_k,
-            group=group,
-        )
-
-            
+        md5 = res_util.calc_file_md5(file)
+        res = await image_search_adapter.image_search(file=file, md5=md5, group=group)
+        return res
