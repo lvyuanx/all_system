@@ -38,10 +38,10 @@
                             placeholder="请输入备注" />
                     </el-form-item>
                     <el-form-item label="主图" prop="main_image">
-                        <common-image-upload v-model="mainImage" :limit="1" />
+                        <common-image-upload v-model="mainImage" ref="mainImageRef" :limit="1" />
                     </el-form-item>
                     <el-form-item label="辅图" prop="images">
-                        <common-image-upload v-model="images" :limit="3" />
+                        <common-image-upload v-model="images" ref="imagesRef" :limit="3" />
                     </el-form-item>
                     <el-form-item label="">
                         <el-button type="primary" @click="onSubmit(formRef)">提交</el-button>
@@ -56,6 +56,7 @@
 {% block extra_js %}
 <script type="module">
     import CommonImageUpload from "{% static 'vue/js/CommonImageUpload.js' %}";
+    import useHideUploadButton from "{% static 'vue/js/useHideUploadButton.js' %}";
     const { reactive, onMounted, ref, inject } = Vue;
     window.createApp({
         components: { CommonImageUpload },
@@ -121,6 +122,10 @@
             })
             const mainImage = ref([])
             const images = ref([])
+            const mainImageRef = ref(null)
+            const imagesRef = ref(null)
+            useHideUploadButton(mainImageRef, mainImage, 1);
+            useHideUploadButton(imagesRef, images, 3);
 
             /** 主图验证 */
             function validateMainImage(rule, value, callback) {
@@ -192,6 +197,8 @@
                 formData,
                 formConf,
                 mainImage,
+                mainImageRef,
+                imagesRef,
                 images,
                 onSubmit,
 

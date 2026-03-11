@@ -426,6 +426,7 @@ IMAGE_SEARCH_APPID = merge_config("IMAGE_SEARCH_APPID", "")
 IMAGE_SEARCH_SECRET_KEY = merge_config("IMAGE_SEARCH_SECRET_KEY", "")
 IMAGE_SEARCH_BASE_URL = merge_config("IMAGE_SEARCH_BASE_URL", "http://127.0.0.1:8001/api")
 IMAGE_SEARCH_TIMEOUT = merge_config("IMAGE_SEARCH_TIMEOUT", 300)
+IMAGE_SEARCH_GROUP = merge_config("IMAGE_SEARCH_GROUP", "default")
 # endregion ****************** 图片搜索服务 end ********************* #
 
 

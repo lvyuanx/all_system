@@ -8,6 +8,7 @@
 # Description: 查询图库列表接口
 """
 
+from django.conf import settings
 from core.common.views.schemas import ImageResultListItemSchema
 from core.ninja_extra.api_extra import BaseApi, HttpRequest, Query
 from core.common.image_search import image_search_adapter
@@ -27,13 +28,12 @@ class View(BaseApi):
     @staticmethod
     async def api(
         request: HttpRequest,
-        group: str = Query("default", description="图片分组"),
         page: int = Query(1, description="页码"),
         page_size: int = Query(20, description="每页数量"),
         keyword: str = Query(None, description="搜索关键词"),
         order: str = Query("desc", description="排序方式"),
     ):
-        res = await image_search_adapter.image_list(group, page, page_size, keyword, order)
+        res = await image_search_adapter.image_list(settings.IMAGE_SEARCH_GROUP, page, page_size, keyword, order)
         return AsyncLimitOffsetPagination.Output(
             current_page=res.get("page"),
             page_size=res.get("page_size"),

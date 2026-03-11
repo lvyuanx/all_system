@@ -16,3 +16,10 @@ def change_pattern(request, pid: int):
         "pattern_id": pid,
     }
     return render(request, "pattern_library/pattern_edit.html", context)
+
+
+def search_pattern(request):
+    context = {
+        "title": "图库搜索",
+    }
+    return render(request, "pattern_library/pattern_search.html", context)

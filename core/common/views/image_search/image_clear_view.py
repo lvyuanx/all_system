@@ -8,6 +8,7 @@
 # Description: 清空图库
 """
 
+from django.conf import settings
 from ninja import Query
 from core.ninja_extra.api_extra import BaseApi, HttpRequest
 from core.common.image_search import image_search_adapter
@@ -22,5 +23,5 @@ class View(BaseApi):
     error_codes = []
 
     @staticmethod
-    async def api(request: HttpRequest, group: str = Query("default", description="图片分组")):
-        await image_search_adapter.image_clear(group)
+    async def api(request: HttpRequest):
+        await image_search_adapter.image_clear(settings.IMAGE_SEARCH_GROUP)

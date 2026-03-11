@@ -1,0 +1,164 @@
+{% extends "vue_setup_base.html" %}
+{% load i18n %}
+{% load static %}
+{% load simpletags %}
+
+{% block title %}
+{{ title }}
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .search-container {
+        display: flex;
+        flex-direction: row;
+        height: 100%;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .search-box {
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        width: 38%;
+        height: 100%;
+    }
+
+    .data-box {
+        width: 60%;
+        height: 100%;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div id="app">
+    <div class="page-container" v-loading="pageData.pageLoading">
+        <div class="search-container">
+            <div class="search-box">
+                <el-form label-width="auto" inline>
+                    <el-form-item>
+                        <common-image-upload ref="imageRef" v-model="image" :limit="1" />
+                    </el-form-item>
+                    <el-form-item>
+                        <el-button type="primary" @click="onSubmit">搜索</el-button>
+                        <el-button @click="onClear">清空</el-button>
+                    </el-form-item>
+                </el-form>
+                <common-table :data="searchResultTable.items" :columns="searchResultTable.columns"
+                    :loading="searchResultTable.loading" style="flex: 1;">
+                    <template #actions="{ row }">
+                        <el-button type="primary" size="small" @click="showDetail(row)">查看详情</el-button>
+                    </template>
+                </common-table>
+            </div>
+            <div class="data-box">
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script type="module">
+    import CommonImageUpload from "{% static 'vue/js/CommonImageUpload.js' %}";
+    import CommonTable from "{% static 'vue/js/CommonTable.js' %}"
+    import useHideUploadButton from "{% static 'vue/js/useHideUploadButton.js' %}";
+    const { reactive, onMounted, ref, watch, inject } = Vue;
+    window.createApp({
+        components: { CommonImageUpload, CommonTable },
+        setup() {
+
+            /** 父页面弹窗 */
+            const ElMessage = inject("ElMessage");
+
+            /** 返回上级菜单 */
+            const goBack = () => {
+                window.location.href = "{% get_previous_url %}"
+            };
+
+            /** 页面数据 */
+            const pageData = reactive({
+                pageLoading: true,
+            });
+
+            // ---------------------- 初始化页面 ----------------------
+
+            /** 异步初始化页面 */
+            const asyncInit = async () => {
+                pageData.pageLoading = false;
+            };
+
+            onMounted(() => {
+                asyncInit();
+            });
+
+            // ---------------------- search 表单 ----------------------
+            const image = ref([])
+            const imageRef = ref(null)
+            // 自动隐藏上传按钮
+            useHideUploadButton(imageRef, image, 1);
+
+            // 提交表单
+            const onSubmit = async () => {
+                if (image.value.length === 0) {
+                    ElMessage.error('请上传图片');
+                    return
+                }
+                try{
+                    searchResultTable.loading = true
+                    const fd = new FormData()
+
+                    fd.append('file', image.value[0].raw)
+
+                    const res = await request.post("/common/image_search/search", fd)
+                    for (const item of res) {
+                        item.score = (item.score * 100).toFixed(2) + "%"
+                    }
+                    searchResultTable.items = res
+
+                } finally{
+                    searchResultTable.loading = false
+                }
+            };
+
+            const onClear =  () => {
+                searchResultTable.items = []
+                image.value = []
+            }
+
+
+            // ---------------------- 搜索结果表格 ----------------------
+            const searchResultTable = reactive({
+                items: [
+                ],
+                columns: [
+                    { prop: "url", label: "图片", type: "image", align: "center"},
+                    { prop: "score", label: "相似度", align: "center", width: 120 },
+                ],
+                loading: false,
+            })
+            const showDetail = async(row) => {
+
+            }
+
+
+            return {
+                pageData,
+                goBack,
+
+                // search 表单
+                image,
+                imageRef,
+                onSubmit,
+                onClear,
+
+                // 搜索结果表格
+                searchResultTable
+
+            };
+        }
+    });
+</script>
+{% endblock %}

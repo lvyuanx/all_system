@@ -147,7 +147,7 @@ export default {
           </template>
           <template #default="{ row }">
           <el-input v-if="col.type === 'input'" v-model="row[col.prop]" size="small" clearable />
-          <el-image v-else-if="col.type === 'image'" :src="row[col.prop]" fit="contain" />
+          <el-image v-else-if="col.type === 'image'" :src="row[col.prop]" fit="contain" lazy/>
             <el-switch v-else-if="col.type === 'switch'" v-model="row[col.prop]" />
             <el-select v-else-if="col.type === 'select'" v-model="row[col.prop]" placeholder="请选择" size="small" style="width:120px">
               <el-option v-for="opt in col.options || []" :key="opt.value" :label="opt.label" :value="opt.value" />

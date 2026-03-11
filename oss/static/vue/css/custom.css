@@ -95,6 +95,9 @@ body,
     justify-content: center;
 }
 
+.el-table__header {
+    width: 100% !important;
+}
 
 
 .form-row.errors {
