@@ -4,7 +4,9 @@ import logging
 from typing import Any, Dict, Optional
 
 import httpx
-from tenacity import retry, stop_after_attempt, wait_exponential
+from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
+
+from core.utils import time_util
 
 logger = logging.getLogger(__name__)
 
@@ -17,7 +19,7 @@ class HttpClient:
     def __init__(
         self,
         base_url: str = "",
-        timeout: int = 10,
+        timeout: int = 30,
         headers: Optional[Dict[str, str]] = None,
     ):
         self.base_url = base_url.rstrip("/")
@@ -30,24 +32,39 @@ class HttpClient:
         )
 
     async def close(self):
+        """
+        关闭连接池
+        """
         await self.client.aclose()
 
     @retry(
+        retry=retry_if_exception_type((
+            httpx.TimeoutException,
+            httpx.ConnectError,
+        )),
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, min=1, max=5),
+        reraise=True,
     )
     async def request(
         self,
         method: str,
         url: str,
-        params: Dict[str, Any] = None,
-        json: Dict[str, Any] = None,
-        data: Dict[str, Any] = None,
-        headers: Dict[str, str] = None,
-        files: Dict[str, Any] = None,
+        params: Optional[Dict[str, Any]] = None,
+        json: Optional[Dict[str, Any]] = None,
+        data: Optional[Dict[str, Any]] = None,
+        headers: Optional[Dict[str, str]] = None,
+        files: Optional[Dict[str, Any]] = None,
     ) -> Any:
 
+        start = time_util.now_timestamp()
+
         try:
+
+            logger.debug(
+                f"HTTP Request {method} {url} "
+                f"params={params} json={json}"
+            )
 
             resp = await self.client.request(
                 method=method,
@@ -61,6 +78,14 @@ class HttpClient:
 
             resp.raise_for_status()
 
+            cost = (time_util.now_timestamp() - start) * 1000
+
+            logger.info(
+                f"⚡️ HTTP {method} {url} "
+                f"status={resp.status_code} "
+                f"{cost:.2f}ms"
+            )
+
             content_type = resp.headers.get("content-type", "")
 
             if "application/json" in content_type:
@@ -71,18 +96,18 @@ class HttpClient:
         except httpx.HTTPStatusError as e:
 
             logger.error(
-                "HTTP error %s %s status=%s body=%s",
-                method,
-                url,
-                e.response.status_code,
-                e.response.text,
+                f"HTTP error {method} {url} "
+                f"status={e.response.status_code} "
+                f"body={e.response.text}"
             )
 
             raise
 
-        except Exception as e:
+        except Exception:
 
-            logger.exception("HTTP request failed %s %s", method, url)
+            logger.exception(
+                f"HTTP request failed {method} {url}"
+            )
 
             raise
 
@@ -97,3 +122,6 @@ class HttpClient:
 
     async def delete(self, url: str, **kwargs):
         return await self.request("DELETE", url, **kwargs)
+    
+    
+http_client = HttpClient()

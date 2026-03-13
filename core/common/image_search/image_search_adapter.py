@@ -3,7 +3,7 @@ import re
 from urllib.parse import urlparse
 
 from core.exceptions.base_exceptions import BaseException
-from .http_client import HttpClient
+from core.utils.http_client import http_client
 from .sign_util import SignUtil
 from django.conf import settings
 
@@ -29,7 +29,7 @@ async def image_list(group, page=1, page_size=20, keyword="", order="desc"):
         "url": url_path,
     }
     sign_params = sign_util.create_sign(params)
-    res = await HttpClient().get(
+    res = await http_client.get(
         url,
         params=sign_params,
     )
@@ -37,23 +37,24 @@ async def image_list(group, page=1, page_size=20, keyword="", order="desc"):
     return _http_response(res, url_path)
 
 
-async def image_add(file, md5, group):
+async def image_add(file, md5, group, filename, content_type):
+
     url = settings.IMAGE_SEARCH_BASE_URL + "/image"
     url_path = urlparse(url).path
+
     params = {"md5": md5, "group": group, "url": url_path}
     sign_params = sign_util.create_sign(params)
-    filename = os.path.basename(urlparse(file.name).path)
-    res = await HttpClient().post(
+
+    files = {
+        "file": (filename, file, content_type)
+    }
+
+    res = await http_client.post(
         url,
-        files={
-            "file": (
-                filename,
-                file.file,
-                file.content_type or "image/jpeg",
-            )
-        },
         params=sign_params,
+        files=files,
     )
+
     _http_response(res, url_path)
 
 async def rebuild():
@@ -61,7 +62,7 @@ async def rebuild():
     url_path = urlparse(url).path
     params = {"url": url_path}
     sign_params = sign_util.create_sign(params)
-    res = await HttpClient().get(url, params=sign_params)
+    res = await http_client.get(url, params=sign_params)
     _http_response(res, url_path)
 
 
@@ -70,7 +71,7 @@ async def image_clear(group):
     url_path = urlparse(url).path
     params = {"group": group, "url": url_path}
     sign_params = sign_util.create_sign(params)
-    res = await HttpClient().delete(url, params=sign_params)
+    res = await http_client.delete(url, params=sign_params)
     _http_response(res, url_path)
 
 
@@ -79,7 +80,7 @@ async def image_delete(name):
     url_path = urlparse(url).path
     params = {"origin_name": name, "url": url_path}
     sign_params = sign_util.create_sign(params)
-    res = await HttpClient().delete(url, params=sign_params)
+    res = await http_client.delete(url, params=sign_params)
     _http_response(res, url_path)
 
 
@@ -89,7 +90,7 @@ async def image_search(file, md5, group):
     params = {"md5": md5, "group": group, "url": url_path}
     sign_params = sign_util.create_sign(params)
     filename = os.path.basename(urlparse(file.name).path)
-    res = await HttpClient().post(
+    res = await http_client.post(
         url,
         files={
             "file": (

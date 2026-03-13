@@ -5,7 +5,7 @@ export default {
     columns: { type: Array, default: () => [] },
     loading: { type: Boolean, default: false },
     selectableIsShow: { type: Boolean, default: false },  // 是否显示多选按框
-    selectable : { type: Function, default: (row, rowIdx) => true },
+    selectable: { type: Function, default: (row, rowIdx) => true },
     height: { type: [String, Number], default: "100%" },
     isPaginated: { type: Boolean, default: false },
     currentPage: { type: Number, default: 1 },
@@ -22,7 +22,8 @@ export default {
       localCurrentPage: this.currentPage,
       localPageSize: this.pageSize,
       localTotalCount: this.totalCount,
-      localFilterForm: { ...this.filterForm } // 内部可修改
+      localFilterForm: { ...this.filterForm }, // 内部可修改
+      previewSrcList: [],
     };
   },
   watch: {
@@ -65,10 +66,10 @@ export default {
       this.$emit("update:pageSize", this.localPageSize);
       this.$emit("update:totalCount", this.localTotalCount);
       this.$emit("update:filterForm", this.localFilterForm); // 双向绑定过滤条件
-      this.$emit("page-change", { 
-        page: this.localCurrentPage, 
-        size: this.localPageSize, 
-        filters: this.localFilterForm 
+      this.$emit("page-change", {
+        page: this.localCurrentPage,
+        size: this.localPageSize,
+        filters: this.localFilterForm
       });
     },
     handleFilterSubmit() {
@@ -82,12 +83,15 @@ export default {
     },
     // 外部调用重置方法
     resetFilters() {
-        this.handleFilterReset();
-        this.$emit("page-change")
+      this.handleFilterReset();
+      this.$emit("page-change")
     },
     // 获取表格实例
     getTableRef() {
       return this.$refs.innerTable;
+    },
+    handlePreview(src) {
+      this.previewSrcList = [src];
     }
   },
   mounted() {
@@ -147,13 +151,14 @@ export default {
           </template>
           <template #default="{ row }">
           <el-input v-if="col.type === 'input'" v-model="row[col.prop]" size="small" clearable />
-          <el-image v-else-if="col.type === 'image'" :src="row[col.prop]" fit="contain" lazy/>
-            <el-switch v-else-if="col.type === 'switch'" v-model="row[col.prop]" />
-            <el-select v-else-if="col.type === 'select'" v-model="row[col.prop]" placeholder="请选择" size="small" style="width:120px">
-              <el-option v-for="opt in col.options || []" :key="opt.value" :label="opt.label" :value="opt.value" />
-            </el-select>
-            <el-date-picker v-else-if="col.type === 'date'" v-model="row[col.prop]" type="date" placeholder="选择日期" size="small" />
-            <span v-else>[[ row[col.prop] ]]</span>
+          <el-image v-else-if="col.type === 'image'" :src="row[col.prop]" fit="contain" lazy 
+          :preview-src-list="[row[col.prop]]" preview-teleported />
+          <el-switch v-else-if="col.type === 'switch'" v-model="row[col.prop]" />
+          <el-select v-else-if="col.type === 'select'" v-model="row[col.prop]" placeholder="请选择" size="small" style="width:120px">
+            <el-option v-for="opt in col.options || []" :key="opt.value" :label="opt.label" :value="opt.value" />
+          </el-select>
+          <el-date-picker v-else-if="col.type === 'date'" v-model="row[col.prop]" type="date" placeholder="选择日期" size="small" />
+          <span v-else>[[ row[col.prop] ]]</span>
           </template>
         </el-table-column>
 

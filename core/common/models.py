@@ -169,15 +169,15 @@ class Resource(models.Model):
         - 计算大小、MIME类型、MD5。
         """
         if self.file:
-            # 1️⃣ 实际保存文件名
+            # 1️⃣ 原始文件名称
             stored_filename = os.path.basename(self.file.name)
             if not self.stored_name:
-                self.stored_name = stored_filename
+                self.name = stored_filename
                 
-            # 2️⃣ 修改文件保存名称
+            # 2️⃣ 文件保存名称
             if not self.name:
                 ext = os.path.splitext(stored_filename)[1]
-                self.name = f"{uuid.uuid4().hex}{ext}"
+                self.stored_name = f"{uuid.uuid4().hex}{ext}"
 
             # 3️⃣ 文件大小
             if not self.size:

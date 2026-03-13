@@ -23,7 +23,7 @@
             <el-col :span="12">
                 <el-form :model="formData" ref="formRef" label-width="auto" :rules="formConf.rules">
                     <el-form-item label="版号" prop="code">
-                        <el-input v-model="formData.code" placeholder="请输入版号" :disabled="patternId" />
+                        <el-input v-model="formData.code" placeholder="请输入版号" :disabled="patternId != ''" />
                     </el-form-item>
                     <el-form-item label="标签" prop="tags">
                         <el-input-tag v-model="formData.tags" placeholder="请输入版号" aria-label="输入后请点击回车键创建标签" />
@@ -144,8 +144,12 @@
                 formData.main_image = (mainImage.value.length > 0) ? mainImage.value[0] : '';
                 formData.images = images.value
                 await formEl.validate()
-                
-                await EditPattern()
+                try{
+                    pageData.pageLoading = true
+                    await EditPattern()
+                }finally{
+                    pageData.pageLoading = false
+                }
             }
 
             const EditPattern = async (data) => {

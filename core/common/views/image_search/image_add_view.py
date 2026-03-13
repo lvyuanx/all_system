@@ -29,4 +29,4 @@ class View(BaseApi):
         file: UploadedFile = File(..., description="图片"),
     ):
         md5 = res_util.calc_file_md5(file)
-        await image_search_adapter.image_add(file, md5, settings.IMAGE_SEARCH_GROUP)
+        await image_search_adapter.image_add(file, md5, settings.IMAGE_SEARCH_GROUP, file.name, file.content_type)

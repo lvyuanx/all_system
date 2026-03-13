@@ -47,7 +47,7 @@ class View(BaseApi):
         images = []
         async for img in pattern.images.all():
             if img.file:
-                file = pattern.main_image.file
+                file = img.file
                 image = schemas.EchoImageDataSchema(name=file.name, url=file.url, rid=img.pk)
                 images.append(image)
 

@@ -6,6 +6,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.http import HttpRequest
 from django.db.models.query import QuerySet
 from typing import Iterable, List, Union
+from core.common.signals.signals import image_lib_del_signal
 
 
 
@@ -113,6 +114,10 @@ def unactive_res(res):
     if isinstance(res, int):
         res = Resource.objects.get(pk=res)
     res.unactive()
+    image_lib_del_signal.send(
+        sender=Resource,
+        name=res.stored_name
+    )
 
 
 def batch_unactive_res(res: Union[List[int], QuerySet]):
