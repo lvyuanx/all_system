@@ -62,10 +62,9 @@ MIDDLEWARE = [
 ]
 
 # 身份验证后端
-# AUTHENTICATION_BACKENDS = (
-#     'django.contrib.auth.backends.ModelBackend',
-#     'guardian.backends.ObjectPermissionBackend', # 权限控制
-# )
+AUTHENTICATION_BACKENDS = [
+    'core.auth.backends.MultiFieldAuthBackend',  # 支持 用户名/手机号/工号 + 密码
+]
 
 # 根 URL 配置文件
 # 指定项目主 URL 配置文件的位置
