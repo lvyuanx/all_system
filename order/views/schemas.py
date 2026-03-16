@@ -62,3 +62,15 @@ class OrderPaySchema(BaseModel):
     pay_amount: Decimal = Field(..., description="支付金额")
     operator_memo: str = Field(description="备注")
     pay_method: int = Field(..., description="支付方式")
+
+
+class OrderListByPatternItemSchema(BaseModel):
+    """按版号查询关联订单列表项"""
+    pk: int = Field(..., description="订单ID")
+    order_no: str = Field(..., description="订单编号")
+    order_status: int = Field(..., description="订单状态")
+    order_status_str: str = Field("", description="订单状态文字")
+    receiver_name: str = Field("", description="收货人")
+    receiver_phone: str = Field("", description="收货人电话")
+    payable_amount: Decimal = Field(..., description="应付金额")
+    paid_amount: Decimal = Field(..., description="实付金额")

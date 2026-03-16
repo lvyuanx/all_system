@@ -9,46 +9,201 @@
 
 {% block extra_css %}
 <style>
+    /* 本页覆盖：让 page-container 不溢出 */
+    #app > .page-container {
+        overflow: hidden;
+        padding: 8px;
+    }
+
     .search-container {
         display: flex;
         flex-direction: row;
-        height: 100%;
-        justify-content: space-between;
-        align-items: center;
+        flex: 1;
+        min-height: 0;
+        gap: 16px;
+        overflow: hidden;
     }
 
+    /* 左侧搜索区 */
     .search-box {
         display: flex;
         flex-direction: column;
-        justify-content: space-between;
         width: 38%;
-        height: 100%;
-    }
-
-    .data-box {
-        width: 60%;
-        height: 100%;
-    }
-
-    .data-pattern {
-        width: 100%;
-        height: 40%;
+        min-height: 0;
+        gap: 0;
+        background: #fff;
         border-radius: 8px;
-        border: 1px solid #eee;
+        border: 1px solid #e4e7ed;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+        overflow: hidden;
+    }
+
+    .search-box-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 14px 16px 12px;
+        border-bottom: 1px solid #f0f0f0;
+        background: #fafafa;
+        flex-shrink: 0;
+    }
+
+    .search-box-header .section-title {
+        font-size: 14px;
+        font-weight: 600;
+        color: #303133;
+    }
+
+    .search-form-wrap {
+        padding: 12px 16px 0;
+        flex-shrink: 0;
+    }
+
+    .search-table-wrap {
+        flex: 1;
+        min-height: 0;
+        overflow: hidden;
+    }
+
+    /* 右侧数据区 */
+    .data-box {
+        flex: 1;
+        min-width: 0;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        overflow: hidden;
+    }
+
+    /* 版式信息卡片 */
+    .pattern-card {
+        background: #fff;
+        border-radius: 8px;
+        border: 1px solid #e4e7ed;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+        overflow: hidden;
+        flex-shrink: 0;
+    }
+
+    .card-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 12px 16px;
+        border-bottom: 1px solid #f0f0f0;
+        background: #fafafa;
+    }
+
+    .card-header .section-title {
+        font-size: 14px;
+        font-weight: 600;
+        color: #303133;
+    }
+
+    .card-body {
         display: flex;
         flex-direction: row;
-        justify-content: space-between;
+        height: 160px;
     }
 
     .data-pattern-item {
-        width: 32%;
+        overflow: hidden;
+        height: 100%;
+        border-right: 1px solid #f0f0f0;
+    }
+
+    .data-pattern-item.item-main-image {
+        width: 25%;
+        flex-shrink: 0;
+        background: #f5f7fa;
+    }
+
+    .data-pattern-item.item-info {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .data-pattern-item.item-sub-images {
+        width: 20%;
+        flex-shrink: 0;
+    }
+
+    .data-pattern-item:last-child {
+        border-right: none;
+    }
+
+    .data-pattern-info {
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .data-pattern-info .info-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+        color: #606266;
+    }
+
+    .data-pattern-info .info-label {
+        color: #909399;
+        white-space: nowrap;
+        min-width: 40px;
+    }
+
+    .data-pattern-info .info-value {
+        color: #303133;
+        word-break: break-all;
     }
 
     .data-pattern-default {
         display: flex;
         justify-content: center;
         align-items: center;
-        color: #909399;
+        color: #c0c4cc;
+        font-size: 14px;
+        height: 160px;
+        gap: 8px;
+    }
+
+    .sub-images-box {
+        padding: 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        height: 100%;
+        box-sizing: border-box;
+    }
+
+    .sub-images-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    /* 关联订单卡片 */
+    .order-card {
+        background: #fff;
+        border-radius: 8px;
+        border: 1px solid #e4e7ed;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+        flex: 1;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+    .order-card .card-body {
+        flex: 1;
+        min-height: 0;
+        height: auto;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
     }
 </style>
 {% endblock %}
@@ -57,35 +212,126 @@
 <div id="app">
     <div class="page-container" v-loading="pageData.pageLoading">
         <div class="search-container">
-            <div class="search-box">
-                <el-form label-width="auto" inline>
-                    <el-form-item>
-                        <common-image-upload ref="imageRef" v-model="image" :limit="1" />
-                    </el-form-item>
-                    <el-form-item>
-                        <el-button type="primary" @click="onSubmit">搜索</el-button>
-                        <el-button @click="onClear">清空</el-button>
-                    </el-form-item>
-                </el-form>
-                <common-table :data="searchResultTable.items" :columns="searchResultTable.columns"
-                    :loading="searchResultTable.loading" style="flex: 1;">
-                    <template #actions="{ row }">
-                        <el-button type="primary" size="small" @click="showDetail(row)">查看详情</el-button>
-                    </template>
-                </common-table>
-            </div>
-            <div class="data-box">
-                <div class="data-pattern" v-if="searchResultPattern.return_result" v-loading="searchResultPattern.loading">
-                    <div class="data-pattern-item">
-                        <el-image style="width: 100%; height: 100%" :src="searchResultPattern?.main_image?.url"
-                            :preview-src-list="[searchResultPattern?.main_image?.url]" fit="cover" />
-                    </div>
-                    <div class="data-pattern-item">
-                        
-                    </div>
-                    <div class="data-pattern-item"></div>
+            <!-- 左侧：图片搜索 -->
+            <div class="search-box" ref="searchBoxRef">
+                <div class="search-box-header">
+                    <i class="el-icon fas fa-search" style="color:#409eff;"></i>
+                    <span class="section-title">图片搜索</span>
                 </div>
-                <div class="data-pattern data-pattern-default" v-else><span>暂无数据</span></div>
+                <div class="search-form-wrap">
+                    <el-form label-width="auto" inline ref="searchFormRef">
+                        <el-form-item>
+                            <common-image-upload ref="imageRef" v-model="image" :limit="1" />
+                        </el-form-item>
+                        <el-form-item>
+                            <el-button type="primary" @click="onSubmit">搜索</el-button>
+                            <el-button @click="onClear">清空</el-button>
+                        </el-form-item>
+                    </el-form>
+                </div>
+                <div class="search-table-wrap" ref="searchTableWrapRef">
+                    <common-table :data="searchResultTable.items" :columns="searchResultTable.columns"
+                        :loading="searchResultTable.loading" :height="searchResultTable.tableHeight">
+                        <template #actions="{ row }">
+                            <el-button type="primary" size="small" @click="showDetail(row)">查看详情</el-button>
+                        </template>
+                    </common-table>
+                </div>
+            </div>
+
+            <!-- 右侧：版式信息 + 关联订单 -->
+            <div class="data-box">
+                <!-- 版式信息卡片 -->
+                <div class="pattern-card">
+                    <div class="card-header">
+                        <i class="fas fa-layer-group" style="color:#409eff;"></i>
+                        <span class="section-title">版式信息</span>
+                        <el-tag v-if="searchResultPattern.return_result" size="small"
+                            :type="searchResultPattern.is_active ? 'success' : 'danger'" style="margin-left:auto;">
+                            [[ searchResultPattern.is_active ? "启用" : "禁用" ]]
+                        </el-tag>
+                    </div>
+                    <div class="card-body" v-if="searchResultPattern.return_result" v-loading="searchResultPattern.loading">
+                        <!-- 主图 -->
+                        <div class="data-pattern-item item-main-image">
+                            <el-image style="width: 100%; height: 100%;"
+                                :src="searchResultPattern?.main_image?.url"
+                                :preview-src-list="[searchResultPattern?.main_image?.url]"
+                                fit="contain" />
+                        </div>
+                        <!-- 基本信息 -->
+                        <div class="data-pattern-item item-info">
+                            <div class="data-pattern-info">
+
+                                <div class="info-row">
+                                    <span class="info-label">版号</span>
+                                    <span class="info-value" style="font-weight:600;font-size:14px;">[[ searchResultPattern.code ]]</span>
+                                </div>
+                                <div class="info-row" v-if="searchResultPattern.tags && searchResultPattern.tags.length">
+                                    <span class="info-label">标签</span>
+                                    <div style="display: flex; flex-wrap: wrap; gap: 4px;">
+                                        <el-tag v-for="tag in searchResultPattern.tags" :key="tag" size="small" type="info">
+                                            [[ tag ]]
+                                        </el-tag>
+                                    </div>
+                                </div>
+                                <div class="info-row" v-if="searchResultPattern.memo">
+                                    <span class="info-label">备注</span>
+                                    <span class="info-value" style="white-space: pre-wrap;">[[ searchResultPattern.memo ]]</span>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- 辅图 -->
+                        <div class="data-pattern-item item-sub-images">
+                            <div class="sub-images-box">
+                                <div style="font-size:12px;color:#909399;flex-shrink:0;padding-bottom:4px;" v-if="searchResultPattern.images && searchResultPattern.images.length">
+                                    共 [[ searchResultPattern.images.length ]] 张
+                                </div>
+                                <el-scrollbar v-if="searchResultPattern.images && searchResultPattern.images.length" style="flex: 1;">
+                                    <div class="sub-images-grid">
+                                        <el-image
+                                            v-for="(img, idx) in searchResultPattern.images"
+                                            :key="idx"
+                                            style="width: 100%; aspect-ratio: 1/1; border-radius: 4px; flex-shrink: 0;"
+                                            :src="img.url"
+                                            :preview-src-list="searchResultPattern.images.map(i => i.url)"
+                                            :initial-index="idx"
+                                            fit="cover" />
+                                    </div>
+                                </el-scrollbar>
+                                <div v-else style="color: #c0c4cc; font-size: 13px; padding-top: 8px;">暂无辅图</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="data-pattern-default" v-else>
+                        <i class="fas fa-image" style="font-size:24px;color:#dcdfe6;"></i>
+                        <span>请从左侧搜索结果中选择版式</span>
+                    </div>
+                </div>
+
+                <!-- 关联订单卡片 -->
+                <div class="order-card">
+                    <div class="card-header">
+                        <i class="fas fa-file-invoice" style="color:#409eff;"></i>
+                        <span class="section-title">关联订单</span>
+                    </div>
+                    <div class="card-body" ref="orderCardBodyRef">
+                        <common-table
+                            :data="orderTable.items"
+                            :columns="orderTable.columns"
+                            :loading="orderTable.loading"
+                            :is-paginated="true"
+                            :current-page="orderTable.currentPage"
+                            :page-size="orderTable.pageSize"
+                            :total-count="orderTable.totalCount"
+                            :height="orderTable.tableHeight"
+                            @page-change="onOrderPageChange">
+                            <template #actions="{ row }">
+                                <el-button type="primary" size="small" @click="goToOrderDetail(row)">详情</el-button>
+                            </template>
+                        </common-table>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -97,7 +343,7 @@
     import CommonImageUpload from "{% static 'vue/js/CommonImageUpload.js' %}";
     import CommonTable from "{% static 'vue/js/CommonTable.js' %}"
     import useHideUploadButton from "{% static 'vue/js/useHideUploadButton.js' %}";
-    const { reactive, onMounted, ref, watch, inject } = Vue;
+    const { reactive, onMounted, onUnmounted, ref, inject, nextTick } = Vue;
     window.createApp({
         components: { CommonImageUpload, CommonTable },
         setup() {
@@ -120,13 +366,42 @@
             /** 异步初始化页面 */
             const asyncInit = async () => {
                 pageData.pageLoading = false;
+                await nextTick()
+                initResizeObservers()
             };
 
-            onMounted(() => {
-                asyncInit();
+            onMounted(() => { asyncInit() });
+            onUnmounted(() => {
+                searchTableObserver?.disconnect()
+                orderTableObserver?.disconnect()
             });
 
             // ---------------------- search 表单 ----------------------
+            const searchBoxRef = ref(null)
+            const searchFormRef = ref(null)
+            const searchTableWrapRef = ref(null)
+            const orderCardBodyRef = ref(null)
+
+            let searchTableObserver = null
+            let orderTableObserver = null
+
+            const initResizeObservers = () => {
+                if (searchTableWrapRef.value) {
+                    searchTableObserver = new ResizeObserver(() => {
+                        searchResultTable.tableHeight = searchTableWrapRef.value.clientHeight
+                    })
+                    searchTableObserver.observe(searchTableWrapRef.value)
+                    searchResultTable.tableHeight = searchTableWrapRef.value.clientHeight
+                }
+                if (orderCardBodyRef.value) {
+                    orderTableObserver = new ResizeObserver(() => {
+                        orderTable.tableHeight = orderCardBodyRef.value.clientHeight
+                    })
+                    orderTableObserver.observe(orderCardBodyRef.value)
+                    orderTable.tableHeight = orderCardBodyRef.value.clientHeight
+                }
+            }
+
             const image = ref([])
             const imageRef = ref(null)
             // 自动隐藏上传按钮
@@ -159,18 +434,21 @@
                 searchResultTable.items = []
                 image.value = []
                 searchResultPattern.return_result = false
+                orderTable.items = []
+                orderTable.totalCount = 0
+                orderTable.currentPage = 1
             }
 
 
             // ---------------------- 搜索结果表格 ----------------------
             const searchResultTable = reactive({
-                items: [
-                ],
+                items: [],
                 columns: [
                     { prop: "url", label: "图片", type: "image", align: "center", width: 220, height: 220 },
                     { prop: "score", label: "相似度", align: "center" },
                 ],
                 loading: false,
+                tableHeight: 300,
             })
             const showDetail = async (row) => {
                 searchResultPattern.loading = true
@@ -178,6 +456,10 @@
                     const res = await request.get("/pattern_library/pattern_search", { filename: row.original_name })
                     if (!res) {
                         ElMessage.warning("未找到板式信息！")
+                        searchResultPattern.return_result = false
+                        orderTable.items = []
+                        orderTable.totalCount = 0
+                        orderTable.currentPage = 1
                         return
                     }
                     searchResultPattern.code = res.code
@@ -187,6 +469,9 @@
                     searchResultPattern.main_image = res.main_image
                     searchResultPattern.images = res.images
                     searchResultPattern.return_result = true
+                    // 加载关联订单
+                    orderTable.currentPage = 1
+                    await loadOrderList()
                 } finally {
                     searchResultPattern.loading = false
                 }
@@ -205,12 +490,60 @@
                 images: []
             })
 
+            // ---------------------- 关联订单表格 ----------------------
+            const orderTable = reactive({
+                items: [],
+                columns: [
+                    { prop: "order_no", label: "订单编号", align: "center" },
+                    { prop: "order_status_str", label: "状态", align: "center" },
+                    { prop: "receiver_name", label: "收货人", align: "center" },
+                    { prop: "receiver_phone", label: "收货人电话", align: "center" },
+                    { prop: "payable_amount", label: "应付金额", align: "center" },
+                    { prop: "paid_amount", label: "实付金额", align: "center" },
+                ],
+                loading: false,
+                currentPage: 1,
+                pageSize: 15,
+                totalCount: 0,
+                tableHeight: 300,
+            })
+
+            const loadOrderList = async () => {
+                if (!searchResultPattern.code) return
+                try {
+                    orderTable.loading = true
+                    const res = await request.post("/order/list_by_pattern", {
+                        page: orderTable.currentPage,
+                        page_size: orderTable.pageSize,
+                        filter: JSON.stringify({ pattern_code: searchResultPattern.code }),
+                    })
+                    orderTable.items = res.items
+                    orderTable.totalCount = res.total_count
+                } finally {
+                    orderTable.loading = false
+                }
+            }
+
+            const onOrderPageChange = async ({ page, size }) => {
+                orderTable.currentPage = page
+                orderTable.pageSize = size
+                await loadOrderList()
+            }
+
+            const goToOrderDetail = (row) => {
+                SimpleUIExtra.openParentTab(`/admin/order/order/${row.pk}/change/?hide_back=1`, `订单详情 ${row.order_no}`)
+            }
+
 
             return {
                 pageData,
                 goBack,
 
                 // search 表单
+                searchBoxRef,
+                searchFormRef,
+                searchTableWrapRef,
+                orderCardBodyRef,
                 image,
                 imageRef,
                 onSubmit,
@@ -223,7 +556,10 @@
                 // 搜索结果板式信息
                 searchResultPattern,
 
-
+                // 关联订单表格
+                orderTable,
+                onOrderPageChange,
+                goToOrderDetail,
             };
         }
     });

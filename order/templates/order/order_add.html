@@ -97,7 +97,8 @@
 {% endblock %} {% block content %}
 <div id="app">
     <div class="page-header">
-        <el-page-header title="{% trans 'Back' %}" @back="goBack" content="{{title}}"></el-page-header>
+        <el-page-header v-if="!hideBack" title="{% trans 'Back' %}" @back="goBack" content="{{title}}"></el-page-header>
+        <span v-else style="font-size:16px;font-weight:600;color:#303133;">{{title}}</span>
 
         <div class="header-right">
             <el-button type="primary" @click="onSubmit" :disabled="isDisabledMode">提交</el-button>
@@ -395,6 +396,7 @@
             const orderId = "{{order_id}}"
             const isEditMode = orderId != ""
             const isDisabledMode = "{{is_disabled_mode}}" == "1"
+            const hideBack = new URLSearchParams(window.location.search).get('hide_back') === '1'
             const goBack = () => {
                 window.location.href = "{% get_previous_url %}"
             };
@@ -815,6 +817,7 @@
 
             return {
                 goBack,
+                hideBack,
                 pageData,
                 isFullscreen,
                 toggle,

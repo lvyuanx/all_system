@@ -4,6 +4,7 @@ from .views import (
     order_create_view,
     order_info_view,
     order_ship_view,
+    order_list_by_pattern_view,
 )
 from .views.pay import (
     order_pay_ca_list_view,
@@ -42,6 +43,12 @@ apis = {
             "ship",
             order_ship_view.View,
             "订单发货",
+        ),
+        (
+            "A5",
+            "list_by_pattern",
+            order_list_by_pattern_view.View,
+            "按版号查询关联订单",
         ),
     ],
     "pay": [
