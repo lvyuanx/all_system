@@ -29,6 +29,27 @@
         width: 60%;
         height: 100%;
     }
+
+    .data-pattern {
+        width: 100%;
+        height: 40%;
+        border-radius: 8px;
+        border: 1px solid #eee;
+        display: flex;
+        flex-direction: row;
+        justify-content: space-between;
+    }
+
+    .data-pattern-item {
+        width: 32%;
+    }
+
+    .data-pattern-default {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        color: #909399;
+    }
 </style>
 {% endblock %}
 
@@ -54,6 +75,17 @@
                 </common-table>
             </div>
             <div class="data-box">
+                <div class="data-pattern" v-if="searchResultPattern.return_result" v-loading="searchResultPattern.loading">
+                    <div class="data-pattern-item">
+                        <el-image style="width: 100%; height: 100%" :src="searchResultPattern?.main_image?.url"
+                            :preview-src-list="[searchResultPattern?.main_image?.url]" fit="cover" />
+                    </div>
+                    <div class="data-pattern-item">
+                        
+                    </div>
+                    <div class="data-pattern-item"></div>
+                </div>
+                <div class="data-pattern data-pattern-default" v-else><span>暂无数据</span></div>
             </div>
         </div>
     </div>
@@ -106,7 +138,7 @@
                     ElMessage.error('请上传图片');
                     return
                 }
-                try{
+                try {
                     searchResultTable.loading = true
                     const fd = new FormData()
 
@@ -118,14 +150,15 @@
                     }
                     searchResultTable.items = res
 
-                } finally{
+                } finally {
                     searchResultTable.loading = false
                 }
             };
 
-            const onClear =  () => {
+            const onClear = () => {
                 searchResultTable.items = []
                 image.value = []
+                searchResultPattern.return_result = false
             }
 
 
@@ -134,14 +167,43 @@
                 items: [
                 ],
                 columns: [
-                    { prop: "url", label: "图片", type: "image", align: "center", width: 220, height: 220},
+                    { prop: "url", label: "图片", type: "image", align: "center", width: 220, height: 220 },
                     { prop: "score", label: "相似度", align: "center" },
                 ],
                 loading: false,
             })
-            const showDetail = async(row) => {
+            const showDetail = async (row) => {
+                searchResultPattern.loading = true
+                try{
+                    const res = await request.get("/pattern_library/pattern_search", { filename: row.original_name })
+                    if (!res) {
+                        ElMessage.warning("未找到板式信息！")
+                        return
+                    }
+                    searchResultPattern.code = res.code
+                    searchResultPattern.memo = res.memo
+                    searchResultPattern.is_active = res.is_active
+                    searchResultPattern.tags = res.tags
+                    searchResultPattern.main_image = res.main_image
+                    searchResultPattern.images = res.images
+                    searchResultPattern.return_result = true
+                } finally {
+                    searchResultPattern.loading = false
+                }
 
             }
+
+            // ---------------------- 搜索结果板式信息 ----------------------
+            const searchResultPattern = reactive({
+                loading: true,
+                return_result: false,
+                code: "",
+                memo: "",
+                is_active: true,
+                tags: [],
+                main_images: null,
+                images: []
+            })
 
 
             return {
@@ -155,7 +217,12 @@
                 onClear,
 
                 // 搜索结果表格
-                searchResultTable
+                searchResultTable,
+                showDetail,
+
+                // 搜索结果板式信息
+                searchResultPattern,
+
 
             };
         }

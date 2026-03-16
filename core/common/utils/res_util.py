@@ -6,7 +6,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.http import HttpRequest
 from django.db.models.query import QuerySet
 from typing import Iterable, List, Union
-from core.common.signals.signals import image_lib_del_signal
+from core.common.signals.signals import res_unactive_signal
 
 
 
@@ -114,9 +114,9 @@ def unactive_res(res):
     if isinstance(res, int):
         res = Resource.objects.get(pk=res)
     res.unactive()
-    image_lib_del_signal.send(
+    res_unactive_signal.send(
         sender=Resource,
-        name=res.stored_name
+        stored_name=res.stored_name
     )
 
 

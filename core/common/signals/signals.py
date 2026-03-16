@@ -9,5 +9,4 @@
 """
 from django.dispatch import Signal
 
-image_lib_add_signal = Signal()
-image_lib_del_signal = Signal()
+res_unactive_signal = Signal()

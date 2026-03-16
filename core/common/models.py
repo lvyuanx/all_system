@@ -171,11 +171,11 @@ class Resource(models.Model):
         if self.file:
             # 1️⃣ 原始文件名称
             stored_filename = os.path.basename(self.file.name)
-            if not self.stored_name:
+            if not self.name:
                 self.name = stored_filename
                 
             # 2️⃣ 文件保存名称
-            if not self.name:
+            if not self.stored_name:
                 ext = os.path.splitext(stored_filename)[1]
                 self.stored_name = f"{uuid.uuid4().hex}{ext}"
 

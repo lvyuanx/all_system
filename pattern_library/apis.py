@@ -1,4 +1,4 @@
-from .views import pattern_list_view, pattern_add_view, pattern_info_view, pattern_change_view
+from .views import pattern_list_view, pattern_add_view, pattern_info_view, pattern_change_view, pattern_search_view
 
 apis = {
     "": [
@@ -25,6 +25,12 @@ apis = {
             "pattern_change",
             pattern_change_view.View,
             "更新版式信息",
+        ),
+        (
+            "A4",
+            "pattern_search",
+            pattern_search_view.View,
+            "以图搜图板式信息",
         )
     ]
 }
