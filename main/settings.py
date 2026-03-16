@@ -429,4 +429,36 @@ IMAGE_SEARCH_GROUP = merge_config("IMAGE_SEARCH_GROUP", "default")
 # endregion ****************** 图片搜索服务 end ********************* #
 
 
+# region ******************** Redis 缓存配置 start ******************** #
+REDIS_HOST = merge_config("REDIS_HOST", "47.119.156.247")
+REDIS_PORT = merge_config("REDIS_PORT", "19376")
+REDIS_PASSWORD = merge_config("REDIS_PASSWORD", "RZNgYc6s3aMqqLrh")
+REDIS_DB = merge_config("REDIS_DB", 0)
+
+CACHES = {
+    "default": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": f"redis://:{REDIS_PASSWORD}@{REDIS_HOST}:{REDIS_PORT}/{REDIS_DB}",
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+            "CONNECTION_POOL_KWARGS": {
+                "max_connections": 50,
+                "retry_on_timeout": True,
+            },
+            "SOCKET_CONNECT_TIMEOUT": 5,
+            "SOCKET_TIMEOUT": 5,
+        },
+        "KEY_PREFIX": "all_system",
+        "TIMEOUT": 60 * 60 * 24,  # 默认缓存24小时
+    }
+}
+
+# Session 使用 Redis
+SESSION_ENGINE = "django.contrib.sessions.backends.cache"
+SESSION_CACHE_ALIAS = "default"
+SESSION_COOKIE_AGE = TOKEN_EXPIRE  # 与 token 过期时间一致
+
+# endregion ****************** Redis 缓存配置 end ********************* #
+
+
 

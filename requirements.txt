@@ -3,6 +3,7 @@ Django >=5.2.4, <5.3.0
 django-adminfilters >=2.6, <2.7
 django-guardian >=3.0.3, <3.1.0
 django-ninja >=1.4.3, <1.5.0
+django-redis >=5.4.0, <5.5.0
 django-simpleui >=2025.6.24, <2025.7.0
 httpx>=0.28.1,<0.29.0
 Jinja2 >=3.1.6, <3.2.0
