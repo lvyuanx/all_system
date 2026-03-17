@@ -224,13 +224,23 @@
                             <common-image-upload ref="imageRef" v-model="image" :limit="1" />
                         </el-form-item>
                         <el-form-item>
-                            <el-button type="primary" @click="onSubmit">搜索</el-button>
-                            <el-button @click="onClear">清空</el-button>
-                        </el-form-item>
-                    </el-form>
+                            <el-button type="primary" @click="onSubmit" :disabled="!(pageData.quota === -1 || pageData.quota > 0)">搜索</el-button>
+    
+                        <el-button @click="onClear">清空</el-button>
+                            <el-button v-if="pageData.quota !== -1" type="warning" @click="openRecharge">充值</el-button>
+                    </el-form-item>
+                    <el-form-item>
+                        <el-tag type="info" v-if="pageData.quota === -1">VIP</el-tag>
+                        <el-tag type="info" v-else>剩余次数：[[ pageData.quota ]]</el-tag>
+                    </el-form-item>
+    
+
+
+                </el-form>
                 </div>
                 <div class="search-table-wrap" ref="searchTableWrapRef">
-                    <common-table :data="searchResultTable.items" :columns="searchResultTable.columns"
+    
+                <common-table :data="searchResultTable.items" :columns="searchResultTable.columns"
                         :loading="searchResultTable.loading" :height="searchResultTable.tableHeight">
                         <template #actions="{ row }">
                             <el-button type="primary" size="small" @click="showDetail(row)">查看详情</el-button>
@@ -334,9 +344,21 @@
                 </div>
             </div>
         </div>
+        <el-dialog v-model="rechargeDialogVisible" title="充值" width="420px">
+            <el-form label-width="80px">
+                <el-form-item label="jdk">
+                    <el-input v-model="rechargeForm.jdk" placeholder="请输入jdk" />
+                </el-form-item>
+            </el-form>
+            <template #footer>
+                <el-button @click="rechargeDialogVisible = false">取消</el-button>
+                <el-button type="primary" :loading="rechargeLoading" @click="onRechargeConfirm">确定</el-button>
+            </template>
+        </el-dialog>
     </div>
 </div>
 {% endblock %}
+
 
 {% block extra_js %}
 <script type="module">
@@ -359,6 +381,7 @@
             /** 页面数据 */
             const pageData = reactive({
                 pageLoading: true,
+                quota: 0,
             });
 
             // ---------------------- 初始化页面 ----------------------
@@ -368,6 +391,8 @@
                 pageData.pageLoading = false;
                 await nextTick()
                 initResizeObservers()
+                pageData.quota = await request.get("/common/image_search/quota")
+
             };
 
             onMounted(() => { asyncInit() });
@@ -407,13 +432,48 @@
             // 自动隐藏上传按钮
             useHideUploadButton(imageRef, image, 1);
 
+            // 充值弹窗
+            const rechargeDialogVisible = ref(false)
+            const rechargeLoading = ref(false)
+            const rechargeForm = reactive({
+                jdk: "",
+            })
+            const openRecharge = () => {
+                rechargeDialogVisible.value = true
+            }
+            const onRechargeConfirm = async () => {
+                if (!rechargeForm.jdk) {
+                    ElMessage.error('请输入jdk');
+                    return
+                }
+                try {
+                    rechargeLoading.value = true
+                    await request.post("/common/image_search/redeem_jdk", {}, { code: rechargeForm.jdk })
+                    await asyncInit()
+                    rechargeDialogVisible.value = false
+                    rechargeForm.jdk = ""
+                    ElMessage.success('兑换成功');
+                } finally {
+                    rechargeLoading.value = false
+                }
+            }
+
             // 提交表单
             const onSubmit = async () => {
+
                 if (image.value.length === 0) {
                     ElMessage.error('请上传图片');
                     return
                 }
+                if (!(pageData.quota === -1 || pageData.quota > 0)) {
+                    ElMessage.error('剩余次数不足，无法搜索');
+                    return
+                }
+
+
+
                 try {
+
                     searchResultTable.loading = true
                     const fd = new FormData()
 
@@ -427,6 +487,7 @@
 
                 } finally {
                     searchResultTable.loading = false
+                    await asyncInit()
                 }
             };
 
@@ -549,6 +610,13 @@
                 onSubmit,
                 onClear,
 
+                // 充值弹窗
+                rechargeDialogVisible,
+                rechargeLoading,
+                rechargeForm,
+                openRecharge,
+                onRechargeConfirm,
+
                 // 搜索结果表格
                 searchResultTable,
                 showDetail,
@@ -560,6 +628,7 @@
                 orderTable,
                 onOrderPageChange,
                 goToOrderDetail,
+
             };
         }
     });

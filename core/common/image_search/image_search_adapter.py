@@ -102,3 +102,26 @@ async def image_search(file, md5, group):
         params=sign_params,
     )
     return _http_response(res, url_path)
+
+async def get_quota():
+    url = settings.IMAGE_SEARCH_BASE_URL + "/auth/quota"
+    url_path = urlparse(url).path
+    params = {"url": url_path}
+    sign_params = sign_util.create_sign(params)
+    res = await http_client.post(
+        url,
+        params=sign_params,
+    )
+    return _http_response(res, url_path)
+
+
+async def redeem_jdk(code: str):
+    url = settings.IMAGE_SEARCH_BASE_URL + "/auth/jdk/redeem"
+    url_path = urlparse(url).path
+    params = {"url": url_path, "code": code}
+    sign_params = sign_util.create_sign(params)
+    res = await http_client.post(
+        url,
+        params=sign_params,
+    )
+    _http_response(res, url_path)
