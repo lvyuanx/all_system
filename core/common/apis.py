@@ -1,5 +1,15 @@
 from django.conf import settings
 from .views import get_province_view, get_city_view, get_district_view
+from .views.image_search import (
+    image_list_view,
+    image_add_view,
+    image_rebuild_view,
+    image_clear_view,
+    image_delete_view,
+    image_search_view,
+    image_search_quota_view,
+    image_redeem_jdk_view,
+)
 
 apis = {
     "province": [
@@ -18,22 +28,13 @@ apis = {
         ("D5", "search", image_search_view.View, "以图搜图"),
         ("D6", "quota", image_search_quota_view.View, "查询剩余搜索次数"),
         ("D7", "redeem_jdk", image_redeem_jdk_view.View, "JDK兑换"),
-    ]
+    ],
 }
 
 if settings.DEBUG:
-    from .views.image_search import (
-        image_list_view,
-        image_add_view,
-        image_rebuild_view,
-        image_clear_view,
-        image_delete_view,
-        image_search_view,
-        image_search_quota_view,
-        image_redeem_jdk_view,
+    apis["image_search"].extend(
+        [
+            ("D2", "rebuild", image_rebuild_view.View, "重建图片索引"),
+            ("D3", "clear", image_clear_view.View, "清空图片索引"),
+        ]
     )
-
-    apis["image_search"].extend([
-        ("D2", "rebuild", image_rebuild_view.View, "重建图片索引"),
-        ("D3", "clear", image_clear_view.View, "清空图片索引"),
-    ])
