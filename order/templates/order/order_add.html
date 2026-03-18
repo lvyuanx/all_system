@@ -495,6 +495,7 @@
                     item.total = decimalMul(item.unit_price, item.count).toFixed(2)
                     item.subtotal = decimalSub(item.total, item.discount_price).toFixed(2)
                 }
+                pageData.fromData.site_id = res.site_id
                 pageData.fromData = res
             }
             const orderTypeLabel = computed(() => {
