@@ -64,9 +64,9 @@ class OrderAdmin(
     # list_filter = ["receiver_name"]
 
     def get_list_filter(self, request):
-        list_filter = ["receiver_name"]
+        list_filter = ["receiver_name", "receiver_company", "create_time"]
         status = self.get_status_by_request(request)
-        if any(s >= OrderStatusChoices.FINISHED for s in status):
+        if not status or any(s >= OrderStatusChoices.FINISHED for s in status):
             list_filter.extend(["pay_status", "ship_status"])
         return list_filter
 
