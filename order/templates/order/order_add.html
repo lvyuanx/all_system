@@ -389,7 +389,8 @@
     import CommonTable from "{% static 'vue/js/CommonTable.js' %}";
     import { decimalAdd, decimalMul, decimalSub } from "{% static 'vue/js/EasyDecimal.js' %}";
     import { useFullscreen } from "{% static 'vue/js/useFullscreen.js' %}";
-    const { inject, reactive, ref, watch, onMounted, computed } = Vue;
+    const { inject, reactive, ref, watch, onMounted, computed, nextTick } = Vue;
+
     window.createApp({
         components: { CommonTable },
         setup() {
@@ -498,10 +499,12 @@
                         item.subtotal = decimalSub(item.total, item.discount_price).toFixed(2)
                     }
                     pageData.fromData = res
+                    await nextTick()
                 } finally {
                     isInitializing.value = false  // 初始化完成
                 }
             }
+
             const orderTypeLabel = computed(() => {
                 return pageData.orderTpyeOptions.find((item) => item.value == pageData.fromData.order_type)?.label
             })
