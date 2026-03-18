@@ -573,7 +573,7 @@
                 if (!searchResultPattern.code) return
                 try {
                     orderTable.loading = true
-                    const res = await request.post("/order/list_by_pattern", {
+                    const res = await request.post("/order/list_by_pattern", {}, {
                         page: orderTable.currentPage,
                         page_size: orderTable.pageSize,
                         filter: JSON.stringify({ pattern_code: searchResultPattern.code }),
