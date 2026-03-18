@@ -1,0 +1,494 @@
+{% extends "vue_setup_base.html" %}
+{% load i18n %}
+{% load static %}
+{% load simpletags %}
+
+{% block title %}
+{{ title }}
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .dashboard {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .stat-card {
+        border-radius: 10px;
+        padding: 12px;
+        box-shadow: 0 6px 16px rgba(59, 130, 246, 0.12);
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        color: #0f172a;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .stat-card::after {
+        content: "";
+        position: absolute;
+        right: -30px;
+        top: -30px;
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.35);
+    }
+
+    .stat-card.orange { background: linear-gradient(135deg, #fde68a, #f59e0b); }
+    .stat-card.green { background: linear-gradient(135deg, #a7f3d0, #10b981); }
+    .stat-card.blue { background: linear-gradient(135deg, #bfdbfe, #3b82f6); }
+    .stat-card.red { background: linear-gradient(135deg, #fecaca, #ef4444); }
+    .stat-card.purple { background: linear-gradient(135deg, #e9d5ff, #8b5cf6); }
+    .stat-card.pink { background: linear-gradient(135deg, #fbcfe8, #ec4899); }
+
+
+    .stat-title {
+        font-size: 14px;
+        color: rgba(15, 23, 42, 0.8);
+    }
+
+    .stat-value {
+        font-size: 24px;
+        font-weight: 800;
+        color: #0f172a;
+        margin-top: 6px;
+    }
+
+    .stat-foot {
+        font-size: 12px;
+        color: rgba(15, 23, 42, 0.7);
+        margin-top: 4px;
+    }
+
+    .card {
+        background: #ffffff;
+        border-radius: 10px;
+        padding: 12px;
+        box-shadow: 0 6px 16px rgba(99, 102, 241, 0.12);
+        border: 1px solid #f3f4f6;
+    }
+
+    .card-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 8px;
+        font-weight: 700;
+        color: #0f172a;
+    }
+
+    .chart-body {
+        width: 100%;
+        height: 260px;
+    }
+
+    .chart-body.small {
+        height: 220px;
+    }
+
+    .double-chart {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+    }
+
+    .list-item {
+        display: flex;
+        justify-content: space-between;
+        padding: 8px 0;
+        border-bottom: 1px dashed #e5e7eb;
+    }
+
+    .list-item:last-child {
+        border-bottom: none;
+    }
+
+    .list-left {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    .list-title {
+        font-weight: 700;
+        color: #111827;
+    }
+
+    .list-sub {
+        font-size: 12px;
+        color: #6b7280;
+    }
+
+    .list-right {
+        text-align: right;
+        color: #111827;
+    }
+
+    .quick-card {
+        background: linear-gradient(135deg, #eff6ff, #f0f9ff);
+        border: 1px solid #dbeafe;
+        border-radius: 10px;
+        padding: 12px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        color: #1d4ed8;
+        font-weight: 600;
+    }
+
+    .quick-card:hover {
+        border-color: #3b82f6;
+        box-shadow: 0 8px 20px rgba(59, 130, 246, 0.2);
+        transform: translateY(-2px);
+    }
+
+</style>
+{% endblock %}
+
+{% block content %}
+<div id="app">
+    <div class="page-container" v-loading="pageData.pageLoading">
+        <div class="dashboard">
+            <!-- 关键指标 -->
+            <el-row :gutter="12">
+                <el-col :span="4" v-for="card in statCards" :key="card.title">
+                    <div class="stat-card" :class="card.colorClass">
+                        <div class="stat-title">[[card.title]]</div>
+                        <div class="stat-value">[[card.value]]</div>
+                        <div class="stat-foot">[[card.sub]]</div>
+                    </div>
+                </el-col>
+            </el-row>
+
+
+            <!-- 订单趋势 + 状态分布 -->
+            <el-row :gutter="12">
+                <el-col :span="16">
+                    <div class="card">
+                        <div class="card-header">
+                            <span>订单趋势</span>
+                            <el-radio-group v-model="trendRange" size="small">
+                                <el-radio-button label="7">近7天</el-radio-button>
+                                <el-radio-button label="30">近30天</el-radio-button>
+                                <el-radio-button label="90">近90天</el-radio-button>
+                            </el-radio-group>
+                        </div>
+                        <div class="chart-body" ref="trendChartRef"></div>
+                    </div>
+                </el-col>
+                <el-col :span="8">
+                    <div class="card">
+                        <div class="card-header">
+                            <span>订单状态分布</span>
+                        </div>
+                        <div class="chart-body" ref="statusChartRef"></div>
+                    </div>
+                </el-col>
+            </el-row>
+
+            <!-- 站点Top5 + 类型/配送 -->
+            <el-row :gutter="12">
+                <el-col :span="12">
+                    <div class="card">
+                        <div class="card-header">
+                            <span>站点订单金额 Top5</span>
+                        </div>
+                        <div class="chart-body" ref="siteChartRef"></div>
+                    </div>
+                </el-col>
+                <el-col :span="12">
+                    <div class="card">
+                        <div class="card-header">
+                            <span>订单类型 / 配送方式</span>
+                        </div>
+                        <div class="double-chart">
+                            <div class="chart-body small" ref="typeChartRef"></div>
+                            <div class="chart-body small" ref="deliveryChartRef"></div>
+                        </div>
+                    </div>
+                </el-col>
+            </el-row>
+
+            <!-- 待办列表 + 快捷入口 -->
+            <el-row :gutter="12">
+                <el-col :span="12">
+                    <div class="card">
+                        <div class="card-header">
+                            <span>待发货订单</span>
+                            <el-button text size="small" @click="toPage('/admin/order/order/shipping/', '订单发货')">查看更多</el-button>
+                        </div>
+                        <div>
+                            <div class="list-item" v-for="item in pendingShipList" :key="item.order_no">
+                                <div class="list-left">
+                                    <div class="list-title">[[item.order_no]]</div>
+                                    <div class="list-sub">[[item.site]] · [[item.customer]]</div>
+                                </div>
+                                <div class="list-right">
+                                    <div>[[item.amount]] 元</div>
+                                    <div class="list-sub">[[item.time]]</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </el-col>
+                <el-col :span="12">
+                    <div class="card">
+                        <div class="card-header">
+                            <span>待收款订单</span>
+                            <el-button text size="small" @click="toPage('/admin/order/order/pay/', '订单收款')">查看更多</el-button>
+                        </div>
+                        <div>
+                            <div class="list-item" v-for="item in pendingPayList" :key="item.order_no">
+                                <div class="list-left">
+                                    <div class="list-title">[[item.order_no]]</div>
+                                    <div class="list-sub">[[item.site]] · [[item.customer]]</div>
+                                </div>
+                                <div class="list-right">
+                                    <div>[[item.amount]] 元</div>
+                                    <div class="list-sub">[[item.time]]</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </el-col>
+            </el-row>
+
+            <el-row :gutter="12">
+                <el-col :span="24">
+                    <div class="card">
+                        <div class="card-header">
+                            <span>快捷入口</span>
+                        </div>
+                        <el-row :gutter="12">
+                            <el-col :span="4" v-for="item in quickLinks" :key="item.title">
+                                <div class="quick-card" @click="toPage(item.url, item.title)">
+                                    <div>[[item.title]]</div>
+                                </div>
+                            </el-col>
+                        </el-row>
+                    </div>
+                </el-col>
+            </el-row>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js_import %}
+<script src="{% static 'vue/js/echarts.min.js' %}"></script>
+{% endblock %}
+
+{% block extra_js %}
+<script type="module">
+    const { reactive, ref, onMounted, watch } = Vue;
+    window.createApp({
+        setup() {
+            const trendChartRef = ref(null);
+            const statusChartRef = ref(null);
+            const siteChartRef = ref(null);
+            const typeChartRef = ref(null);
+            const deliveryChartRef = ref(null);
+
+            const pageData = reactive({
+                pageLoading: true,
+            });
+
+            const statCards = reactive([
+                { title: "今日新增订单", value: 18, sub: "较昨日 +3", colorClass: "orange" },
+                { title: "今日订单金额", value: "¥ 36,580", sub: "较昨日 +8%", colorClass: "green" },
+                { title: "待发货", value: 25, sub: "待处理", colorClass: "blue" },
+                { title: "待收款", value: 12, sub: "关注", colorClass: "red" },
+                { title: "本月累计金额", value: "¥ 428,900", sub: "本月", colorClass: "purple" },
+                { title: "今日新增客户", value: 6, sub: "客户管理", colorClass: "pink" },
+            ]);
+
+
+            const pendingShipList = reactive([
+                { order_no: "SO20240318001", site: "广州站", customer: "华南客户A", amount: "12,800", time: "今天 10:24" },
+                { order_no: "SO20240318002", site: "深圳站", customer: "华南客户B", amount: "8,450", time: "今天 09:12" },
+                { order_no: "SO20240317015", site: "上海站", customer: "华东客户C", amount: "5,900", time: "昨天 16:40" },
+                { order_no: "SO20240317011", site: "成都站", customer: "西南客户D", amount: "3,200", time: "昨天 15:18" },
+            ]);
+
+            const pendingPayList = reactive([
+                { order_no: "SO20240318005", site: "广州站", customer: "华南客户E", amount: "21,300", time: "今天 11:05" },
+                { order_no: "SO20240317021", site: "北京站", customer: "华北客户F", amount: "9,880", time: "昨天 18:10" },
+                { order_no: "SO20240317010", site: "杭州站", customer: "华东客户G", amount: "7,150", time: "昨天 14:05" },
+                { order_no: "SO20240316022", site: "武汉站", customer: "华中客户H", amount: "4,760", time: "前天 17:40" },
+            ]);
+
+            const quickLinks = reactive([
+                { title: "新建订单", url: "/admin/order/order/add/" },
+                { title: "订单列表", url: "/admin/order/order/shipping/" },
+                { title: "客户管理", url: "/admin/client_mgmt/client/" },
+                { title: "站点管理", url: "/admin/site_mgmt/syssite/" },
+                { title: "版式库", url: "/admin/pattern_library/pattern/search/" },
+                { title: "员工管理", url: "/admin/staff/staff/" },
+            ]);
+
+            const trendRange = ref("7");
+
+            const initCharts = () => {
+                const trendChart = echarts.init(trendChartRef.value);
+                const statusChart = echarts.init(statusChartRef.value);
+                const siteChart = echarts.init(siteChartRef.value);
+                const typeChart = echarts.init(typeChartRef.value);
+                const deliveryChart = echarts.init(deliveryChartRef.value);
+
+                const trendData = {
+                    "7": {
+                        x: ["周一", "周二", "周三", "周四", "周五", "周六", "周日"],
+                        count: [12, 18, 15, 22, 20, 25, 18],
+                        amount: [2.1, 3.2, 2.8, 4.5, 3.9, 5.0, 3.6],
+                    },
+                    "30": {
+                        x: Array.from({ length: 30 }, (_, i) => `${i + 1}日`),
+                        count: Array.from({ length: 30 }, () => Math.floor(10 + Math.random() * 20)),
+                        amount: Array.from({ length: 30 }, () => (2 + Math.random() * 5).toFixed(1)),
+                    },
+                    "90": {
+                        x: Array.from({ length: 12 }, (_, i) => `第${i + 1}周`),
+                        count: Array.from({ length: 12 }, () => Math.floor(60 + Math.random() * 40)),
+                        amount: Array.from({ length: 12 }, () => (8 + Math.random() * 6).toFixed(1)),
+                    }
+                };
+
+                const setTrend = (range) => {
+                    const data = trendData[range];
+                    trendChart.setOption({
+                        tooltip: { trigger: "axis" },
+                        legend: { data: ["订单数", "金额(万)"], top: 6, left: "center" },
+                        grid: { left: "3%", right: "3%", bottom: "3%", containLabel: true, top: 60 },
+                        xAxis: { type: "category", data: data.x },
+                        yAxis: [
+                            { type: "value", name: "订单数" },
+                            { type: "value", name: "金额(万)" }
+                        ],
+                        series: [
+                            { name: "订单数", type: "line", data: data.count, smooth: true },
+                            { name: "金额(万)", type: "line", data: data.amount, smooth: true, yAxisIndex: 1 }
+                        ]
+                    });
+                };
+
+
+
+                setTrend(trendRange.value);
+
+                statusChart.setOption({
+                    tooltip: { trigger: "item" },
+                    legend: { bottom: 0 },
+                    series: [
+                        {
+                            name: "订单状态",
+                            type: "pie",
+                            radius: ["35%", "60%"],
+                            data: [
+                                { value: 18, name: "待确认" },
+                                { value: 22, name: "待排产" },
+                                { value: 35, name: "生产中" },
+                                { value: 12, name: "待发货" },
+                                { value: 9, name: "已发货" },
+                                { value: 6, name: "已完成" },
+                            ]
+                        }
+                    ]
+                });
+
+                siteChart.setOption({
+                    tooltip: { trigger: "axis" },
+                    grid: { left: "3%", right: "3%", bottom: "3%", containLabel: true },
+                    xAxis: { type: "value" },
+                    yAxis: { type: "category", data: ["广州站", "深圳站", "上海站", "成都站", "北京站"] },
+                    series: [
+                        {
+                            name: "金额(万)",
+                            type: "bar",
+                            data: [58, 46, 41, 35, 29],
+                            label: { show: true, position: "right" }
+                        }
+                    ]
+                });
+
+                typeChart.setOption({
+                    title: { text: "订单类型", left: "center", top: 8, textStyle: { fontSize: 12 } },
+                    tooltip: { trigger: "item" },
+                    series: [
+                        {
+                            type: "pie",
+                            radius: ["35%", "60%"],
+                            data: [
+                                { value: 40, name: "定制" },
+                                { value: 30, name: "现货" },
+                                { value: 20, name: "补单" },
+                                { value: 10, name: "其他" },
+                            ]
+                        }
+                    ]
+                });
+
+                deliveryChart.setOption({
+                    title: { text: "配送方式", left: "center", top: 8, textStyle: { fontSize: 12 } },
+                    tooltip: { trigger: "item" },
+                    series: [
+                        {
+                            type: "pie",
+                            radius: ["35%", "60%"],
+                            data: [
+                                { value: 45, name: "快递" },
+                                { value: 35, name: "物流" },
+                                { value: 20, name: "自提" },
+                            ]
+                        }
+                    ]
+                });
+
+                window.addEventListener("resize", () => {
+                    trendChart.resize();
+                    statusChart.resize();
+                    siteChart.resize();
+                    typeChart.resize();
+                    deliveryChart.resize();
+                });
+
+                watch(trendRange, (val) => {
+                    setTrend(val);
+                });
+            };
+
+            const asyncInit = async () => {
+                pageData.pageLoading = false;
+                initCharts();
+            };
+
+            const toPage = (url) => {
+                window.location.href = url;
+            };
+
+            onMounted(() => {
+                asyncInit();
+            });
+
+            return {
+                pageData,
+                statCards,
+                pendingShipList,
+                pendingPayList,
+                quickLinks,
+                trendRange,
+                trendChartRef,
+                statusChartRef,
+                siteChartRef,
+                typeChartRef,
+                deliveryChartRef,
+                toPage,
+            };
+        }
+    });
+</script>
+{% endblock %}

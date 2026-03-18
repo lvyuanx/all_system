@@ -26,8 +26,10 @@ from staff.urls import urls as STAFF_URLS
 from bill.urls import urls as BILL_URLS
 from order.urls import urls as ORDER_URLS
 from pattern_library.urls import urls as PATTERN_LIBRARY_URLS
+from .page_views.home_page import home_page
 
 urlpatterns = [
+    path("admin/home/", home_page, name="admin_home_page"),
     path('admin/', include(COMMON_URLS)),
     path('admin/', include(AUTH_URLS)),
     path('admin/', include(STAFF_URLS)),
@@ -36,6 +38,7 @@ urlpatterns = [
     path('admin/', include(PATTERN_LIBRARY_URLS)),
     path('admin/', admin.site.urls),
 ] + NINJA_URLS
+
 
 if settings.DEBUG:
     # 开发环境下服务静态文件

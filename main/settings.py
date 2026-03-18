@@ -79,6 +79,7 @@ TEMPLATES = [
         "DIRS": [
             BASE_DIR / "core/ninja_extra/templates",  # 添加自定义ninja模板目录
             BASE_DIR / "core/templates",  # 自定义模板
+            BASE_DIR / "main/templates",  # 首页
         ],  # 模板目录列表
         "APP_DIRS": True,  # 是否在每个已安装应用中查找模板目录
         "OPTIONS": {
@@ -271,6 +272,7 @@ SIMPLEUI_LOGO = "/media/client/site_logos/fd0bc8c080424abe86bdaa44cb431913.png"
 SIMPLEUI_CUSTOM_CSS = "static/admin/simpleui-x/css/custom.css"
 SIMPLEUI_HOME_INFO = False  # 去掉右侧多余部分
 SIMPLEUI_HOME_ACTION = False  # 去掉最近动作
+SIMPLEUI_HOME_PAGE = "/admin/home/"
 # endregion ****************** simpleui end ********************* #
 
 # region ******************** 权限 start ******************** #
