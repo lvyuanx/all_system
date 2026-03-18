@@ -487,16 +487,20 @@
                 await getOrderById()
                 pageData.pageLoading = false
             })
-
+            const isInitializing = ref(false)  // 添加初始化标志
             const getOrderById = async () => {
                 if (!orderId) return
-                const res = await request.get("/order/info", { order_id: orderId })
-                for (const item of res.items) {
-                    item.total = decimalMul(item.unit_price, item.count).toFixed(2)
-                    item.subtotal = decimalSub(item.total, item.discount_price).toFixed(2)
+                isInitializing.value = true  // 开始初始化
+                try {
+                    const res = await request.get("/order/info", { order_id: orderId })
+                    for (const item of res.items) {
+                        item.total = decimalMul(item.unit_price, item.count).toFixed(2)
+                        item.subtotal = decimalSub(item.total, item.discount_price).toFixed(2)
+                    }
+                    pageData.fromData = res
+                } finally {
+                    isInitializing.value = false  // 初始化完成
                 }
-                pageData.fromData.site_id = res.site_id
-                pageData.fromData = res
             }
             const orderTypeLabel = computed(() => {
                 return pageData.orderTpyeOptions.find((item) => item.value == pageData.fromData.order_type)?.label
@@ -545,6 +549,7 @@
             }
 
             watch(() => pageData.fromData.site_id, (n, o) => {
+                if (isInitializing.value) return  // 初始化时不执行清空逻辑
                 dialogData.tableFilter.site_id = n
                 pageData.fromData.shipping_party = ""
                 pageData.fromData.shipping_party_company = ""
