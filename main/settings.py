@@ -450,7 +450,7 @@ CACHES = {
             "SOCKET_CONNECT_TIMEOUT": 5,
             "SOCKET_TIMEOUT": 5,
         },
-        "KEY_PREFIX": "all_system",
+        "KEY_PREFIX":  merge_config("REDIS_KEY_PREFIX", "all_system"),
         "TIMEOUT": 60 * 60 * 24,  # 默认缓存24小时
     }
 }
