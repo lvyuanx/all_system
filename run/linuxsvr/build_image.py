@@ -11,8 +11,6 @@
 - 镜像内已包含代码（Dockerfile 已 COPY . /app）。
 - 可在任意目录调用（内部使用绝对路径）。
 """
-from __future__ import annotations
-
 import argparse
 import os
 import shutil
@@ -20,15 +18,19 @@ import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
+from typing import List
 
 ROOT_DIR = Path(__file__).resolve().parents[2]
 DOCKERFILE = ROOT_DIR / "docker" / "Dockerfile"
 COMPOSE_FILE = ROOT_DIR / "docker" / "docker-compose.yaml"
+SOURCE_CONFIG = ROOT_DIR / "main" / "config.py"
+INIT_TEMPLATE = ROOT_DIR / "run" / "linuxsvr" / "init.py"
 IMAGE_NAME = "all_system"
 DEFAULT_BUILD_DIR = ROOT_DIR / "build"
+HOST_DATA_DEFAULT = "/data/all_system"
 
 
-def run(cmd: list[str]) -> None:
+def run(cmd: List[str]) -> None:
     print("$", " ".join(cmd))
     subprocess.run(cmd, check=True, cwd=ROOT_DIR)
 
@@ -59,11 +61,22 @@ def parse_args() -> argparse.Namespace:
         default=str(DEFAULT_BUILD_DIR),
         help="产出根目录，默认在项目 build/",
     )
+    parser.add_argument(
+        "--data-dir",
+        default=HOST_DATA_DEFAULT,
+        help=f"宿主机数据根目录，默认 {HOST_DATA_DEFAULT}，将按端口号分子目录",
+    )
     return parser.parse_args()
 
 
-def write_env(env_path: Path, tag: str, port: int) -> None:
-    env_content = f"IMAGE_TAG={tag}\nIMAGE_PORT={port}\n"
+def write_env(env_path: Path, tag: str, port: int, data_dir: str) -> None:
+    log_path = f"{data_dir}/{port}/logs"
+    env_content = (
+        f"IMAGE_TAG={tag}\n"
+        f"IMAGE_PORT={port}\n"
+        f"HOST_DATA={data_dir}\n"
+        f"LOG_PATH={log_path}\n"
+    )
     env_path.write_text(env_content, encoding="utf-8")
 
 
@@ -107,16 +120,30 @@ def main() -> None:
     compose_dest = target_dir / "docker-compose.yaml"
     shutil.copy2(COMPOSE_FILE, compose_dest)
 
-    # 5) 写 .env（端口、tag）
+    # 5) 复制 config.py
+    config_dest = target_dir / "config.py"
+    if SOURCE_CONFIG.exists():
+        shutil.copy2(SOURCE_CONFIG, config_dest)
+    else:
+        print(f"警告: 未找到 {SOURCE_CONFIG}，未复制 config.py")
+
+    # 6) 写 .env（端口、tag、宿主机数据根）
     env_path = target_dir / ".env"
-    write_env(env_path, tag, args.port)
+    write_env(env_path, tag, args.port, args.data_dir)
+
+    # 7) 复制 init.py
+    init_dest = target_dir / "init.py"
+    if INIT_TEMPLATE.exists():
+        shutil.copy2(INIT_TEMPLATE, init_dest)
+    else:
+        print(f"警告: 未找到 {INIT_TEMPLATE}，未复制 init.py")
 
     print(
         "打包完成\n"
         f"镜像: {IMAGE_NAME}:{tag}\n"
         f"输出目录: {target_dir}\n"
-        "包含: all_system.tar, docker-compose.yaml, .env\n"
-        "部署示例: docker compose --env-file .env -f docker-compose.yaml up -d"
+        "包含: all_system.tar, docker-compose.yaml, .env, config.py, init.py\n"
+        "部署示例: python init.py"
     )
 
 
