@@ -20,7 +20,7 @@ REQUIRED_ENV = ["IMAGE_TAG", "IMAGE_PORT"]
 DEFAULT_HOST_DATA = "/data/all_system"
 NGINX_CONF_DIR = Path("/etc/nginx/conf.d")
 
-template = """server {
+template = """server {{
     listen {nginx_port};
     listen [::]:{nginx_port};
 
