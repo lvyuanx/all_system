@@ -1,0 +1,195 @@
+{% extends "vue_setup_base.html" %}
+{% load i18n %}
+{% load static %}
+
+{% block title %}
+{{ title }}
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .welcome-wrap {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .hero-card {
+        background: linear-gradient(135deg, #c7d2fe, #a5f3fc);
+        border-radius: 12px;
+        padding: 14px 16px;
+        box-shadow: 0 6px 16px rgba(59, 130, 246, 0.15);
+        color: #0f172a;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+    }
+
+    .hero-left {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .avatar {
+        width: 52px;
+        height: 52px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.8);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+        font-weight: 800;
+        color: #1e3a8a;
+    }
+
+    .hero-text {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    .hero-title {
+        font-size: 20px;
+        font-weight: 800;
+    }
+
+    .hero-sub {
+        color: #0f172a;
+        opacity: 0.8;
+        font-size: 13px;
+    }
+
+    .pill {
+        background: rgba(255, 255, 255, 0.9);
+        color: #1d4ed8;
+        padding: 6px 12px;
+        border-radius: 18px;
+        font-weight: 700;
+        box-shadow: 0 4px 10px rgba(59, 130, 246, 0.18);
+        font-size: 13px;
+    }
+
+    .section-title {
+        font-size: 14px;
+        font-weight: 700;
+        color: #111827;
+        margin-top: 4px;
+    }
+
+    .info-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 10px;
+    }
+
+    .info-card {
+        background: #ffffff;
+        border-radius: 12px;
+        padding: 12px;
+        box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06);
+        border: 1px solid #e5e7eb;
+        min-height: 90px;
+    }
+
+    .info-label {
+        color: #6b7280;
+        font-size: 12px;
+    }
+
+    .info-value {
+        margin-top: 4px;
+        font-weight: 700;
+        color: #111827;
+        font-size: 15px;
+        word-break: break-all;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div id="app">
+    <div class="page-container" v-loading="pageData.pageLoading">
+        <div class="welcome-wrap">
+            <div class="hero-card">
+                <div class="hero-left">
+                    <div class="avatar">[[ userInitial ]]</div>
+                    <div class="hero-text">
+                        <div class="hero-title">欢迎回来，[[ userInfo.name ]]！</div>
+                        <div class="hero-sub">祝你工作顺利，今天也要元气满满 ✨</div>
+                    </div>
+                </div>
+                <div class="pill">[[ userInfo.username ]]</div>
+            </div>
+
+            <div class="section-title">个人信息</div>
+            <div class="info-grid">
+                <div class="info-card">
+                    <div class="info-label">用户名</div>
+                    <div class="info-value">[[ userInfo.username ]]</div>
+                </div>
+                <div class="info-card">
+                    <div class="info-label">姓名</div>
+                    <div class="info-value">[[ userInfo.name ]]</div>
+                </div>
+                <div class="info-card">
+                    <div class="info-label">邮箱</div>
+                    <div class="info-value">[[ userInfo.email || '未填写' ]]</div>
+                </div>
+                <div class="info-card">
+                    <div class="info-label">上次登录</div>
+                    <div class="info-value">[[ userInfo.last_login || '暂无记录' ]]</div>
+                </div>
+                <div class="info-card">
+                    <div class="info-label">是否员工</div>
+                    <div class="info-value">[[ userInfo.is_staff ? '是' : '否' ]]</div>
+                </div>
+                <div class="info-card">
+                    <div class="info-label">角色</div>
+                    <div class="info-value">[[ (userInfo.roles && userInfo.roles.length) ? userInfo.roles.join(' / ') : '暂无角色' ]]</div>
+                </div>
+                <div class="info-card">
+                    <div class="info-label">员工状态</div>
+                    <div class="info-value">[[ userInfo.is_staff ? '内部员工' : '访客/外部用户' ]]</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script id="user-info-json" type="application/json">{{ user_info_json|safe }}</script>
+<script type="module">
+    const { reactive, computed, onMounted } = Vue;
+    window.createApp({
+        setup() {
+            const pageData = reactive({ pageLoading: true });
+            const userInfoEl = document.getElementById('user-info-json');
+            const userInfo = reactive(userInfoEl ? JSON.parse(userInfoEl.textContent || '{}') : {});
+
+            const userInitial = computed(() => {
+                if (userInfo.name) return userInfo.name.slice(0, 1).toUpperCase();
+                if (userInfo.username) return userInfo.username.slice(0, 1).toUpperCase();
+                return "U";
+            });
+
+            const asyncInit = async () => {
+                pageData.pageLoading = false;
+            };
+
+            onMounted(() => {
+                asyncInit();
+            });
+
+            return {
+                pageData,
+                userInfo,
+                userInitial,
+            };
+        }
+    });
+</script>
+{% endblock %}
