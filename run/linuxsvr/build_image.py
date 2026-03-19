@@ -24,7 +24,8 @@ ROOT_DIR = Path(__file__).resolve().parents[2]
 DOCKERFILE = ROOT_DIR / "docker" / "Dockerfile"
 COMPOSE_FILE = ROOT_DIR / "docker" / "docker-compose.yaml"
 SOURCE_CONFIG = ROOT_DIR / "main" / "config.py"
-SOURCE_OSS = ROOT_DIR / "oss" / "media" / "system"
+SOURCE_OSS_MEDIA = ROOT_DIR / "oss" / "media" / "system"
+SOURCE_OSS_STATIC = ROOT_DIR / "oss" / "static"
 INIT_TEMPLATE = ROOT_DIR / "run" / "linuxsvr" / "init.py"
 IMAGE_NAME = "all_system"
 DEFAULT_BUILD_DIR = ROOT_DIR / "build"
@@ -128,13 +129,20 @@ def main() -> None:
     else:
         print(f"警告: 未找到 {SOURCE_CONFIG}，未复制 config.py")
 
-    # 6) 复制 oss/media/system/**
-    oss_dest = target_dir / "oss" / "media" / "system"
-    if SOURCE_OSS.exists():
-        oss_dest.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copytree(SOURCE_OSS, oss_dest)
+    # 6) 复制 oss/media/system/** 和 oss/static/**
+    oss_media_dest = target_dir / "oss" / "media" / "system"
+    if SOURCE_OSS_MEDIA.exists():
+        oss_media_dest.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copytree(SOURCE_OSS_MEDIA, oss_media_dest)
     else:
-        print(f"警告: 未找到 {SOURCE_OSS}，未复制 oss 媒体资源")
+        print(f"警告: 未找到 {SOURCE_OSS_MEDIA}，未复制 oss 媒体资源")
+
+    oss_static_dest = target_dir / "oss" / "static"
+    if SOURCE_OSS_STATIC.exists():
+        oss_static_dest.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copytree(SOURCE_OSS_STATIC, oss_static_dest)
+    else:
+        print(f"警告: 未找到 {SOURCE_OSS_STATIC}，未复制 oss 静态资源")
 
     # 7) 写 .env（端口、tag、宿主机数据根）
     env_path = target_dir / ".env"
@@ -151,7 +159,7 @@ def main() -> None:
         "打包完成\n"
         f"镜像: {IMAGE_NAME}:{tag}\n"
         f"输出目录: {target_dir}\n"
-        "包含: all_system.tar, docker-compose.yaml, .env, config.py, init.py, oss/media/system/**\n"
+        "包含: all_system.tar, docker-compose.yaml, .env, config.py, init.py, oss/media/system/**, oss/static/**\n"
         "部署示例: python init.py"
     )
 

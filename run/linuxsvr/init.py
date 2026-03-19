@@ -119,7 +119,7 @@ def main() -> None:
     data_base = ensure_paths(host_data, port)
     copy_config(config_src, data_base / "config.py")
 
-    # 3b) 同步 oss/media/system -> /data/.../oss/media/system （仅当目标为空）
+    # 3b) 同步 oss 静态资源 (oss/**) -> /data/.../oss/ （仅当目标为空，避免覆盖自有数据）
     oss_src = here / "oss"
     oss_dst = data_base / "oss"
     copy_oss_dir(oss_src, oss_dst)
