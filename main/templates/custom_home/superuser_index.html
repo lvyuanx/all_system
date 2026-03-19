@@ -294,33 +294,90 @@
             const typeChartRef = ref(null);
             const deliveryChartRef = ref(null);
 
-            const pageData = reactive({
-                pageLoading: true,
-            });
+            const pageData = reactive({ pageLoading: true });
 
-            const statCards = reactive([
-                { title: "今日新增订单", value: 18, sub: "较昨日 +3", colorClass: "orange" },
-                { title: "今日订单金额", value: "¥ 36,580", sub: "较昨日 +8%", colorClass: "green" },
-                { title: "待发货", value: 25, sub: "待处理", colorClass: "blue" },
-                { title: "待收款", value: 12, sub: "关注", colorClass: "red" },
-                { title: "本月累计金额", value: "¥ 428,900", sub: "本月", colorClass: "purple" },
-                { title: "今日新增客户", value: 6, sub: "客户管理", colorClass: "pink" },
-            ]);
+            const statCards = reactive([]);
+            const trendRange = ref("7");
+            const trendDataset = ref({});
+            const statusDataset = ref([]);
+            const siteDataset = ref([]);
+            const typeDataset = ref([]);
+            const deliveryDataset = ref([]);
+            const pendingShipList = ref([]);
+            const pendingPayList = ref([]);
 
+            const mockSummary = {
+                today_order_count: 18,
+                today_order_delta: 3,
+                today_amount: 36580,
+                today_amount_delta_rate: 0.08,
+                pending_ship: 25,
+                pending_pay: 12,
+                month_amount: 428900,
+                new_customer: 6,
+            };
 
-            const pendingShipList = reactive([
+            const mockTrend = {
+                "7": {
+                    x: ["周一", "周二", "周三", "周四", "周五", "周六", "周日"],
+                    count: [12, 18, 15, 22, 20, 25, 18],
+                    amount: [2.1, 3.2, 2.8, 4.5, 3.9, 5.0, 3.6],
+                },
+                "30": {
+                    x: Array.from({ length: 30 }, (_, i) => `${i + 1}日`),
+                    count: Array.from({ length: 30 }, () => Math.floor(10 + Math.random() * 20)),
+                    amount: Array.from({ length: 30 }, () => (2 + Math.random() * 5).toFixed(1)),
+                },
+                "90": {
+                    x: Array.from({ length: 12 }, (_, i) => `第${i + 1}周`),
+                    count: Array.from({ length: 12 }, () => Math.floor(60 + Math.random() * 40)),
+                    amount: Array.from({ length: 12 }, () => (8 + Math.random() * 6).toFixed(1)),
+                }
+            };
+
+            const mockStatus = [
+                { value: 18, name: "待确认" },
+                { value: 22, name: "待排产" },
+                { value: 35, name: "生产中" },
+                { value: 12, name: "待发货" },
+                { value: 9, name: "已发货" },
+                { value: 6, name: "已完成" },
+            ];
+
+            const mockSite = [
+                { name: "广州站", value: 58 },
+                { name: "深圳站", value: 46 },
+                { name: "上海站", value: 41 },
+                { name: "成都站", value: 35 },
+                { name: "北京站", value: 29 },
+            ];
+
+            const mockType = [
+                { value: 40, name: "定制" },
+                { value: 30, name: "现货" },
+                { value: 20, name: "补单" },
+                { value: 10, name: "其他" },
+            ];
+
+            const mockDelivery = [
+                { value: 45, name: "快递" },
+                { value: 35, name: "物流" },
+                { value: 20, name: "自提" },
+            ];
+
+            const mockPendingShip = [
                 { order_no: "SO20240318001", site: "广州站", customer: "华南客户A", amount: "12,800", time: "今天 10:24" },
                 { order_no: "SO20240318002", site: "深圳站", customer: "华南客户B", amount: "8,450", time: "今天 09:12" },
                 { order_no: "SO20240317015", site: "上海站", customer: "华东客户C", amount: "5,900", time: "昨天 16:40" },
                 { order_no: "SO20240317011", site: "成都站", customer: "西南客户D", amount: "3,200", time: "昨天 15:18" },
-            ]);
+            ];
 
-            const pendingPayList = reactive([
+            const mockPendingPay = [
                 { order_no: "SO20240318005", site: "广州站", customer: "华南客户E", amount: "21,300", time: "今天 11:05" },
                 { order_no: "SO20240317021", site: "北京站", customer: "华北客户F", amount: "9,880", time: "昨天 18:10" },
                 { order_no: "SO20240317010", site: "杭州站", customer: "华东客户G", amount: "7,150", time: "昨天 14:05" },
                 { order_no: "SO20240316022", site: "武汉站", customer: "华中客户H", amount: "4,760", time: "前天 17:40" },
-            ]);
+            ];
 
             const quickLinks = reactive([
                 { title: "新建订单", url: "/admin/order/order/add/" },
@@ -331,7 +388,45 @@
                 { title: "员工管理", url: "/admin/staff/staff/" },
             ]);
 
-            const trendRange = ref("7");
+            const fmtDelta = (num) => {
+                if (num === null || num === undefined) return "-";
+                if (typeof num === "number" && num > 0) return `+${num}`;
+                return `${num}`;
+            };
+
+            const toCards = (summary) => {
+                return [
+                    { title: "今日新增订单", value: summary.today_order_count ?? 0, sub: `较昨日 ${fmtDelta(summary.today_order_delta)}`, colorClass: "orange" },
+                    { title: "今日订单金额", value: `¥ ${(summary.today_amount ?? 0).toLocaleString()}`, sub: `较昨日 ${fmtDelta(summary.today_amount_delta_rate ?? 0)}%`, colorClass: "green" },
+                    { title: "待发货", value: summary.pending_ship ?? 0, sub: "待处理", colorClass: "blue" },
+                    { title: "待收款", value: summary.pending_pay ?? 0, sub: "关注", colorClass: "red" },
+                    { title: "本月累计金额", value: `¥ ${(summary.month_amount ?? 0).toLocaleString()}`, sub: "本月", colorClass: "purple" },
+                    { title: "今日新增客户", value: summary.new_customer ?? 0, sub: "客户管理", colorClass: "pink" },
+                ];
+            };
+
+            const safeFetch = async (runner, fallback) => {
+                try {
+                    return await runner();
+                } catch (e) {
+                    console.warn("dashboard data fallback", e);
+                    return fallback;
+                }
+            };
+
+            const loadData = async () => {
+                const summary = await safeFetch(() => request.get("/order/dashboard/dashboard_summary"), mockSummary);
+                statCards.splice(0, statCards.length, ...toCards(summary));
+
+                trendDataset.value = await safeFetch(() => request.get("/order/dashboard/dashboard_trend", { range: trendRange.value }), mockTrend);
+                statusDataset.value = await safeFetch(() => request.get("/order/dashboard/dashboard_status"), mockStatus);
+                siteDataset.value = await safeFetch(() => request.get("/order/dashboard/dashboard_site_top"), mockSite);
+                typeDataset.value = await safeFetch(() => request.get("/order/dashboard/dashboard_type"), mockType);
+                deliveryDataset.value = await safeFetch(() => request.get("/order/dashboard/dashboard_delivery"), mockDelivery);
+                pendingShipList.value = await safeFetch(() => request.get("/order/dashboard/dashboard_pending_ship"), mockPendingShip);
+                pendingPayList.value = await safeFetch(() => request.get("/order/dashboard/dashboard_pending_pay"), mockPendingPay);
+
+            };
 
             const initCharts = () => {
                 const trendChart = echarts.init(trendChartRef.value);
@@ -340,26 +435,9 @@
                 const typeChart = echarts.init(typeChartRef.value);
                 const deliveryChart = echarts.init(deliveryChartRef.value);
 
-                const trendData = {
-                    "7": {
-                        x: ["周一", "周二", "周三", "周四", "周五", "周六", "周日"],
-                        count: [12, 18, 15, 22, 20, 25, 18],
-                        amount: [2.1, 3.2, 2.8, 4.5, 3.9, 5.0, 3.6],
-                    },
-                    "30": {
-                        x: Array.from({ length: 30 }, (_, i) => `${i + 1}日`),
-                        count: Array.from({ length: 30 }, () => Math.floor(10 + Math.random() * 20)),
-                        amount: Array.from({ length: 30 }, () => (2 + Math.random() * 5).toFixed(1)),
-                    },
-                    "90": {
-                        x: Array.from({ length: 12 }, (_, i) => `第${i + 1}周`),
-                        count: Array.from({ length: 12 }, () => Math.floor(60 + Math.random() * 40)),
-                        amount: Array.from({ length: 12 }, () => (8 + Math.random() * 6).toFixed(1)),
-                    }
-                };
-
                 const setTrend = (range) => {
-                    const data = trendData[range];
+                    const source = trendDataset.value && trendDataset.value[range] ? trendDataset.value : mockTrend;
+                    const data = source[range] || source["7"];
                     trendChart.setOption({
                         tooltip: { trigger: "axis" },
                         legend: { data: ["订单数", "金额(万)"], top: 6, left: "center" },
@@ -376,77 +454,75 @@
                     });
                 };
 
+                const setStatus = () => {
+                    const data = statusDataset.value?.length ? statusDataset.value : mockStatus;
+                    statusChart.setOption({
+                        tooltip: { trigger: "item" },
+                        legend: { bottom: 0 },
+                        series: [
+                            {
+                                name: "订单状态",
+                                type: "pie",
+                                radius: ["35%", "60%"],
+                                data,
+                            }
+                        ]
+                    });
+                };
 
+                const setSite = () => {
+                    const data = siteDataset.value?.length ? siteDataset.value : mockSite;
+                    siteChart.setOption({
+                        tooltip: { trigger: "axis" },
+                        grid: { left: "3%", right: "3%", bottom: "3%", containLabel: true },
+                        xAxis: { type: "value" },
+                        yAxis: { type: "category", data: data.map((i) => i.name) },
+                        series: [
+                            {
+                                name: "金额(万)",
+                                type: "bar",
+                                data: data.map((i) => i.value),
+                                label: { show: true, position: "right" }
+                            }
+                        ]
+                    });
+                };
+
+                const setType = () => {
+                    const data = typeDataset.value?.length ? typeDataset.value : mockType;
+                    typeChart.setOption({
+                        title: { text: "订单类型", left: "center", top: 8, textStyle: { fontSize: 12 } },
+                        tooltip: { trigger: "item" },
+                        series: [
+                            {
+                                type: "pie",
+                                radius: ["35%", "60%"],
+                                data,
+                            }
+                        ]
+                    });
+                };
+
+                const setDelivery = () => {
+                    const data = deliveryDataset.value?.length ? deliveryDataset.value : mockDelivery;
+                    deliveryChart.setOption({
+                        title: { text: "配送方式", left: "center", top: 8, textStyle: { fontSize: 12 } },
+                        tooltip: { trigger: "item" },
+                        series: [
+                            {
+                                type: "pie",
+                                radius: ["35%", "60%"],
+                                data,
+                            }
+                        ]
+                    });
+                };
 
                 setTrend(trendRange.value);
-
-                statusChart.setOption({
-                    tooltip: { trigger: "item" },
-                    legend: { bottom: 0 },
-                    series: [
-                        {
-                            name: "订单状态",
-                            type: "pie",
-                            radius: ["35%", "60%"],
-                            data: [
-                                { value: 18, name: "待确认" },
-                                { value: 22, name: "待排产" },
-                                { value: 35, name: "生产中" },
-                                { value: 12, name: "待发货" },
-                                { value: 9, name: "已发货" },
-                                { value: 6, name: "已完成" },
-                            ]
-                        }
-                    ]
-                });
-
-                siteChart.setOption({
-                    tooltip: { trigger: "axis" },
-                    grid: { left: "3%", right: "3%", bottom: "3%", containLabel: true },
-                    xAxis: { type: "value" },
-                    yAxis: { type: "category", data: ["广州站", "深圳站", "上海站", "成都站", "北京站"] },
-                    series: [
-                        {
-                            name: "金额(万)",
-                            type: "bar",
-                            data: [58, 46, 41, 35, 29],
-                            label: { show: true, position: "right" }
-                        }
-                    ]
-                });
-
-                typeChart.setOption({
-                    title: { text: "订单类型", left: "center", top: 8, textStyle: { fontSize: 12 } },
-                    tooltip: { trigger: "item" },
-                    series: [
-                        {
-                            type: "pie",
-                            radius: ["35%", "60%"],
-                            data: [
-                                { value: 40, name: "定制" },
-                                { value: 30, name: "现货" },
-                                { value: 20, name: "补单" },
-                                { value: 10, name: "其他" },
-                            ]
-                        }
-                    ]
-                });
-
-                deliveryChart.setOption({
-                    title: { text: "配送方式", left: "center", top: 8, textStyle: { fontSize: 12 } },
-                    tooltip: { trigger: "item" },
-                    series: [
-                        {
-                            type: "pie",
-                            radius: ["35%", "60%"],
-                            data: [
-                                { value: 45, name: "快递" },
-                                { value: 35, name: "物流" },
-                                { value: 20, name: "自提" },
-                            ]
-                        }
-                    ]
-                });
+                setStatus();
+                setSite();
+                setType();
+                setDelivery();
 
                 window.addEventListener("resize", () => {
                     trendChart.resize();
@@ -456,12 +532,11 @@
                     deliveryChart.resize();
                 });
 
-                watch(trendRange, (val) => {
-                    setTrend(val);
-                });
+                watch(trendRange, (val) => setTrend(val));
             };
 
             const asyncInit = async () => {
+                await loadData();
                 pageData.pageLoading = false;
                 initCharts();
             };

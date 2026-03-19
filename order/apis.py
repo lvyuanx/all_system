@@ -6,6 +6,17 @@ from .views import (
     order_ship_view,
     order_list_by_pattern_view,
 )
+from .views.dashboard import (
+    DashboardSummaryView,
+    DashboardTrendView,
+    DashboardStatusView,
+    DashboardSiteTopView,
+    DashboardTypeView,
+    DashboardDeliveryView,
+    DashboardPendingShipView,
+    DashboardPendingPayView,
+)
+
 from .views.pay import (
     order_pay_ca_list_view,
     order_pay_view,
@@ -13,6 +24,7 @@ from .views.pay import (
 )
 
 apis = {
+
     "": [
         (
             "A0",
@@ -51,6 +63,19 @@ apis = {
             "按版号查询关联订单",
         ),
     ],
+
+    "dashboard": [
+        ("D0", "dashboard_summary", DashboardSummaryView, "仪表盘汇总"),
+        ("D1", "dashboard_trend", DashboardTrendView, "仪表盘趋势"),
+        ("D2", "dashboard_status", DashboardStatusView, "仪表盘状态分布"),
+        ("D3", "dashboard_site_top", DashboardSiteTopView, "仪表盘站点Top"),
+        ("D4", "dashboard_type", DashboardTypeView, "仪表盘订单类型"),
+        ("D5", "dashboard_delivery", DashboardDeliveryView, "仪表盘配送方式"),
+        ("D6", "dashboard_pending_ship", DashboardPendingShipView, "待发货列表"),
+        ("D7", "dashboard_pending_pay", DashboardPendingPayView, "待收款列表"),
+    ],
+
+
     "pay": [
         (
             "B0",
@@ -70,5 +95,6 @@ apis = {
             order_pay_method_type_all_list_view.View,
             "查询所有订单支付类型",
         ),
-    ]
+    ],
 }
+
