@@ -818,11 +818,16 @@
                 try {
                     let res = await request.post("/order/create", pageData.fromData);
                     ElMessage.success("操作成功！");
-                    goBack();
+                    if(hideBack) {
+                        checkoutData.dialogVisible = false;
+                    } else {
+                        goBack();
+                    }
                 } catch (e) {
                     ElMessage.error(e.message);
                 }
             }
+
 
             return {
                 goBack,

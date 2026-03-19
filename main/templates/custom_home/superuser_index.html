@@ -102,7 +102,9 @@
         justify-content: space-between;
         padding: 8px 0;
         border-bottom: 1px dashed #e5e7eb;
+        cursor: pointer;
     }
+
 
     .list-item:last-child {
         border-bottom: none;
@@ -147,7 +149,15 @@
         transform: translateY(-2px);
     }
 
+    .empty-tip {
+        padding: 12px 0;
+        text-align: center;
+        color: #9ca3af;
+        font-size: 13px;
+    }
+
 </style>
+
 {% endblock %}
 
 {% block content %}
@@ -220,10 +230,13 @@
                     <div class="card">
                         <div class="card-header">
                             <span>待发货订单</span>
-                            <el-button text size="small" @click="toPage('/admin/order/order/shipping/', '订单发货')">查看更多</el-button>
+                            <el-button text size="small" @click="toPage('/admin/order/order/filter/?order_status=50', '待发货列表')">查看更多</el-button>
+
+
+
                         </div>
-                        <div>
-                            <div class="list-item" v-for="item in pendingShipList" :key="item.order_no">
+                        <div v-if="pendingShipList.length">
+                            <div class="list-item" v-for="item in pendingShipList" :key="item.order_no" @click="viewOrder(item.order_no, item.id)">
                                 <div class="list-left">
                                     <div class="list-title">[[item.order_no]]</div>
                                     <div class="list-sub">[[item.site]] · [[item.customer]]</div>
@@ -234,46 +247,36 @@
                                 </div>
                             </div>
                         </div>
+                        <div v-else class="empty-tip">暂无数据</div>
+
                     </div>
                 </el-col>
                 <el-col :span="12">
                     <div class="card">
                         <div class="card-header">
-                            <span>待收款订单</span>
-                            <el-button text size="small" @click="toPage('/admin/order/order/pay/', '订单收款')">查看更多</el-button>
+                            <span>订单最新动态</span>
+                            <el-button text size="small" @click="toPage('/admin/order/order/', '订单列表')">查看更多</el-button>
                         </div>
-                        <div>
-                            <div class="list-item" v-for="item in pendingPayList" :key="item.order_no">
+                        <div v-if="pendingPayList.length">
+                            <div class="list-item" v-for="item in pendingPayList" :key="item.order_no" @click="viewOrder(item.order_no, item.id)">
                                 <div class="list-left">
                                     <div class="list-title">[[item.order_no]]</div>
-                                    <div class="list-sub">[[item.site]] · [[item.customer]]</div>
+                                    <div class="list-sub">[[item.status]] · [[item.site]] · [[item.customer]]</div>
                                 </div>
                                 <div class="list-right">
                                     <div>[[item.amount]] 元</div>
-                                    <div class="list-sub">[[item.time]]</div>
+                                    <div class="list-sub">更新 [[item.time]]</div>
                                 </div>
                             </div>
                         </div>
+                        <div v-else class="empty-tip">暂无数据</div>
+
+
                     </div>
                 </el-col>
             </el-row>
 
-            <el-row :gutter="12">
-                <el-col :span="24">
-                    <div class="card">
-                        <div class="card-header">
-                            <span>快捷入口</span>
-                        </div>
-                        <el-row :gutter="12">
-                            <el-col :span="4" v-for="item in quickLinks" :key="item.title">
-                                <div class="quick-card" @click="toPage(item.url, item.title)">
-                                    <div>[[item.title]]</div>
-                                </div>
-                            </el-col>
-                        </el-row>
-                    </div>
-                </el-col>
-            </el-row>
+
         </div>
     </div>
 </div>
@@ -543,9 +546,27 @@
                 initCharts();
             };
 
-            const toPage = (url) => {
-                window.location.href = url;
+            const toPage = (url, title = "") => {
+                if (window.SimpleUIExtra?.openParentTab) {
+                    window.SimpleUIExtra.openParentTab(url, title || url, "tab");
+                } else {
+                    window.open(url, "_blank");
+                }
             };
+
+            const viewOrder = (orderNo, pk) => {
+                const url = pk
+                    ? `/admin/order/order/${pk}/change/?hide_back=1`
+                    : `/admin/order/order/?_q_=${encodeURIComponent(orderNo)}&hide_back=1`;
+                if (window.SimpleUIExtra?.openParentTab) {
+                    window.SimpleUIExtra.openParentTab(url, `订单 ${orderNo}`, "tab");
+                } else {
+                    window.open(url, "_blank");
+                }
+            };
+
+
+
 
             onMounted(() => {
                 asyncInit();
@@ -564,8 +585,10 @@
                 typeChartRef,
                 deliveryChartRef,
                 toPage,
+                viewOrder,
             };
         }
     });
+
 </script>
 {% endblock %}

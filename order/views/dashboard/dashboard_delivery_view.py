@@ -1,6 +1,10 @@
 # -*-coding:utf-8 -*-
+from asgiref.sync import sync_to_async
+from django.db.models import Count
+
 from core.ninja_extra.api_extra import BaseApi, HttpRequest
-from .mock_data import MOCK_DELIVERY
+from order.enums import OrderDeliveryChoices
+from order.models import Order
 
 
 class DashboardDeliveryView(BaseApi):
@@ -12,4 +16,18 @@ class DashboardDeliveryView(BaseApi):
 
     @staticmethod
     async def api(request: HttpRequest):
-        return MOCK_DELIVERY
+        def calc_delivery():
+            qs = (
+                Order.objects
+                .filter(is_delete=False)
+                .values("delivery_method")
+                .annotate(total=Count("id"))
+                .order_by("delivery_method")
+            )
+            mapping = dict(OrderDeliveryChoices.choices)
+            return [
+                {"name": mapping.get(row["delivery_method"], str(row["delivery_method"])), "value": row["total"]}
+                for row in qs
+            ]
+
+        return await sync_to_async(calc_delivery, thread_sensitive=True)()

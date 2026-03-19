@@ -1,6 +1,9 @@
 # -*-coding:utf-8 -*-
+from asgiref.sync import sync_to_async
+
 from core.ninja_extra.api_extra import BaseApi, HttpRequest
-from .mock_data import MOCK_PENDING_SHIP
+from order.enums import OrderStatusChoices
+from order.models import Order
 
 
 class DashboardPendingShipView(BaseApi):
@@ -12,4 +15,26 @@ class DashboardPendingShipView(BaseApi):
 
     @staticmethod
     async def api(request: HttpRequest):
-        return MOCK_PENDING_SHIP
+        def fetch_pending_ship():
+            qs = (
+                Order.objects
+                .filter(
+                    is_delete=False,
+                    order_status=OrderStatusChoices.FINISHED,
+                )
+                .select_related("site")
+                .order_by("-create_time")[:10]
+            )
+            return [
+                {
+                    "id": obj.id,
+                    "order_no": obj.order_no,
+                    "site": obj.site.site_name if obj.site else "未分配站点",
+                    "customer": getattr(obj, "receiver_name", "") or getattr(obj, "receiver_company", "") or "",
+                    "amount": f"{obj.payable_amount:,.0f}",
+                    "time": obj.create_time.strftime("%m-%d %H:%M") if obj.create_time else "",
+                }
+                for obj in qs
+            ]
+
+        return await sync_to_async(fetch_pending_ship, thread_sensitive=True)()

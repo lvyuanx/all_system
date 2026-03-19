@@ -1,6 +1,10 @@
 # -*-coding:utf-8 -*-
+from asgiref.sync import sync_to_async
+from django.db.models import Count
+
 from core.ninja_extra.api_extra import BaseApi, HttpRequest
-from .mock_data import MOCK_TYPE
+from order.enums import OrderTypeChoices
+from order.models import Order
 
 
 class DashboardTypeView(BaseApi):
@@ -12,4 +16,18 @@ class DashboardTypeView(BaseApi):
 
     @staticmethod
     async def api(request: HttpRequest):
-        return MOCK_TYPE
+        def calc_type():
+            qs = (
+                Order.objects
+                .filter(is_delete=False)
+                .values("order_type")
+                .annotate(total=Count("id"))
+                .order_by("order_type")
+            )
+            mapping = dict(OrderTypeChoices.choices)
+            return [
+                {"name": mapping.get(row["order_type"], str(row["order_type"])), "value": row["total"]}
+                for row in qs
+            ]
+
+        return await sync_to_async(calc_type, thread_sensitive=True)()
