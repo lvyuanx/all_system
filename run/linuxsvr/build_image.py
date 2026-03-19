@@ -27,6 +27,7 @@ SOURCE_CONFIG = ROOT_DIR / "main" / "config.py"
 SOURCE_OSS_MEDIA = ROOT_DIR / "oss" / "media" / "system"
 SOURCE_OSS_STATIC = ROOT_DIR / "oss" / "static"
 INIT_TEMPLATE = ROOT_DIR / "run" / "linuxsvr" / "init.py"
+NGINX_SCRIPT = ROOT_DIR / "run" / "linuxsvr" / "register_nginx.py"
 IMAGE_NAME = "all_system"
 DEFAULT_BUILD_DIR = ROOT_DIR / "build"
 HOST_DATA_DEFAULT = "/data/all_system"
@@ -155,12 +156,19 @@ def main() -> None:
     else:
         print(f"警告: 未找到 {INIT_TEMPLATE}，未复制 init.py")
 
+    # 9) 复制 register_nginx.py
+    nginx_script_dest = target_dir / "register_nginx.py"
+    if NGINX_SCRIPT.exists():
+        shutil.copy2(NGINX_SCRIPT, nginx_script_dest)
+    else:
+        print(f"警告: 未找到 {NGINX_SCRIPT}，未复制 register_nginx.py")
+
     print(
         "打包完成\n"
         f"镜像: {IMAGE_NAME}:{tag}\n"
         f"输出目录: {target_dir}\n"
-        "包含: all_system.tar, docker-compose.yaml, .env, config.py, init.py, oss/media/system/**, oss/static/**\n"
-        "部署示例: python init.py"
+        "包含: all_system.tar, docker-compose.yaml, .env, config.py, init.py, register_nginx.py, oss/media/system/**, oss/static/**\n"
+        "部署示例: python init.py；生成 nginx 配置: python register_nginx.py -p <端口>"
     )
 
 
