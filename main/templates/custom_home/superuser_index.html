@@ -482,11 +482,13 @@
                                 name: "金额(万)",
                                 type: "bar",
                                 data: data.map((i) => i.value),
+                                barMaxWidth: 28,
                                 label: { show: true, position: "right" }
                             }
                         ]
                     });
                 };
+
 
                 const setType = () => {
                     const data = typeDataset.value?.length ? typeDataset.value : mockType;

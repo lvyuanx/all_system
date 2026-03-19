@@ -1,6 +1,9 @@
 # -*-coding:utf-8 -*-
+from asgiref.sync import sync_to_async
+from django.db.models import Sum
+
 from core.ninja_extra.api_extra import BaseApi, HttpRequest
-from .mock_data import MOCK_SITE
+from order.models import Order
 
 
 class DashboardSiteTopView(BaseApi):
@@ -11,5 +14,25 @@ class DashboardSiteTopView(BaseApi):
     error_codes = []
 
     @staticmethod
+    def _to_wan(val):
+        return round(float(val or 0) / 10000, 2)
+
+    @staticmethod
     async def api(request: HttpRequest):
-        return MOCK_SITE
+        def calc_site_top():
+            qs = (
+                Order.objects
+                .filter(is_delete=False, site__isnull=False)
+                .values("site", "site__site_name")
+                .annotate(total=Sum("payable_amount"))
+                .order_by("-total")[:5]
+            )
+            return [
+                {
+                    "name": row.get("site__site_name") or "未分配站点",
+                    "value": DashboardSiteTopView._to_wan(row.get("total")),
+                }
+                for row in qs
+            ]
+
+        return await sync_to_async(calc_site_top, thread_sensitive=True)()
