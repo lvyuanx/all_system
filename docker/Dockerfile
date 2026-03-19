@@ -71,5 +71,8 @@ RUN apt-get update && apt-get install -y \
 # 拷贝已安装 Python 包
 COPY --from=builder /install /usr/local
 
+# 拷贝代码
+COPY . /app
+
 # 默认运行
 CMD ["python", "manage.py", "uvserver"]

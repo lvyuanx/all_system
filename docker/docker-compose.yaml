@@ -4,8 +4,6 @@ services:
     container_name: all_system_${IMAGE_PORT:-27001}
     ports:
       - "${IMAGE_PORT:-27001}:8000"
-    volumes:
-      - ${IMAGE_APP_PATH:-/home/applications/www/all_system}:/app
     networks:
       - 1panel-network
     restart: unless-stopped   # 后台运行并自动重启
