@@ -46,9 +46,25 @@ def ensure_paths(host_data: Path, port: str) -> Path:
     return base
 
 
+def copy_oss_dir(src: Path, dst: Path) -> None:
+    if not src.exists():
+        return
+    if dst.exists():
+        # 如果目标目录为空，则先移除以便 copytree；若已有内容则跳过以避免覆盖
+        try:
+            next(dst.iterdir())
+            return
+        except StopIteration:
+            shutil.rmtree(dst)
+    shutil.copytree(src, dst)
+
+
 def copy_config(src: Path, dst: Path) -> None:
     if dst.exists():
-        return
+        if dst.is_dir():
+            shutil.rmtree(dst)
+        else:
+            return
     if not src.exists():
         raise FileNotFoundError(f"源 config.py 不存在: {src}")
     shutil.copy2(src, dst)
@@ -63,6 +79,16 @@ def ensure_image(image: str, tar_path: Path) -> None:
     run(["docker", "load", "-i", str(tar_path)])
 
 
+def container_exists(name: str) -> bool:
+    proc = subprocess.run(
+        ["docker", "ps", "-a", "--filter", f"name=^{name}$", "-q"],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        universal_newlines=True,
+    )
+    return bool(proc.stdout.strip())
+
+
 def main() -> None:
     here = Path(__file__).resolve().parent
     env_file = here / ".env"
@@ -75,12 +101,30 @@ def main() -> None:
     port = str(env["IMAGE_PORT"])
     image_tag = env["IMAGE_TAG"]
     image = f"all_system:{image_tag}"
+    container_name = f"all_system_{port}"
 
+    # 1) 确保镜像存在
+    ensure_image(image, tar_file)
+
+    # 2) 若容器存在则 down
+    if container_exists(container_name):
+        subprocess.run([
+            "docker", "compose",
+            "--env-file", str(env_file),
+            "-f", str(compose_file),
+            "down",
+        ], check=False)
+
+    # 3) 确保数据目录和 config.py
     data_base = ensure_paths(host_data, port)
     copy_config(config_src, data_base / "config.py")
 
-    ensure_image(image, tar_file)
+    # 3b) 同步 oss/media/system -> /data/.../oss/media/system （仅当目标为空）
+    oss_src = here / "oss"
+    oss_dst = data_base / "oss"
+    copy_oss_dir(oss_src, oss_dst)
 
+    # 4) 启动容器
     run([
         "docker", "compose",
         "--env-file", str(env_file),

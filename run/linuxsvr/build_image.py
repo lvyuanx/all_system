@@ -24,6 +24,7 @@ ROOT_DIR = Path(__file__).resolve().parents[2]
 DOCKERFILE = ROOT_DIR / "docker" / "Dockerfile"
 COMPOSE_FILE = ROOT_DIR / "docker" / "docker-compose.yaml"
 SOURCE_CONFIG = ROOT_DIR / "main" / "config.py"
+SOURCE_OSS = ROOT_DIR / "oss" / "media" / "system"
 INIT_TEMPLATE = ROOT_DIR / "run" / "linuxsvr" / "init.py"
 IMAGE_NAME = "all_system"
 DEFAULT_BUILD_DIR = ROOT_DIR / "build"
@@ -127,11 +128,19 @@ def main() -> None:
     else:
         print(f"警告: 未找到 {SOURCE_CONFIG}，未复制 config.py")
 
-    # 6) 写 .env（端口、tag、宿主机数据根）
+    # 6) 复制 oss/media/system/**
+    oss_dest = target_dir / "oss" / "media" / "system"
+    if SOURCE_OSS.exists():
+        oss_dest.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copytree(SOURCE_OSS, oss_dest)
+    else:
+        print(f"警告: 未找到 {SOURCE_OSS}，未复制 oss 媒体资源")
+
+    # 7) 写 .env（端口、tag、宿主机数据根）
     env_path = target_dir / ".env"
     write_env(env_path, tag, args.port, args.data_dir)
 
-    # 7) 复制 init.py
+    # 8) 复制 init.py
     init_dest = target_dir / "init.py"
     if INIT_TEMPLATE.exists():
         shutil.copy2(INIT_TEMPLATE, init_dest)
@@ -142,7 +151,7 @@ def main() -> None:
         "打包完成\n"
         f"镜像: {IMAGE_NAME}:{tag}\n"
         f"输出目录: {target_dir}\n"
-        "包含: all_system.tar, docker-compose.yaml, .env, config.py, init.py\n"
+        "包含: all_system.tar, docker-compose.yaml, .env, config.py, init.py, oss/media/system/**\n"
         "部署示例: python init.py"
     )
 
