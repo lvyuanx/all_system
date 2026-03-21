@@ -387,6 +387,7 @@ INIT_SCRIPTS = merge_config(
         "main.init.init_csv_sql:init_csv_sql",
         "main.init.init_perm_pack:init_perm_pack",
         "main.init.init_menus_perm:init_menus_perm",
+        "main.init.init_playwright:init_playwright",
     ],
 )
 DB_CSVS = merge_config(
