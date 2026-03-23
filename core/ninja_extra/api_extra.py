@@ -65,6 +65,10 @@ class BaseApi:
     api_status: str = ApiStatus.DEV_IN_PROGRESS  # 接口状态
     wrap_response: bool = True  # 是否包装响应
 
+    # 权限控制
+    perms_any: list[str] | None = None  # 具备其中任意一个权限即可
+    perms_all: list[str] | None = None  # 必须具备全部权限
+
     # 分页
     is_pagination: bool = False
     pagination_class: AsyncLimitOffsetPagination = AsyncLimitOffsetPagination
@@ -72,6 +76,7 @@ class BaseApi:
     # 异常码
     finally_code: tuple | str = None
     error_codes: list[tuple | str] = []
+
 
     @staticmethod
     async def api(*args, **kwargs):
@@ -125,6 +130,36 @@ class BaseApi:
 
         return decorator
 
+    @classmethod
+    def _api_perm_wrapper(cls):
+        """权限包装：perms_any 满足任一即可；perms_all 必须全部满足"""
+
+        def decorator(func):
+
+            @wraps(func)
+            async def wrapper(*args, **kwargs):
+                request = kwargs.get("request")
+                if request is None:
+                    for arg in args:
+                        if isinstance(arg, HttpRequest):
+                            request = arg
+                            break
+                if request is not None:
+                    user = request.user
+                    # 检查必须全部拥有的权限
+                    if cls.perms_all:
+                        if not user.has_perms(cls.perms_all):
+                            raise BusinessException("403")
+                    # 检查任意一个权限
+                    if cls.perms_any:
+                        if not any(user.has_perm(p) for p in cls.perms_any):
+                            raise BusinessException("403")
+                return await func(*args, **kwargs)
+
+            return wrapper
+
+        return decorator
+
     def __init_subclass__(cls) -> None:
         api_wrapper_func = cls.api
         if cls.is_pagination:
@@ -137,9 +172,11 @@ class BaseApi:
             #     pagination_class.Input,
             #     pagination_class.InputSource,
             # )
+        api_wrapper_func = cls._api_perm_wrapper()(api_wrapper_func)
         api_wrapper_func = cls._api_response_wrapper()(api_wrapper_func)
         api_wrapper_func = cls._api_exception_wrapper()(api_wrapper_func)
         setattr(cls, "api", api_wrapper_func)
+
 
 
 class NinjaAPIExtra:
