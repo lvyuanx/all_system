@@ -12,8 +12,6 @@ services:
       - app-network
     restart: unless-stopped   # 后台运行并自动重启
 
-
-
 networks:
   app-network:
-    external: true
+    driver: bridge
