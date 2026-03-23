@@ -9,11 +9,11 @@ services:
       - "${HOST_DATA:-/data/all_system}/${IMAGE_PORT:-27001}/oss:/app/oss"
       - "${HOST_DATA:-/data/all_system}/${IMAGE_PORT:-27001}/config.py:/app/main/config.py"
     networks:
-      - 1panel-network
+      - app-network
     restart: unless-stopped   # 后台运行并自动重启
 
 
 
 networks:
-  1panel-network:
+  app-network:
     external: true
