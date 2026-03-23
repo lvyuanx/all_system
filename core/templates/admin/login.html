@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+{% load i18n static simpletags %}
+{% get_current_language as LANGUAGE_CODE %}{% get_current_language_bidi as LANGUAGE_BIDI %}
+<!-- Override simpleui login for QR login -->
+<html lang="{{ LANGUAGE_CODE|default:"en-us" }}" {% if LANGUAGE_BIDI %}dir="rtl"{% endif %}>
+<head>
+    <meta charset="UTF-8">
+    <meta name="renderer" content="webkit">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    {% block title %}
+        <title>{{ site_title }}-{% trans 'Log in' %}</title>
+    {% endblock %}
+    {% block icon %}{% endblock %}
+    {% include 'admin/includes/css-part.html' %}
+    {% block css %}
+        <link rel="stylesheet" href="{% static 'admin/simpleui-x/css/login.css' %}?_=2.1">
+        <style>
+            .qr-card {width:260px;padding:16px;border:1px solid #e5e5e5;border-radius:8px;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,0.05);}
+            .qr-card h4 {margin:0 0 8px 0;font-size:14px;font-weight:600;text-align:center;}
+            .qr-img-box {width:200px;height:200px;margin:0 auto;display:flex;align-items:center;justify-content:center;border:1px dashed #dcdfe6;border-radius:6px;background:#fafafa;}
+            .qr-img-box img {max-width:100%;max-height:100%;}
+            .qr-actions {display:flex;justify-content:center;margin-top:10px;}
+        </style>
+    {% endblock %}
+    {% block bg %}
+        <style type="text/css">
+            .bg {background:#f0f2f5;background-image:url('{% static 'admin/simpleui-x/img/bg.svg' %}');min-height:100%;background-repeat:no-repeat;background-position:50%;background-size:100%;padding:20px 0;position:relative;}
+        </style>
+    {% endblock %}
+    {% block head %}{% endblock %}
+</head>
+<body class="bg">
+{% block left %}{% endblock %}
+{% block main %}
+<div class="login-decorator">
+<div class="login-main" style="display:flex;gap:24px;align-items:flex-start;flex-wrap:wrap;justify-content:center;">
+    {% block logo %}
+        <div class="logo" style="width:100%;text-align:center;">
+            {% if "SIMPLEUI_LOGO"|get_config %}
+                <img src="{{ "SIMPLEUI_LOGO"|get_config |safe }}">
+            {% else %}
+                <img src="{% static 'admin/simpleui-x/img/logo.png' %}">
+            {% endif %}
+        </div>
+    {% endblock %}
+
+    <div style="flex:1;min-width:280px;max-width:400px;">
+    {% block header %}
+        <div class="header">{{ site_header }}</div>
+    {% endblock %}
+
+    {% block errors %}
+        {% if form.non_field_errors %}
+            {% for error in form.non_field_errors %}
+                <el-alert title="{{ error }}" type="error"></el-alert>
+            {% endfor %}
+        {% endif %}
+        {% if form.errors and not form.non_field_errors %}
+            <p class="errornote">
+                {% if form.errors.items|length == 1 %}
+                    <el-alert title="{% trans "Please correct the error below." %}" type="error"></el-alert>
+                {% else %}
+                    <el-alert title="{% trans "Please correct the errors below." %}" type="error"></el-alert>
+                {% endif %}
+            </p>
+        {% endif %}
+    {% endblock %}
+
+    {% block form %}
+        <form class="simpleui-form" action="{{ app_path }}" method="post" id="login-form">
+            {% csrf_token %}
+            <div class="simpleui-input-inline">
+                <el-input prefix-icon="fas fa-user" v-model="username" name="username" placeholder="{% trans 'username' %}" autofocus></el-input>
+            </div>
+            <div class="simpleui-input-inline">
+                <el-input prefix-icon="fas fa-lock" type="password" v-model="password" name="password" @keyup.enter.native="login()" placeholder="{% trans 'password' %}" show-password></el-input>
+            </div>
+            {% url 'admin_password_reset' as password_reset_url %}
+              {% if password_reset_url %}
+             <div class="password-reset-link">
+                <a class="forgot-password" href="{{ password_reset_url }}">{% trans 'Forgotten your password or username?' %}</a>
+              </div>
+              {% endif %}
+            <div class="simpleui-input-inline login-btn">
+                <el-button :icon="loading?'el-icon-loading':''" @click="login()" type="primary">{% trans 'Log in' %}</el-button>
+            </div>
+            <input type="hidden" name="next" value="{{ next }}"/>
+        </form>
+    {% endblock %}
+    </div>
+
+    <!-- QR Login Card -->
+    <div class="qr-card">
+        <h4>扫码登录</h4>
+        <div class="qr-img-box">
+            <img id="qr-img" alt="QR" src="" />
+        </div>
+        <div class="qr-actions">
+            <el-button size="mini" type="primary" plain onclick="loadQr()">刷新二维码</el-button>
+        </div>
+        <div style="margin-top:8px;font-size:12px;color:#666;text-align:center;">请使用手机扫码，后续功能将陆续上线</div>
+    </div>
+</div>
+</div>
+{% endblock %}
+{% include 'admin/includes/js-part.html' %}
+{% block login_js %}
+<script type="text/javascript" src="{% static 'admin/simpleui-x/js/login.js' %}?_=3.3"></script>
+<script>
+  async function loadQr() {
+    try {
+      const img = document.getElementById('qr-img');
+      if (!img) return;
+      const token = 'login-' + Date.now();
+      const resp = await fetch('/api/auth/tool/qr_code/?text=' + encodeURIComponent(token));
+      if (!resp.ok) throw new Error('load qr failed');
+      const blob = await resp.blob();
+      img.src = URL.createObjectURL(blob);
+    } catch (e) {
+      console.error(e);
+    }
+  }
+  // 暴露全局，供模板中 @click="loadQr" 调用
+  window.loadQr = loadQr;
+  document.addEventListener('DOMContentLoaded', loadQr);
+</script>
+{% endblock %}
+
+{% block  particles %}
+    {% if 'SIMPLEUI_LOGIN_PARTICLES'|get_config != False %}
+        <style type="text/css">
+            #particles-js {position: fixed;top: 0;left: 0;right: 0;bottom: 0;z-index: -1;}
+            .forgot-password {margin-top: 10px;color: #3a8ee6;text-decoration: none;}
+        </style>
+        <div id="particles-js"></div>
+        <script type="text/javascript" src="{% static 'admin/simpleui-x/particles/particles.js' %}"></script>
+        <script type="text/javascript" src="{% static 'admin/simpleui-x/particles/app.js' %}"></script>
+    {% endif %}
+{% endblock %}
+</body>
+</html>
