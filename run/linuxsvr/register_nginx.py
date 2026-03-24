@@ -18,7 +18,7 @@ from typing import Dict
 
 REQUIRED_ENV = ["IMAGE_TAG", "IMAGE_PORT"]
 DEFAULT_HOST_DATA = "/data/all_system"
-NGINX_CONF_DIR = Path("/home/applications/ng_container/nginx/nginx/conf.d")
+NGINX_CONF_DIR = Path("/home/applications/ng_container/nginx/conf.d")
 
 template = """server {{
     listen {nginx_port};
@@ -43,7 +43,7 @@ template = """server {{
     }}
 
     location / {{
-        proxy_pass http://all_system_{app_port}:{app_port};
+        proxy_pass http://all_system_{app_port}:{cmd_port};
         proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
@@ -91,6 +91,7 @@ def main() -> None:
         nginx_port=args.port,
         app_port=app_port,
         host_data=host_data,
+        cmd_port=args.port,
     )
 
     out_path = here / f"all_system_{args.port}.conf"
