@@ -1,13 +1,11 @@
 services:
   all_system:
     image: all_system:${IMAGE_TAG:-latest}
-    container_name: all_system_${IMAGE_PORT:-27001}
-    ports:
-      - "${IMAGE_PORT:-27001}:8000"
+    container_name: all_system_${SERVER_NAME:-default}
     volumes:
-      - "${HOST_DATA:-/data/all_system}/${IMAGE_PORT:-27001}/logs:/app/logs"
-      - "${HOST_DATA:-/data/all_system}/${IMAGE_PORT:-27001}/oss:/app/oss"
-      - "${HOST_DATA:-/data/all_system}/${IMAGE_PORT:-27001}/config.py:/app/main/config.py"
+      - "${HOST_DATA:-/data/all_system}/${SERVER_NAME:-default}/logs:/app/logs"
+      - "${HOST_DATA:-/data/all_system}/${SERVER_NAME:-default}/oss:/app/oss"
+      - "${HOST_DATA:-/data/all_system}/${SERVER_NAME:-default}/config.py:/app/main/config.py"
     networks:
       - app-network
     restart: unless-stopped   # 后台运行并自动重启

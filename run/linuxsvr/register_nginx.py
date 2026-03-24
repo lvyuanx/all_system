@@ -4,10 +4,11 @@
 用法：在打包产物目录执行
   python register_nginx.py -p <nginx_port>
 
-读取同目录 .env 获取 IMAGE_PORT / HOST_DATA，并输出 all_system_<nginx_port>.conf。
+读取同目录 .env 获取 SERVER_NAME / HOST_DATA，并输出 all_system_<server_name>.conf。
 - nginx 监听 <nginx_port>
-- 反代到容器暴露的主机端口 IMAGE_PORT（容器内 8000）
-- 静态/媒体目录指向 HOST_DATA/IMAGE_PORT 路径
+- 反代到容器 all_system_<SERVER_NAME>:8000（容器网络）
+- 静态/媒体目录指向 HOST_DATA/SERVER_NAME 路径
+
 """
 import argparse
 import shutil
@@ -16,18 +17,20 @@ import sys
 from pathlib import Path
 from typing import Dict
 
-REQUIRED_ENV = ["IMAGE_TAG", "IMAGE_PORT"]
+REQUIRED_ENV = ["IMAGE_TAG", "SERVER_NAME"]
 DEFAULT_HOST_DATA = "/data/all_system"
+
 NGINX_CONF_DIR = Path("/home/applications/ng_container/nginx/conf.d")
 
 template = """server {{
     listen {nginx_port};
     listen [::]:{nginx_port};
 
-    server_name _;
+    server_name {server_name};
 
     location /static/ {{
-        alias {host_data}/{app_port}/oss/static/;
+        alias {host_data}/{server_name}/oss/static/;
+
         autoindex off;
         expires 30d;
         access_log off;
@@ -35,7 +38,8 @@ template = """server {{
     }}
 
     location /media/ {{
-        alias {host_data}/{app_port}/oss/media/;
+        alias {host_data}/{server_name}/oss/media/;
+
         autoindex off;
         expires 30d;
         access_log off;
@@ -43,7 +47,8 @@ template = """server {{
     }}
 
     location / {{
-        proxy_pass http://all_system_{app_port}:8000;
+        proxy_pass http://all_system_{server_name}:8000;
+
         proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
@@ -75,8 +80,9 @@ def parse_env(path: Path) -> Dict[str, str]:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="生成 nginx 站点配置")
-    parser.add_argument("-p", "--port", type=int, required=True, help="nginx 监听端口")
+    parser.add_argument("-p", "--port", type=int, default=80, help="nginx 监听端口，默认 80")
     args = parser.parse_args()
+
 
     here = Path(__file__).resolve().parent
     env_file = here / ".env"
@@ -84,17 +90,17 @@ def main() -> None:
         raise FileNotFoundError(f"未找到 .env: {env_file}")
 
     env = parse_env(env_file)
-    app_port = env["IMAGE_PORT"]
+    server_name = env["SERVER_NAME"]
     host_data = env.get("HOST_DATA", DEFAULT_HOST_DATA)
 
     conf_text = template.format(
         nginx_port=args.port,
-        app_port=app_port,
+        server_name=server_name,
         host_data=host_data,
-        cmd_port=args.port,
     )
 
-    out_path = here / f"all_system_{args.port}.conf"
+    out_path = here / f"all_system_{server_name}.conf"
+
     out_path.write_text(conf_text, encoding="utf-8")
     print(f"已生成: {out_path}")
 

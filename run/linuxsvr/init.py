@@ -10,8 +10,9 @@ import sys
 from pathlib import Path
 from typing import Dict
 
-REQUIRED_ENV = ["IMAGE_TAG", "IMAGE_PORT"]
+REQUIRED_ENV = ["IMAGE_TAG", "SERVER_NAME"]
 DEFAULT_HOST_DATA = "/data/all_system"
+
 
 def parse_env(path: Path) -> Dict[str, str]:
     if not path.exists():
@@ -36,8 +37,9 @@ def run(cmd):
     subprocess.run(cmd, check=True)
 
 
-def ensure_paths(host_data: Path, port: str) -> Path:
-    base = host_data / port
+def ensure_paths(host_data: Path, server_name: str) -> Path:
+    base = host_data / server_name
+
     logs = base / "logs"
     oss = base / "oss"
     base.mkdir(parents=True, exist_ok=True)
@@ -98,10 +100,11 @@ def main() -> None:
 
     env = parse_env(env_file)
     host_data = Path(env.get("HOST_DATA", DEFAULT_HOST_DATA))
-    port = str(env["IMAGE_PORT"])
+    server_name = env["SERVER_NAME"]
     image_tag = env["IMAGE_TAG"]
     image = f"all_system:{image_tag}"
-    container_name = f"all_system_{port}"
+    container_name = f"all_system_{server_name}"
+
 
     # 1) 确保镜像存在
     ensure_image(image, tar_file)
@@ -116,8 +119,9 @@ def main() -> None:
         ], check=False)
 
     # 3) 确保数据目录和 config.py
-    data_base = ensure_paths(host_data, port)
+    data_base = ensure_paths(host_data, server_name)
     copy_config(config_src, data_base / "config.py")
+
 
     # 3b) 同步 oss 静态资源 (oss/**) -> /data/.../oss/ （仅当目标为空，避免覆盖自有数据）
     oss_src = here / "oss"
@@ -132,7 +136,8 @@ def main() -> None:
         "up", "-d",
     ])
 
-    print("完成：数据目录=%s, 端口=%s, 镜像=%s" % (data_base, port, image))
+    print("完成：数据目录=%s, server_name=%s, 镜像=%s" % (data_base, server_name, image))
+
 
 
 if __name__ == "__main__":
