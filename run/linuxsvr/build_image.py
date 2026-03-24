@@ -4,13 +4,12 @@
 产出结构：
   build/<TAG>/all_system.tar
   build/<TAG>/docker-compose.yaml
-  build/<TAG>/.env   （包含 SERVER_NAME、IMAGE_TAG）
+  build/<TAG>/.env   （包含 IMAGE_PORT、IMAGE_TAG）
 
 特性：
-- 支持 -s/--server-name 指定服务域名/标识（默认 all_system.local），写入 .env。
+- 支持 -p/--port 指定对外映射端口（默认 27001），写入 .env。
 - 镜像内已包含代码（Dockerfile 已 COPY . /app）。
 - 可在任意目录调用（内部使用绝对路径）。
-
 """
 import argparse
 import os
@@ -42,10 +41,11 @@ def run(cmd: List[str]) -> None:
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="构建 all_system 镜像并生成离线包")
     parser.add_argument(
-        "-s",
-        "--server-name",
-        default="all_system.local",
-        help="服务访问域名/标识，用于 .env 和数据目录",
+        "-p",
+        "--port",
+        type=int,
+        default=27001,
+        help="对外暴露端口，映射到容器 8000",
     )
     parser.add_argument(
         "-t",
@@ -53,7 +53,6 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help="镜像标签/产出目录名，默认使用时间戳",
     )
-
     parser.add_argument(
         "--no-cache",
         action="store_true",
@@ -68,30 +67,27 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--data-dir",
         default=HOST_DATA_DEFAULT,
-        help=f"宿主机数据根目录，默认 {HOST_DATA_DEFAULT}，将按 server_name 分子目录",
+        help=f"宿主机数据根目录，默认 {HOST_DATA_DEFAULT}，将按端口号分子目录",
     )
     return parser.parse_args()
 
 
-def write_env(env_path: Path, tag: str, server_name: str, data_dir: str) -> None:
-    log_path = f"{data_dir}/{server_name}/logs"
+def write_env(env_path: Path, tag: str, port: int, data_dir: str) -> None:
+    log_path = f"{data_dir}/{port}/logs"
     env_content = (
         f"IMAGE_TAG={tag}\n"
-        f"SERVER_NAME={server_name}\n"
+        f"IMAGE_PORT={port}\n"
         f"HOST_DATA={data_dir}\n"
         f"LOG_PATH={log_path}\n"
     )
     env_path.write_text(env_content, encoding="utf-8")
 
 
-
 def main() -> None:
     args = parse_args()
     tag = args.tag or datetime.now().strftime("%Y%m%d%H%M%S")
-    server_name = args.server_name
 
     # 1) 构建镜像
-
     build_cmd = [
         "docker",
         "build",
@@ -149,10 +145,9 @@ def main() -> None:
     else:
         print(f"警告: 未找到 {SOURCE_OSS_STATIC}，未复制 oss 静态资源")
 
-    # 7) 写 .env（server_name、tag、宿主机数据根）
+    # 7) 写 .env（端口、tag、宿主机数据根）
     env_path = target_dir / ".env"
-    write_env(env_path, tag, server_name, args.data_dir)
-
+    write_env(env_path, tag, args.port, args.data_dir)
 
     # 8) 复制 init.py
     init_dest = target_dir / "init.py"
