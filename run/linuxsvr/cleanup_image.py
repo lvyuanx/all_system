@@ -21,7 +21,13 @@ def run(cmd):
 def get_containers(image: str):
     cmd = ["docker", "ps", "-a", "-q", "--filter", f"ancestor={image}"]
     print("$", " ".join(cmd))
-    result = subprocess.run(cmd, cwd=ROOT_DIR, capture_output=True, text=True)
+    result = subprocess.run(
+        cmd,
+        cwd=ROOT_DIR,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        universal_newlines=True,
+    )
     if result.returncode != 0:
         sys.stderr.write(result.stderr)
         sys.exit(result.returncode)
