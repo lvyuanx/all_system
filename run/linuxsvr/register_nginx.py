@@ -43,7 +43,7 @@ template = """server {{
     }}
 
     location / {{
-        proxy_pass http://all_system_{app_port}:{cmd_port};
+        proxy_pass http://all_system_{app_port}:8000;
         proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
