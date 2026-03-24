@@ -107,21 +107,6 @@ def main() -> None:
             try:
                 shutil.copy2(out_path, dest)
                 print(f"已复制到: {dest}")
-                reload_cmds = [
-                    ["systemctl", "reload", "nginx"],
-                    ["nginx", "-s", "reload"],
-                ]
-                reloaded = False
-                for cmd in reload_cmds:
-                    try:
-                        subprocess.run(cmd, check=True)
-                        print(f"已重载 nginx: {' '.join(cmd)}")
-                        reloaded = True
-                        break
-                    except Exception:
-                        continue
-                if not reloaded:
-                    print("未能自动重载 nginx，请手动执行 reload", file=sys.stderr)
             except PermissionError:
                 print(f"缺少权限，无法复制到 {dest}", file=sys.stderr)
     else:
