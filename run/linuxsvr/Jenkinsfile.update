@@ -1,0 +1,138 @@
+// 更新流水线
+// 对应 update.sh：构建新镜像 → 替换容器 → migrate
+// 自动从 /data/<project>/<site>/build.json 读取配置，也可手动传参覆盖
+pipeline {
+    agent any
+
+    parameters {
+        string(name: 'SITE',      defaultValue: '',           description: '站点标识（留空则从已保存配置自动读取）')
+        string(name: 'PROJECT',   defaultValue: 'all_system', description: '项目名')
+        string(name: 'HOST_DATA', defaultValue: '',           description: '宿主机数据根目录，留空默认 /data/<project>')
+        booleanParam(name: 'NO_CACHE', defaultValue: false,   description: 'docker build 时使用 --no-cache')
+        booleanParam(name: 'NO_NGINX', defaultValue: false,   description: '跳过 nginx reload')
+    }
+
+    environment {
+        SCRIPT_DIR = "${WORKSPACE}/run/linuxsvr"
+    }
+
+    options {
+        timestamps()
+        buildDiscarder(logRotator(numToKeepStr: '10'))
+    }
+
+    stages {
+
+        stage('读取配置') {
+            steps {
+                script {
+                    def hostData    = params.HOST_DATA ?: "/data/${params.PROJECT}"
+                    def site        = params.SITE ?: error('SITE 参数不能为空')
+                    def savedConfig = "${hostData}/${site}/build.json"
+
+                    if (fileExists(savedConfig)) {
+                        echo "读取已保存配置: ${savedConfig}"
+                        def cfg = readJSON file: savedConfig
+                        env.SITE             = site
+                        env.PROJECT          = params.PROJECT ?: cfg.project
+                        env.DOMAIN           = cfg.domain ?: ''
+                        env.HTTPS            = cfg.https ? 'true' : 'false'
+                        env.LISTEN           = cfg.listen?.toString() ?: '80'
+                        env.NGINX_RELOAD_DIR = cfg.nginx_reload_dir ?: '/home/applications/ng_container'
+                        env.HOST_DATA        = cfg.host_data ?: hostData
+                    } else {
+                        echo "未找到已保存配置 ${savedConfig}，使用参数/默认值"
+                        env.SITE             = site
+                        env.PROJECT          = params.PROJECT
+                        env.DOMAIN           = ''
+                        env.HTTPS            = 'true'
+                        env.LISTEN           = '80'
+                        env.NGINX_RELOAD_DIR = '/home/applications/ng_container'
+                        env.HOST_DATA        = hostData
+                    }
+
+                    echo """
+========================================
+ site    : ${env.SITE}
+ project : ${env.PROJECT}
+ domain  : ${env.DOMAIN ?: '（无）'}
+ https   : ${env.HTTPS}
+========================================"""
+                }
+            }
+        }
+
+        stage('构建新镜像') {
+            steps {
+                script {
+                    def args = "-s ${env.SITE} -p ${env.PROJECT}"
+                    if (env.DOMAIN) args += " -d ${env.DOMAIN}"
+                    if (params.NO_CACHE) args += " --no-cache"
+                    sh "python3 ${env.SCRIPT_DIR}/build_image.py ${args}"
+                }
+            }
+        }
+
+        stage('替换容器') {
+            steps {
+                script {
+                    def latestDir = sh(
+                        script: "ls -td ${WORKSPACE}/build/[0-9]* 2>/dev/null | head -1",
+                        returnStdout: true
+                    ).trim()
+                    if (!latestDir) error("未找到构建产物目录: ${WORKSPACE}/build")
+                    echo "产物目录: ${latestDir}"
+                    env.LATEST_DIR = latestDir
+
+                    def envFile     = "${latestDir}/.env"
+                    def composeFile = "${latestDir}/docker-compose.yaml"
+                    sh "docker compose --env-file '${envFile}' -f '${composeFile}' down"
+                    sh "docker compose --env-file '${envFile}' -f '${composeFile}' up -d"
+                }
+            }
+        }
+
+        stage('Migrate') {
+            steps {
+                script {
+                    def containerName = "${env.PROJECT}_${env.SITE}"
+                    sh """
+for i in \$(seq 1 15); do
+    docker exec ${containerName} python manage.py check --database default > /dev/null 2>&1 && break
+    sleep 2
+done
+"""
+                    sh "docker exec ${containerName} python manage.py makemigrations"
+                    sh "docker exec ${containerName} python manage.py migrate"
+                }
+            }
+        }
+
+        stage('重载 nginx') {
+            when {
+                expression { !params.NO_NGINX }
+            }
+            steps {
+                script {
+                    def reloadScript = "${env.NGINX_RELOAD_DIR}/reload.sh"
+                    sh """
+if [ -f '${reloadScript}' ]; then
+    bash '${reloadScript}'
+else
+    echo '未找到 ${reloadScript}，跳过 nginx 重载' >&2
+fi
+"""
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo "======== 更新完成 ========"
+        }
+        failure {
+            echo "======== 更新失败，请检查日志 ========"
+        }
+    }
+}
