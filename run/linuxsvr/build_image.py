@@ -9,7 +9,7 @@
 特性：
 - 支持 -s/--site 指定子域名/站点标识，写入 .env
 - 支持 -p/--project 指定项目名，数据目录为 /data/<project>/<site>
-- 可选 --domain 指定根域名，自动生成 SERVER_NAME=<site>_<project>.<domain>
+- 可选 --domain 指定根域名，自动生成 SERVER_NAME=<site>-<project>.<domain>（下划线统一转为连字符）
 - 镜像内已包含代码（Dockerfile 已 COPY . /app）
 - 可在任意目录调用（内部使用绝对路径）
 """
@@ -60,7 +60,7 @@ def parse_args() -> argparse.Namespace:
         "--domain",
         "-domain",
         default=None,
-        help="根域名（可选），如 lvyx.cc，将生成 <site>_<project>.<domain>",
+        help="根域名（可选），如 lvyx.cc，将生成 <site>-<project>.<domain>（下划线转连字符）",
     )
     parser.add_argument(
         "-t",
@@ -113,7 +113,8 @@ def build_server_name(site: str, project: str, domain: Optional[str]) -> Optiona
     if not domain:
         return None
     normalized = normalize_domain(domain)
-    return f"{site}_{project}.{normalized}"
+    slug = f"{site}-{project}".replace("_", "-")
+    return f"{slug}.{normalized}"
 
 
 def write_env(

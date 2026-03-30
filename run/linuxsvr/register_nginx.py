@@ -130,7 +130,8 @@ def build_server_name(
     if server_name:
         return server_name
     if root_domain:
-        return f"{site}_{project}.{normalize_domain(root_domain)}"
+        slug = f"{site}-{project}".replace("_", "-")
+        return f"{slug}.{normalize_domain(root_domain)}"
     return "_"
 
 
