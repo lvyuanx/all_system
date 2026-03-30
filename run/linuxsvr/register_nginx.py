@@ -3,7 +3,7 @@
 
 用法：在打包产物目录执行
   python register_nginx.py --listen 80
-  python register_nginx.py --server-name dev.all_system.lvyx.cc --listen 80
+  python register_nginx.py --server-name dev_all_system.lvyx.cc --listen 80
 
 读取同目录 .env 获取 IMAGE_PROJECT / IMAGE_SITE / HOST_DATA / IMAGE_DOMAIN / SERVER_NAME。
 - nginx 监听 listen 端口
@@ -106,7 +106,7 @@ def build_server_name(
     if server_name:
         return server_name
     if root_domain:
-        return f"{site}.{project}.{normalize_domain(root_domain)}"
+        return f"{site}_{project}.{normalize_domain(root_domain)}"
     return "_"
 
 
@@ -129,7 +129,7 @@ def main() -> None:
     parser.add_argument(
         "--root-domain",
         default=None,
-        help="根域名（可选），用于生成 <site>.<project>.<domain>",
+        help="根域名（可选），用于生成 <site>_<project>.<domain>",
     )
     args = parser.parse_args()
 
