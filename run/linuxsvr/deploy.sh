@@ -174,7 +174,7 @@ echo "  执行 migrate..."
 docker exec "$CONTAINER_NAME" python manage.py migrate
 
 echo "  执行自定义初始化命令..."
-docker exec "$CONTAINER_NAME" python manage.py init
+docker exec "$CONTAINER_NAME" python manage.py init_sys
 
 echo "  创建超级用户 admin..."
 docker exec \
