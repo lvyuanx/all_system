@@ -1,33 +1,32 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """生成 nginx 站点配置。
 
 用法：在打包产物目录执行
-  python register_nginx.py -p <nginx_port>
+  python register_nginx.py --server-name dev.lvyx.cc --listen 80
 
-读取同目录 .env 获取 IMAGE_PORT / HOST_DATA，并输出 all_system_<nginx_port>.conf。
-- nginx 监听 <nginx_port>
-- 反代到容器暴露的主机端口 IMAGE_PORT（容器内 8000）
-- 静态/媒体目录指向 HOST_DATA/IMAGE_PORT 路径
+读取同目录 .env 获取 IMAGE_SITE / HOST_DATA / SERVER_NAME，输出 all_system_<site>.conf。
+- nginx 监听 listen 端口
+- 反代到容器 all_system_<site>:8000
+- 静态/媒体目录指向 HOST_DATA/IMAGE_SITE 路径
 """
 import argparse
 import shutil
-import subprocess
 import sys
 from pathlib import Path
 from typing import Dict
 
-REQUIRED_ENV = ["IMAGE_TAG", "IMAGE_PORT"]
+REQUIRED_ENV = ["IMAGE_SITE"]
 DEFAULT_HOST_DATA = "/data/all_system"
 NGINX_CONF_DIR = Path("/home/applications/ng_container/nginx/conf.d")
 
-template = """server {{
-    listen {nginx_port};
-    listen [::]:{nginx_port};
+TEMPLATE = """server {{
+    listen {listen_port};
+    listen [::]:{listen_port};
 
-    server_name _;
+    server_name {server_name};
 
     location /static/ {{
-        alias {host_data}/{app_port}/oss/static/;
+        alias {host_data}/{site}/oss/static/;
         autoindex off;
         expires 30d;
         access_log off;
@@ -35,7 +34,7 @@ template = """server {{
     }}
 
     location /media/ {{
-        alias {host_data}/{app_port}/oss/media/;
+        alias {host_data}/{site}/oss/media/;
         autoindex off;
         expires 30d;
         access_log off;
@@ -43,7 +42,7 @@ template = """server {{
     }}
 
     location / {{
-        proxy_pass http://all_system_{app_port}:8000;
+        proxy_pass http://all_system_{site}:8000;
         proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
@@ -73,9 +72,28 @@ def parse_env(path: Path) -> Dict[str, str]:
     return env
 
 
+def validate_site(site: str) -> str:
+    if "/" in site or "\\" in site:
+        raise ValueError("IMAGE_SITE 不能包含路径分隔符")
+    return site
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="生成 nginx 站点配置")
-    parser.add_argument("-p", "--port", type=int, required=True, help="nginx 监听端口")
+    parser.add_argument(
+        "-p",
+        "--listen",
+        type=int,
+        default=80,
+        help="nginx 监听端口，默认 80",
+    )
+    parser.add_argument(
+        "--server-name",
+        "--domain",
+        dest="server_name",
+        default=None,
+        help="server_name（可选），优先于 .env 的 SERVER_NAME",
+    )
     args = parser.parse_args()
 
     here = Path(__file__).resolve().parent
@@ -84,25 +102,26 @@ def main() -> None:
         raise FileNotFoundError(f"未找到 .env: {env_file}")
 
     env = parse_env(env_file)
-    app_port = env["IMAGE_PORT"]
+    site = validate_site(env["IMAGE_SITE"])
     host_data = env.get("HOST_DATA", DEFAULT_HOST_DATA)
+    server_name = args.server_name or env.get("SERVER_NAME") or "_"
 
-    conf_text = template.format(
-        nginx_port=args.port,
-        app_port=app_port,
+    conf_text = TEMPLATE.format(
+        listen_port=args.listen,
+        server_name=server_name,
+        site=site,
         host_data=host_data,
-        cmd_port=args.port,
     )
 
-    out_path = here / f"all_system_{args.port}.conf"
+    out_path = here / f"all_system_{site}.conf"
     out_path.write_text(conf_text, encoding="utf-8")
-    print(f"已生成: {out_path}")
+    print(f"已生成 {out_path}")
 
-    # 复制到 /etc/nginx/conf.d（若不存在才复制），并重载 nginx
+    # 复制到 nginx conf.d（若不存在才复制）
     if NGINX_CONF_DIR.exists():
         dest = NGINX_CONF_DIR / out_path.name
         if dest.exists():
-            print(f"已存在，未覆盖: {dest}")
+            print(f"已存在，未覆盖 {dest}")
         else:
             try:
                 shutil.copy2(out_path, dest)

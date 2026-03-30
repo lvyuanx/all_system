@@ -1,17 +1,17 @@
-#!/usr/bin/env python3
-"""部署初始化脚本：基于 .env 配置完成数据目录准备、镜像加载、容器启动。
+﻿#!/usr/bin/env python3
+"""部署初始化脚本：基于 .env 完成数据目录准备、镜像加载、容器启动。
 
 执行位置：打包产物目录（包含 .env / docker-compose.yaml / all_system.tar / config.py）。
 """
-import os
 import shutil
 import subprocess
 import sys
 from pathlib import Path
 from typing import Dict
 
-REQUIRED_ENV = ["IMAGE_TAG", "IMAGE_PORT"]
+REQUIRED_ENV = ["IMAGE_TAG", "IMAGE_SITE"]
 DEFAULT_HOST_DATA = "/data/all_system"
+
 
 def parse_env(path: Path) -> Dict[str, str]:
     if not path.exists():
@@ -36,8 +36,14 @@ def run(cmd):
     subprocess.run(cmd, check=True)
 
 
-def ensure_paths(host_data: Path, port: str) -> Path:
-    base = host_data / port
+def validate_site(site: str) -> str:
+    if "/" in site or "\\" in site:
+        raise ValueError("IMAGE_SITE 不能包含路径分隔符")
+    return site
+
+
+def ensure_paths(host_data: Path, site: str) -> Path:
+    base = host_data / site
     logs = base / "logs"
     oss = base / "oss"
     base.mkdir(parents=True, exist_ok=True)
@@ -50,7 +56,7 @@ def copy_oss_dir(src: Path, dst: Path) -> None:
     if not src.exists():
         return
     if dst.exists():
-        # 如果目标目录为空，则先移除以便 copytree；若已有内容则跳过以避免覆盖
+        # 如果目标目录非空则跳过，避免覆盖已有数据
         try:
             next(dst.iterdir())
             return
@@ -98,10 +104,10 @@ def main() -> None:
 
     env = parse_env(env_file)
     host_data = Path(env.get("HOST_DATA", DEFAULT_HOST_DATA))
-    port = str(env["IMAGE_PORT"])
+    site = validate_site(env["IMAGE_SITE"])
     image_tag = env["IMAGE_TAG"]
     image = f"all_system:{image_tag}"
-    container_name = f"all_system_{port}"
+    container_name = f"all_system_{site}"
 
     # 1) 确保镜像存在
     ensure_image(image, tar_file)
@@ -116,10 +122,10 @@ def main() -> None:
         ], check=False)
 
     # 3) 确保数据目录和 config.py
-    data_base = ensure_paths(host_data, port)
+    data_base = ensure_paths(host_data, site)
     copy_config(config_src, data_base / "config.py")
 
-    # 3b) 同步 oss 静态资源 (oss/**) -> /data/.../oss/ （仅当目标为空，避免覆盖自有数据）
+    # 3b) 同步 oss 静态资源 (oss/**) -> /data/.../oss/（仅当目标为空，避免覆盖自有数据）
     oss_src = here / "oss"
     oss_dst = data_base / "oss"
     copy_oss_dir(oss_src, oss_dst)
@@ -132,7 +138,7 @@ def main() -> None:
         "up", "-d",
     ])
 
-    print("完成：数据目录=%s, 端口=%s, 镜像=%s" % (data_base, port, image))
+    print("完成：数据目录=%s, site=%s, 镜像=%s" % (data_base, site, image))
 
 
 if __name__ == "__main__":

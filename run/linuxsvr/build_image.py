@@ -1,24 +1,24 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """一键构建 all_system 镜像并产出离线包。
 
 产出结构：
   build/<TAG>/all_system.tar
   build/<TAG>/docker-compose.yaml
-  build/<TAG>/.env   （包含 IMAGE_PORT、IMAGE_TAG）
+  build/<TAG>/.env   （包含 IMAGE_SITE、IMAGE_TAG、HOST_DATA、LOG_PATH、SERVER_NAME）
 
 特性：
-- 支持 -p/--port 指定对外映射端口（默认 27001），写入 .env。
-- 镜像内已包含代码（Dockerfile 已 COPY . /app）。
-- 可在任意目录调用（内部使用绝对路径）。
+- 支持 -s/--site 指定子域名/站点标识，写入 .env
+- 可选 --domain 写入 .env 的 SERVER_NAME，用于 nginx server_name
+- 镜像内已包含代码（Dockerfile 已 COPY . /app）
+- 可在任意目录调用（内部使用绝对路径）
 """
 import argparse
-import os
 import shutil
 import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
 ROOT_DIR = Path(__file__).resolve().parents[2]
 DOCKERFILE = ROOT_DIR / "docker" / "Dockerfile"
@@ -41,17 +41,21 @@ def run(cmd: List[str]) -> None:
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="构建 all_system 镜像并生成离线包")
     parser.add_argument(
-        "-p",
-        "--port",
-        type=int,
-        default=27001,
-        help="对外暴露端口，映射到容器 8000",
+        "-s",
+        "--site",
+        required=True,
+        help="子域名/站点标识，例如 dev",
+    )
+    parser.add_argument(
+        "--domain",
+        default=None,
+        help="完整域名（可选），如 dev.lvyx.cc，写入 .env 的 SERVER_NAME",
     )
     parser.add_argument(
         "-t",
         "--tag",
         default=None,
-        help="镜像标签/产出目录名，默认使用时间戳",
+        help="镜像标签/输出目录名，默认使用时间戳",
     )
     parser.add_argument(
         "--no-cache",
@@ -62,29 +66,38 @@ def parse_args() -> argparse.Namespace:
         "-o",
         "--output",
         default=str(DEFAULT_BUILD_DIR),
-        help="产出根目录，默认在项目 build/",
+        help="输出根目录，默认在项目 build/",
     )
     parser.add_argument(
         "--data-dir",
         default=HOST_DATA_DEFAULT,
-        help=f"宿主机数据根目录，默认 {HOST_DATA_DEFAULT}，将按端口号分子目录",
+        help=f"宿主机数据根目录，默认 {HOST_DATA_DEFAULT}，将按子域名分子目录",
     )
     return parser.parse_args()
 
 
-def write_env(env_path: Path, tag: str, port: int, data_dir: str) -> None:
-    log_path = f"{data_dir}/{port}/logs"
+def validate_site(site: str) -> str:
+    if "/" in site or "\\" in site:
+        raise ValueError("site 不能包含路径分隔符")
+    return site
+
+
+def write_env(env_path: Path, tag: str, site: str, data_dir: str, server_name: Optional[str]) -> None:
+    log_path = f"{data_dir}/{site}/logs"
     env_content = (
         f"IMAGE_TAG={tag}\n"
-        f"IMAGE_PORT={port}\n"
+        f"IMAGE_SITE={site}\n"
         f"HOST_DATA={data_dir}\n"
         f"LOG_PATH={log_path}\n"
     )
+    if server_name:
+        env_content += f"SERVER_NAME={server_name}\n"
     env_path.write_text(env_content, encoding="utf-8")
 
 
 def main() -> None:
     args = parse_args()
+    site = validate_site(args.site)
     tag = args.tag or datetime.now().strftime("%Y%m%d%H%M%S")
 
     # 1) 构建镜像
@@ -145,9 +158,9 @@ def main() -> None:
     else:
         print(f"警告: 未找到 {SOURCE_OSS_STATIC}，未复制 oss 静态资源")
 
-    # 7) 写 .env（端口、tag、宿主机数据根）
+    # 7) 写 .env（site、tag、宿主机数据根）
     env_path = target_dir / ".env"
-    write_env(env_path, tag, args.port, args.data_dir)
+    write_env(env_path, tag, site, args.data_dir, args.domain)
 
     # 8) 复制 init.py
     init_dest = target_dir / "init.py"
@@ -168,7 +181,7 @@ def main() -> None:
         f"镜像: {IMAGE_NAME}:{tag}\n"
         f"输出目录: {target_dir}\n"
         "包含: all_system.tar, docker-compose.yaml, .env, config.py, init.py, register_nginx.py, oss/media/system/**, oss/static/**\n"
-        "部署示例: python init.py；生成 nginx 配置: python register_nginx.py -p <端口>"
+        "部署示例: python init.py；生成 nginx 配置: python register_nginx.py --server-name <domain> [--listen 80]"
     )
 
 
