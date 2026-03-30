@@ -152,7 +152,7 @@ echo "[4/5] 创建数据库并执行 migrate..."
 DB_NAME="${PROJECT}_${SITE}"
 
 python3 - "$DEPLOY_CONFIG" "$DB_NAME" <<'PYEOF'
-import sys, re, subprocess
+import sys, re
 
 config_path, db_name = sys.argv[1], sys.argv[2]
 text = open(config_path, encoding="utf-8").read()
@@ -162,17 +162,33 @@ def get_var(src, name, default=""):
     return m.group(1).strip() if m else default
 
 host     = get_var(text, "DB_HOST", "127.0.0.1")
-port     = get_var(text, "DB_PORT", "3306")
+port     = int(get_var(text, "DB_PORT", "3306"))
 user     = get_var(text, "DB_USER", "root")
 password = get_var(text, "DB_PASSWORD", "")
 
-sql = "CREATE DATABASE IF NOT EXISTS `{}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;".format(db_name)
-cmd = ["mysql", "-h{}".format(host), "-P{}".format(port), "-u{}".format(user), "-p{}".format(password), "-e", sql]
-print("$ mysql -h{} -P{} -u{} -p*** -e \"{}\"".format(host, port, user, sql))
-result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
-if result.returncode != 0:
-    print(result.stderr, file=sys.stderr)
-    sys.exit(result.returncode)
+sql = "CREATE DATABASE IF NOT EXISTS `{}` CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;".format(db_name)
+print("  pymysql: CREATE DATABASE `{}`".format(db_name))
+
+try:
+    import pymysql
+    conn = pymysql.connect(host=host, port=port, user=user, password=password,
+                           connect_timeout=10)
+    with conn.cursor() as cur:
+        cur.execute(sql)
+    conn.close()
+except ImportError:
+    # pymysql 不可用时回退到 docker exec mysql
+    import subprocess
+    cmd = ["docker", "exec", "-i",
+           "{}_{}".format(db_name.rsplit("_", 1)[0], db_name.rsplit("_", 1)[1]),
+           "mysql", "-h{}".format(host), "-P{}".format(port),
+           "-u{}".format(user), "-p{}".format(password), "-e", sql]
+    result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                            universal_newlines=True)
+    if result.returncode != 0:
+        print(result.stderr, file=sys.stderr)
+        sys.exit(result.returncode)
+
 print("  数据库 `{}` 已就绪".format(db_name))
 PYEOF
 
