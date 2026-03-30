@@ -1,7 +1,7 @@
 services:
   all_system:
-    image: all_system:${IMAGE_TAG:-latest}
-    container_name: all_system_${IMAGE_SITE:-dev}
+    image: ${IMAGE_PROJECT:-all_system}:${IMAGE_TAG:-latest}
+    container_name: ${IMAGE_PROJECT:-all_system}_${IMAGE_SITE:-dev}
     volumes:
       - "${HOST_DATA:-/data/all_system}/${IMAGE_SITE:-dev}/logs:/app/logs"
       - "${HOST_DATA:-/data/all_system}/${IMAGE_SITE:-dev}/oss:/app/oss"
@@ -10,7 +10,7 @@ services:
       - "8000"
     networks:
       - app-network
-    restart: unless-stopped   # åå°è¿è¡Œå¹¶è‡ªåŠ¨é‡å¯
+    restart: unless-stopped   # ºóÌ¨ÔËĞĞ²¢×Ô¶¯ÖØÆô
 
 networks:
   app-network:

@@ -1,7 +1,7 @@
 ﻿#!/usr/bin/env python3
 """部署初始化脚本：基于 .env 完成数据目录准备、镜像加载、容器启动。
 
-执行位置：打包产物目录（包含 .env / docker-compose.yaml / all_system.tar / config.py）。
+执行位置：打包产物目录（包含 .env / docker-compose.yaml / <project>.tar / config.py）。
 """
 import shutil
 import subprocess
@@ -10,7 +10,8 @@ from pathlib import Path
 from typing import Dict
 
 REQUIRED_ENV = ["IMAGE_TAG", "IMAGE_SITE"]
-DEFAULT_HOST_DATA = "/data/all_system"
+DEFAULT_PROJECT = "all_system"
+DEFAULT_DATA_ROOT = "/data"
 
 
 def parse_env(path: Path) -> Dict[str, str]:
@@ -40,6 +41,19 @@ def validate_site(site: str) -> str:
     if "/" in site or "\\" in site:
         raise ValueError("IMAGE_SITE 不能包含路径分隔符")
     return site
+
+
+def validate_project(project: str) -> str:
+    if "/" in project or "\\" in project:
+        raise ValueError("IMAGE_PROJECT 不能包含路径分隔符")
+    return project
+
+
+def resolve_host_data(env: Dict[str, str], project: str) -> Path:
+    host_data = env.get("HOST_DATA")
+    if host_data:
+        return Path(host_data)
+    return Path(DEFAULT_DATA_ROOT) / project
 
 
 def ensure_paths(host_data: Path, site: str) -> Path:
@@ -95,19 +109,31 @@ def container_exists(name: str) -> bool:
     return bool(proc.stdout.strip())
 
 
+def resolve_tar_file(here: Path, project: str) -> Path:
+    primary = here / f"{project}.tar"
+    if primary.exists():
+        return primary
+    legacy = here / "all_system.tar"
+    if legacy.exists():
+        return legacy
+    return primary
+
+
 def main() -> None:
     here = Path(__file__).resolve().parent
     env_file = here / ".env"
     compose_file = here / "docker-compose.yaml"
-    tar_file = here / "all_system.tar"
     config_src = here / "config.py"
 
     env = parse_env(env_file)
-    host_data = Path(env.get("HOST_DATA", DEFAULT_HOST_DATA))
+    project = validate_project(env.get("IMAGE_PROJECT", DEFAULT_PROJECT))
     site = validate_site(env["IMAGE_SITE"])
     image_tag = env["IMAGE_TAG"]
-    image = f"all_system:{image_tag}"
-    container_name = f"all_system_{site}"
+
+    host_data = resolve_host_data(env, project)
+    image = f"{project}:{image_tag}"
+    container_name = f"{project}_{site}"
+    tar_file = resolve_tar_file(here, project)
 
     # 1) 确保镜像存在
     ensure_image(image, tar_file)
@@ -138,7 +164,7 @@ def main() -> None:
         "up", "-d",
     ])
 
-    print("完成：数据目录=%s, site=%s, 镜像=%s" % (data_base, site, image))
+    print("完成：数据目录=%s, project=%s, site=%s, 镜像=%s" % (data_base, project, site, image))
 
 
 if __name__ == "__main__":

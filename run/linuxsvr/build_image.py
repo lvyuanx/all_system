@@ -2,13 +2,14 @@
 """一键构建 all_system 镜像并产出离线包。
 
 产出结构：
-  build/<TAG>/all_system.tar
+  build/<TAG>/<project>.tar
   build/<TAG>/docker-compose.yaml
-  build/<TAG>/.env   （包含 IMAGE_SITE、IMAGE_TAG、HOST_DATA、LOG_PATH、SERVER_NAME）
+  build/<TAG>/.env   （包含 IMAGE_PROJECT、IMAGE_SITE、IMAGE_TAG、HOST_DATA、LOG_PATH、IMAGE_DOMAIN、SERVER_NAME）
 
 特性：
 - 支持 -s/--site 指定子域名/站点标识，写入 .env
-- 可选 --domain 写入 .env 的 SERVER_NAME，用于 nginx server_name
+- 支持 -p/--project 指定项目名，数据目录为 /data/<project>/<site>
+- 可选 --domain 指定根域名，自动生成 SERVER_NAME=<site>.<project>.<domain>
 - 镜像内已包含代码（Dockerfile 已 COPY . /app）
 - 可在任意目录调用（内部使用绝对路径）
 """
@@ -28,9 +29,9 @@ SOURCE_OSS_MEDIA = ROOT_DIR / "oss" / "media" / "system"
 SOURCE_OSS_STATIC = ROOT_DIR / "oss" / "static"
 INIT_TEMPLATE = ROOT_DIR / "run" / "linuxsvr" / "init.py"
 NGINX_SCRIPT = ROOT_DIR / "run" / "linuxsvr" / "register_nginx.py"
-IMAGE_NAME = "all_system"
+DEFAULT_PROJECT = "all_system"
 DEFAULT_BUILD_DIR = ROOT_DIR / "build"
-HOST_DATA_DEFAULT = "/data/all_system"
+DEFAULT_DATA_ROOT = "/data"
 
 
 def run(cmd: List[str]) -> None:
@@ -43,13 +44,23 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "-s",
         "--site",
+        "-site",
         required=True,
         help="子域名/站点标识，例如 dev",
     )
     parser.add_argument(
+        "-p",
+        "--project",
+        "-project",
+        default=DEFAULT_PROJECT,
+        help=f"项目名，默认 {DEFAULT_PROJECT}",
+    )
+    parser.add_argument(
+        "-d",
         "--domain",
+        "-domain",
         default=None,
-        help="完整域名（可选），如 dev.lvyx.cc，写入 .env 的 SERVER_NAME",
+        help="根域名（可选），如 lvyx.cc，将生成 <site>.<project>.<domain>",
     )
     parser.add_argument(
         "-t",
@@ -70,8 +81,8 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--data-dir",
-        default=HOST_DATA_DEFAULT,
-        help=f"宿主机数据根目录，默认 {HOST_DATA_DEFAULT}，将按子域名分子目录",
+        default=None,
+        help=f"宿主机数据根目录，默认 /data/<project>",
     )
     return parser.parse_args()
 
@@ -82,14 +93,48 @@ def validate_site(site: str) -> str:
     return site
 
 
-def write_env(env_path: Path, tag: str, site: str, data_dir: str, server_name: Optional[str]) -> None:
+def validate_project(project: str) -> str:
+    if "/" in project or "\\" in project:
+        raise ValueError("project 不能包含路径分隔符")
+    return project
+
+
+def normalize_domain(domain: str) -> str:
+    return domain.strip().lstrip(".")
+
+
+def resolve_host_data(project: str, data_dir: Optional[str]) -> str:
+    if data_dir:
+        return data_dir
+    return f"{DEFAULT_DATA_ROOT}/{project}"
+
+
+def build_server_name(site: str, project: str, domain: Optional[str]) -> Optional[str]:
+    if not domain:
+        return None
+    normalized = normalize_domain(domain)
+    return f"{site}.{project}.{normalized}"
+
+
+def write_env(
+    env_path: Path,
+    tag: str,
+    project: str,
+    site: str,
+    data_dir: str,
+    domain: Optional[str],
+    server_name: Optional[str],
+) -> None:
     log_path = f"{data_dir}/{site}/logs"
     env_content = (
         f"IMAGE_TAG={tag}\n"
+        f"IMAGE_PROJECT={project}\n"
         f"IMAGE_SITE={site}\n"
         f"HOST_DATA={data_dir}\n"
         f"LOG_PATH={log_path}\n"
     )
+    if domain:
+        env_content += f"IMAGE_DOMAIN={normalize_domain(domain)}\n"
     if server_name:
         env_content += f"SERVER_NAME={server_name}\n"
     env_path.write_text(env_content, encoding="utf-8")
@@ -98,7 +143,11 @@ def write_env(env_path: Path, tag: str, site: str, data_dir: str, server_name: O
 def main() -> None:
     args = parse_args()
     site = validate_site(args.site)
+    project = validate_project(args.project)
     tag = args.tag or datetime.now().strftime("%Y%m%d%H%M%S")
+
+    host_data = resolve_host_data(project, args.data_dir)
+    server_name = build_server_name(site, project, args.domain)
 
     # 1) 构建镜像
     build_cmd = [
@@ -107,7 +156,7 @@ def main() -> None:
         "-f",
         str(DOCKERFILE),
         "-t",
-        f"{IMAGE_NAME}:{tag}",
+        f"{project}:{tag}",
     ]
     if args.no_cache:
         build_cmd.append("--no-cache")
@@ -122,13 +171,13 @@ def main() -> None:
     target_dir.mkdir(parents=True, exist_ok=True)
 
     # 3) 保存镜像为 tar
-    tar_path = target_dir / "all_system.tar"
+    tar_path = target_dir / f"{project}.tar"
     save_cmd = [
         "docker",
         "save",
         "-o",
         str(tar_path),
-        f"{IMAGE_NAME}:{tag}",
+        f"{project}:{tag}",
     ]
     run(save_cmd)
 
@@ -158,9 +207,9 @@ def main() -> None:
     else:
         print(f"警告: 未找到 {SOURCE_OSS_STATIC}，未复制 oss 静态资源")
 
-    # 7) 写 .env（site、tag、宿主机数据根）
+    # 7) 写 .env（project、site、tag、宿主机数据根）
     env_path = target_dir / ".env"
-    write_env(env_path, tag, site, args.data_dir, args.domain)
+    write_env(env_path, tag, project, site, host_data, args.domain, server_name)
 
     # 8) 复制 init.py
     init_dest = target_dir / "init.py"
@@ -178,9 +227,9 @@ def main() -> None:
 
     print(
         "打包完成\n"
-        f"镜像: {IMAGE_NAME}:{tag}\n"
+        f"镜像: {project}:{tag}\n"
         f"输出目录: {target_dir}\n"
-        "包含: all_system.tar, docker-compose.yaml, .env, config.py, init.py, register_nginx.py, oss/media/system/**, oss/static/**\n"
+        "包含: <project>.tar, docker-compose.yaml, .env, config.py, init.py, register_nginx.py, oss/media/system/**, oss/static/**\n"
         "部署示例: python init.py；生成 nginx 配置: python register_nginx.py --server-name <domain> [--listen 80]"
     )
 

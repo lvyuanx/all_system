@@ -2,21 +2,23 @@
 """生成 nginx 站点配置。
 
 用法：在打包产物目录执行
-  python register_nginx.py --server-name dev.lvyx.cc --listen 80
+  python register_nginx.py --listen 80
+  python register_nginx.py --server-name dev.all_system.lvyx.cc --listen 80
 
-读取同目录 .env 获取 IMAGE_SITE / HOST_DATA / SERVER_NAME，输出 all_system_<site>.conf。
+读取同目录 .env 获取 IMAGE_PROJECT / IMAGE_SITE / HOST_DATA / IMAGE_DOMAIN / SERVER_NAME。
 - nginx 监听 listen 端口
-- 反代到容器 all_system_<site>:8000
-- 静态/媒体目录指向 HOST_DATA/IMAGE_SITE 路径
+- 反代到容器 <project>_<site>:8000
+- 静态/媒体目录指向 HOST_DATA/<site> 路径
 """
 import argparse
 import shutil
 import sys
 from pathlib import Path
-from typing import Dict
+from typing import Dict, Optional
 
 REQUIRED_ENV = ["IMAGE_SITE"]
-DEFAULT_HOST_DATA = "/data/all_system"
+DEFAULT_PROJECT = "all_system"
+DEFAULT_DATA_ROOT = "/data"
 NGINX_CONF_DIR = Path("/home/applications/ng_container/nginx/conf.d")
 
 TEMPLATE = """server {{
@@ -42,7 +44,7 @@ TEMPLATE = """server {{
     }}
 
     location / {{
-        proxy_pass http://all_system_{site}:8000;
+        proxy_pass http://{project}_{site}:8000;
         proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
@@ -78,6 +80,36 @@ def validate_site(site: str) -> str:
     return site
 
 
+def validate_project(project: str) -> str:
+    if "/" in project or "\\" in project:
+        raise ValueError("IMAGE_PROJECT 不能包含路径分隔符")
+    return project
+
+
+def normalize_domain(domain: str) -> str:
+    return domain.strip().lstrip(".")
+
+
+def resolve_host_data(env: Dict[str, str], project: str) -> Path:
+    host_data = env.get("HOST_DATA")
+    if host_data:
+        return Path(host_data)
+    return Path(DEFAULT_DATA_ROOT) / project
+
+
+def build_server_name(
+    site: str,
+    project: str,
+    server_name: Optional[str],
+    root_domain: Optional[str],
+) -> str:
+    if server_name:
+        return server_name
+    if root_domain:
+        return f"{site}.{project}.{normalize_domain(root_domain)}"
+    return "_"
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="生成 nginx 站点配置")
     parser.add_argument(
@@ -94,6 +126,11 @@ def main() -> None:
         default=None,
         help="server_name（可选），优先于 .env 的 SERVER_NAME",
     )
+    parser.add_argument(
+        "--root-domain",
+        default=None,
+        help="根域名（可选），用于生成 <site>.<project>.<domain>",
+    )
     args = parser.parse_args()
 
     here = Path(__file__).resolve().parent
@@ -102,18 +139,22 @@ def main() -> None:
         raise FileNotFoundError(f"未找到 .env: {env_file}")
 
     env = parse_env(env_file)
+    project = validate_project(env.get("IMAGE_PROJECT", DEFAULT_PROJECT))
     site = validate_site(env["IMAGE_SITE"])
-    host_data = env.get("HOST_DATA", DEFAULT_HOST_DATA)
-    server_name = args.server_name or env.get("SERVER_NAME") or "_"
+    host_data = resolve_host_data(env, project)
+
+    root_domain = args.root_domain or env.get("IMAGE_DOMAIN")
+    server_name = build_server_name(site, project, args.server_name or env.get("SERVER_NAME"), root_domain)
 
     conf_text = TEMPLATE.format(
         listen_port=args.listen,
         server_name=server_name,
         site=site,
+        project=project,
         host_data=host_data,
     )
 
-    out_path = here / f"all_system_{site}.conf"
+    out_path = here / f"{project}_{site}.conf"
     out_path.write_text(conf_text, encoding="utf-8")
     print(f"已生成 {out_path}")
 
