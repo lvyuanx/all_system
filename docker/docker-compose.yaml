@@ -1,4 +1,6 @@
-﻿services:
+﻿name: ${IMAGE_PROJECT:-all_system}_${IMAGE_SITE:-dev}
+
+services:
   all_system:
     image: ${IMAGE_PROJECT:-all_system}:${IMAGE_TAG:-latest}
     container_name: ${IMAGE_PROJECT:-all_system}_${IMAGE_SITE:-dev}
