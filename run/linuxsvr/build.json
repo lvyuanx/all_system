@@ -1,9 +1,0 @@
-{
-  "site": "dev",
-  "project": "all_system",
-  "domain": "lvyx.cc",
-  "https": true,
-  "listen": 80,
-  "nginx_reload_dir": "/home/applications/ng_container",
-  "host_data": ""
-}
