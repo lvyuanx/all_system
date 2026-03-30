@@ -8,18 +8,15 @@
 # Description: admin 登录转jwt中间件
 """
 import logging
-from django.http import HttpRequest, HttpResponse, Http404
-from jwt import ExpiredSignatureError
+from django.http import HttpRequest
 
-from core.utils import http_util, token_util
+from core.utils import token_util, auth_channel_util
 from core.conf import settings
 
 logger = logging.getLogger(__name__)
-TOKEN_ORIGIN = settings.TOKEN_ORIGIN  # token来源
-TOKEN_TAG = settings.TOKEN_TAG  # token标记名称
 SECRET_KEY = settings.SECRET_KEY
 TOKEN_EXPIRE = settings.TOKEN_EXPIRE  # token过期时间
-token_handler = token_util.tk_handler_dict[TOKEN_ORIGIN]
+ADMIN_CHANNEL_CONF = auth_channel_util.get_channel_config("admin")
 
 class AdminLoginToJwtMiddleware:
     def __init__(self, get_response):
@@ -32,9 +29,15 @@ class AdminLoginToJwtMiddleware:
             token = token_util.create_token(
                 payload={
                     "uid": user.pk,
+                    "client": "admin",
                 },
                 secret=SECRET_KEY,
                 expire_seconds=TOKEN_EXPIRE
             ) # 生成token
-            token_util.tk_handler_dict[TOKEN_ORIGIN].set(response, TOKEN_TAG, token)  # 注入token
+            token_util.set_token_by_origins(
+                response=response,
+                token_name=ADMIN_CHANNEL_CONF["token_tag"],
+                token=token,
+                origins=ADMIN_CHANNEL_CONF["write_to"],
+            )
         return response

@@ -152,7 +152,27 @@ MEDIA_ROOT = BASE_DIR / "oss/media"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 AUTH_USER_MODEL = "core_auth.User"
 
+TOKEN_TAG = merge_config("TOKEN_TAG", "X-Authorization")
+TOKEN_ORIGIN = merge_config("TOKEN_ORIGIN", "cookie")
 TOKEN_EXPIRE = merge_config("TOKEN_EXPIRE", 7 * 24 * 60 * 60)
+MOBILE_AUTH_CHANNEL = merge_config(
+    "MOBILE_AUTH_CHANNEL",
+    {
+        "token_tag": "Authorization",
+        "read_from": ["header", "cookie"],
+        "write_to": [],
+        "return_token_in_body": True,
+    },
+)
+AUTH_CHANNELS = {
+    "admin": {
+        "token_tag": TOKEN_TAG,
+        "read_from": ["cookie"],
+        "write_to": ["cookie"],
+        "return_token_in_body": False,
+    },
+    "mobile": MOBILE_AUTH_CHANNEL,
+}
 
 # region ******************** Ninja 文档配置 start ******************** #
 NINJA_BASE_URL = merge_config("NINJA_BASE_URL", "api/")

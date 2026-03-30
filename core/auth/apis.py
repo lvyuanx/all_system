@@ -1,7 +1,7 @@
 from core.conf import settings
 from .views.perm_pack import pack_all_view, pack_list_by_group_view
 from .views.group import group_create_view, group_update_view
-from .views import qr_code_view
+from .views import qr_code_view, admin_login_view
 
 apis = {
 
@@ -15,6 +15,9 @@ apis = {
     ],
     "tool": [
         ("C0", "qr_code/", qr_code_view.View, "文本转二维码")
+    ],
+    "account": [
+        ("D0", "login/", admin_login_view.View, "登录"),
     ],
     "menu": [
     ],

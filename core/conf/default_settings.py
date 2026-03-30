@@ -5,6 +5,21 @@ NINJA_BASE_URL = "api/"  # ninja跟路径
 TOKEN_TAG = "X-Authorization"   # token标记名称
 TOKEN_ORIGIN = "cookie"         # token来源
 TOKEN_EXPIRE = 60 * 60 * 24 * 7 # token过期时间
+MOBILE_AUTH_CHANNEL = {
+    "token_tag": "Authorization",
+    "read_from": ["header", "cookie"],
+    "write_to": [],
+    "return_token_in_body": True,
+}
+AUTH_CHANNELS = {
+    "admin": {
+        "token_tag": TOKEN_TAG,
+        "read_from": ["cookie"],
+        "write_to": ["cookie"],
+        "return_token_in_body": False,
+    },
+    "mobile": MOBILE_AUTH_CHANNEL,
+}
 
 DEFAULT_AVATAR = "system/user_default.png"
 DEFAULT_IMAGE = "system/image_default.png"

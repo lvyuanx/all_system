@@ -103,6 +103,32 @@ tk_handler_dict = {
 }
 
 
+def _normalize_origins(origins) -> list[str]:
+    if not origins:
+        return []
+    if isinstance(origins, str):
+        origins = [origins]
+    return [origin for origin in origins if origin in tk_handler_dict]
+
+
+def get_token_by_origins(request: HttpRequest, token_name: str, origins) -> str | None:
+    for origin in _normalize_origins(origins):
+        token = tk_handler_dict[origin].get(request, token_name)
+        if token:
+            return token
+    return None
+
+
+def set_token_by_origins(response: HttpResponse, token_name: str, token: str, origins):
+    for origin in _normalize_origins(origins):
+        tk_handler_dict[origin].set(response, token_name, token)
+
+
+def remove_token_by_origins(response: HttpResponse, token_name: str, origins):
+    for origin in _normalize_origins(origins):
+        tk_handler_dict[origin].remove(response, token_name)
+
+
 def create_token(payload: dict, secret: str, expire_seconds: int = settings.TOKEN_EXPIRE) -> str:
     """
     生成 JWT Token

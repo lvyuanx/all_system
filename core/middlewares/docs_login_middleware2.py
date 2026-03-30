@@ -12,17 +12,14 @@ from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.contrib.auth import authenticate
 
 from core.conf import settings
-from core.utils import token_util
+from core.utils import token_util, auth_channel_util
 
 logger = logging.getLogger(__name__)
 
 DOC_URL = f"/{settings.NINJA_BASE_URL}docs"
-TOKEN_TAG = getattr(settings, "TOKEN_TAG", "X-Authorization")
-TOKEN_ORIGIN = settings.TOKEN_ORIGIN  # token来源
-TOKEN_TAG = settings.TOKEN_TAG  # token标记名称
 SECRET_KEY = settings.SECRET_KEY
 TOKEN_EXPIRE = settings.TOKEN_EXPIRE  # token过期时间
-token_handler = token_util.tk_handler_dict[TOKEN_ORIGIN]
+ADMIN_CHANNEL_CONF = auth_channel_util.get_channel_config("admin")
 
 LOGIN_HTML = """
 <!DOCTYPE html>
@@ -159,24 +156,38 @@ class DocsLoginMiddlware:
         new_token = token_util.create_token(
             payload={
                 "uid": user.pk,
+                "client": "admin",
             },
             secret=SECRET_KEY,
             expire_seconds=TOKEN_EXPIRE
         ) # 生成token
         request.new_token = new_token
         response = JsonResponse({"code": 200, "msg": "登录成功", "next": DOC_URL})
-        token_util.tk_handler_dict[TOKEN_ORIGIN].set(response, TOKEN_TAG, new_token)
+        token_util.set_token_by_origins(
+            response=response,
+            token_name=ADMIN_CHANNEL_CONF["token_tag"],
+            token=new_token,
+            origins=ADMIN_CHANNEL_CONF["write_to"],
+        )
         return response
 
     # ---------------- 登出逻辑 ----------------
     def handle_logout(self, request: HttpRequest):
         response = self.to_login()
-        token_handler.remove(response, TOKEN_TAG)
+        token_util.remove_token_by_origins(
+            response=response,
+            token_name=ADMIN_CHANNEL_CONF["token_tag"],
+            origins=ADMIN_CHANNEL_CONF["write_to"],
+        )
         return response
 
     # ---------------- 文档访问验证 ----------------
     def handle_docs_request(self, request: HttpRequest):
-        token = token_handler.get(request, TOKEN_TAG)
+        token = token_util.get_token_by_origins(
+            request=request,
+            token_name=ADMIN_CHANNEL_CONF["token_tag"],
+            origins=ADMIN_CHANNEL_CONF["read_from"],
+        )
         if not token:
             return self.to_login()
         return self.get_response(request)

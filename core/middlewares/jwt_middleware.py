@@ -8,92 +8,100 @@
 # Description: jwt校验中间件
 """
 import logging
-from django.http import HttpRequest, HttpResponse, JsonResponse
-from jwt import ExpiredSignatureError
+
 from django.contrib.auth import logout
+from django.http import HttpRequest, JsonResponse
 from django.shortcuts import redirect
 from django.urls import reverse
+from jwt import ExpiredSignatureError
 
-from core.utils import token_util
 from core.conf import settings
 from core.ninja_extra.response_schema import ErrorResponse, ResponseLevel
+from core.utils import auth_channel_util, token_util
 
 logger = logging.getLogger(__name__)
 
-TOKEN_ORIGIN = settings.TOKEN_ORIGIN  # token来源
-TOKEN_TAG = settings.TOKEN_TAG  # token标记名称
 SECRET_KEY = settings.SECRET_KEY
-TOKEN_EXPIRE = settings.TOKEN_EXPIRE  # token过期时间
-token_handler = token_util.tk_handler_dict[TOKEN_ORIGIN]
 NINJA_BASE_URL = settings.NINJA_BASE_URL
+API_PREFIX = f"/{NINJA_BASE_URL.strip('/')}/"
+PUBLIC_API_PATHS = {
+    f"{API_PREFIX}auth/account/login",
+    f"{API_PREFIX}mobile/auth/account/login",
+}
+
 
 class JWTMiddleware:
-    
+
     def __init__(self, get_response):
         self.get_response = get_response
-        
-        
-    def __call__(self, request: HttpRequest):
 
-        req_paht = request.path
-        if req_paht.startswith("/admin/login/") or req_paht.startswith(settings.STATIC_URL):
+    def __call__(self, request: HttpRequest):
+        req_path = request.path
+        normalized_path = req_path.rstrip("/")
+
+        if req_path.startswith("/admin/login/") or req_path.startswith(settings.STATIC_URL):
             return self.get_response(request)
 
-        is_admin = req_paht.startswith("/admin/")
-        token = token_handler.get(request, TOKEN_TAG)  # 去指定来源获取token
+        if normalized_path in PUBLIC_API_PATHS:
+            return self.get_response(request)
+
+        is_admin = req_path.startswith("/admin/")
+        channel = auth_channel_util.resolve_channel_by_request(request)
+        channel_conf = auth_channel_util.get_channel_config(channel)
+        token = token_util.get_token_by_origins(
+            request=request,
+            token_name=channel_conf["token_tag"],
+            origins=channel_conf["read_from"],
+        )
         if not token and hasattr(request, "new_token"):
-            token = request.new_token  # token 可能是上层拦截器生成的
-            
+            token = request.new_token
+
         if not token:
             if is_admin:
-                # 先退出登录
                 if request.user.is_authenticated:
                     logout(request)
-                    return redirect(reverse("admin:login"))  # 跳转登录页
-            else:
-                return JsonResponse(
-                    ErrorResponse(
-                        code="401", 
-                        msg="未登录",
-                        level=ResponseLevel.ERROR
-                    ).model_dump(), 
-                    status=200
-                )
-        
-        try:
-            token  = token_util.verify_token(token, SECRET_KEY)
-        except ExpiredSignatureError:
-            logger.warning(f'token已过期 - {token}')
-            if is_admin:
-                # 先退出登录
-                if request.user.is_authenticated:
-                    logout(request)
-                    return redirect(reverse("admin:login"))  # 跳转登录页
-            else:
-                return JsonResponse(
-                    ErrorResponse(
-                        code="401", 
-                        msg="未登录",
-                        level=ResponseLevel.ERROR
-                    ).model_dump(), 
-                    status=200
-                )
-        except Exception:
-            logger.error(f'token验证失败 - {token}', exc_info=True)
-            if is_admin:
-                # 先退出登录
-                if request.user.is_authenticated:
-                    logout(request)
-                    return redirect(reverse("admin:login"))  # 跳转登录页
-            else:
-                return JsonResponse(
-                    ErrorResponse(
-                        code="404", 
-                        msg="未登录",
-                        level=ResponseLevel.ERROR
-                    ).model_dump(), 
-                    status=200
-                )
-    
-        return self.get_response(request)
+                return redirect(reverse("admin:login"))
+            return JsonResponse(
+                ErrorResponse(
+                    code="401",
+                    msg="未登录",
+                    level=ResponseLevel.ERROR,
+                ).model_dump(),
+                status=200,
+            )
 
+        try:
+            token_payload = token_util.verify_token(token, SECRET_KEY)
+            token_client = token_payload.get("client")
+            if token_client and token_client != channel:
+                raise ValueError("token client mismatch")
+        except ExpiredSignatureError:
+            logger.warning(f"token已过期 - {token}")
+            if is_admin:
+                if request.user.is_authenticated:
+                    logout(request)
+                return redirect(reverse("admin:login"))
+            return JsonResponse(
+                ErrorResponse(
+                    code="401",
+                    msg="未登录",
+                    level=ResponseLevel.ERROR,
+                ).model_dump(),
+                status=200,
+            )
+        except Exception:
+            logger.error(f"token验证失败 - {token}", exc_info=True)
+            if is_admin:
+                if request.user.is_authenticated:
+                    logout(request)
+                return redirect(reverse("admin:login"))
+            return JsonResponse(
+                ErrorResponse(
+                    code="404",
+                    msg="未登录",
+                    level=ResponseLevel.ERROR,
+                ).model_dump(),
+                status=200,
+            )
+
+        return self.get_response(request)
