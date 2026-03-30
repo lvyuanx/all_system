@@ -38,7 +38,7 @@ done
 
 # ---------- 交互式补全缺少的必填项 ----------
 prompt() {
-    local var_name="$1" prompt_text="$2" default="$3"
+    local var_name="$1" prompt_text="$2" default="${3:-}"
     local value
     if [ -n "$default" ]; then
         read -r -p "$prompt_text [$default]: " value
