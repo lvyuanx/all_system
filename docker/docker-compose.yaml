@@ -1,4 +1,4 @@
-services:
+锘縮ervices:
   all_system:
     image: ${IMAGE_PROJECT:-all_system}:${IMAGE_TAG:-latest}
     container_name: ${IMAGE_PROJECT:-all_system}_${IMAGE_SITE:-dev}
@@ -10,7 +10,7 @@ services:
       - "8000"
     networks:
       - app-network
-    restart: unless-stopped   # 后台运行并自动重启
+    restart: unless-stopped   # Run in background and auto-restart
 
 networks:
   app-network:
