@@ -98,7 +98,7 @@ echo "[2/3] 替换容器..."
 ENV_FILE="$LATEST_DIR/.env"
 COMPOSE_FILE="$LATEST_DIR/docker-compose.yaml"
 
-docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" down
+docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" down --rmi local
 docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" up -d
 
 # ---------- 等待容器就绪 ----------
