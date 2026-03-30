@@ -173,6 +173,17 @@ docker exec "$CONTAINER_NAME" python manage.py makemigrations
 echo "  执行 migrate..."
 docker exec "$CONTAINER_NAME" python manage.py migrate
 
+echo "  执行自定义初始化命令..."
+docker exec "$CONTAINER_NAME" python manage.py init
+
+echo "  创建超级用户 admin..."
+docker exec \
+    -e DJANGO_SUPERUSER_USERNAME=admin \
+    -e DJANGO_SUPERUSER_PASSWORD=123456 \
+    -e DJANGO_SUPERUSER_EMAIL=admin@admin.com \
+    "$CONTAINER_NAME" \
+    python manage.py createsuperuser --noinput 2>&1 | grep -v "already exists" || true
+
 # ---------- 2d) 生成 nginx 配置 ----------
 echo ""
 echo "[2d/3] 生成 nginx 配置..."
