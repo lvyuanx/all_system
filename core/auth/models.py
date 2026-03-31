@@ -52,11 +52,26 @@ class SimpleuiMenus(model_util.PermissionHelperMixin, models.Model):
     permissions = models.ManyToManyField("auth.Permission", blank=True, verbose_name="权限")
     is_active = models.BooleanField(default=True, null=True, verbose_name="是否激活")
     sort_no = models.IntegerField(default=0, null=True, verbose_name="排序")
-    
+
     class Meta:
         verbose_name = "菜单列表"
+
+
+class MobileMenus(model_util.PermissionHelperMixin, models.Model):
+
+    name = models.CharField(max_length=255, verbose_name="菜单名称")
+    icon = models.CharField(max_length=255, null=True, blank=True, verbose_name="图标")
+    url = models.CharField(max_length=255, null=True, blank=True, verbose_name="菜单链接")
+    path = models.CharField(max_length=255, null=True, blank=True, verbose_name="菜单路径")
+    depath = models.IntegerField(default=0, null=True, verbose_name="路径深度")
+    permissions = models.ManyToManyField("auth.Permission", blank=True, verbose_name="权限")
+    is_active = models.BooleanField(default=True, null=True, verbose_name="是否激活")
+    sort_no = models.IntegerField(default=0, null=True, verbose_name="排序")
+
+    class Meta:
+        verbose_name = "移动端菜单"
         verbose_name_plural = verbose_name
-    
+
     def __str__(self):
         return self.name
 

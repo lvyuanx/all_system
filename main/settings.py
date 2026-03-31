@@ -167,7 +167,7 @@ MOBILE_AUTH_CHANNEL = merge_config(
 AUTH_CHANNELS = {
     "admin": {
         "token_tag": TOKEN_TAG,
-        "read_from": ["cookie"],
+        "read_from": ["cookie", "query"],
         "write_to": ["cookie"],
         "return_token_in_body": False,
     },

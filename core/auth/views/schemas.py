@@ -11,11 +11,11 @@ class PermPackItemSchema(BaseModel):
 class GroupCreateSchema(BaseModel):
     name: str = Field(description="权限组名称")
     packs: list[str] = Field(description="权限包列表")
-    
+
 
 
 class MenuItemCreateSchema(ModelSchema):
-    
+
     class Config:
         model = SimpleuiMenus
         model_exclude  = ("id",)
@@ -39,3 +39,15 @@ class LoginResponseSchema(BaseModel):
     token_write_to: list[str] = Field(default_factory=list, description="Token写入来源")
     token_expire: int = Field(..., description="Token过期秒数")
     token: str | None = Field(default=None, description="登录返回Token")
+
+
+class MobileMenuItemSchema(BaseModel):
+    id: int = Field(..., description="菜单ID")
+    name: str = Field(..., description="菜单名称")
+    icon: str | None = Field(default=None, description="图标")
+    url: str | None = Field(default=None, description="菜单链接")
+    path: str | None = Field(default=None, description="菜单路径")
+    depath: int = Field(..., description="路径深度")
+    sort_no: int = Field(default=0, description="排序")
+    has_children: bool = Field(default=False, description="是否有子菜单")
+

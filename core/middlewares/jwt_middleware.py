@@ -39,7 +39,7 @@ class JWTMiddleware:
         req_path = request.path
         normalized_path = req_path.rstrip("/")
 
-        if req_path.startswith("/admin/login/") or req_path.startswith(settings.STATIC_URL):
+        if req_path.startswith("/admin/login/") or req_path.startswith(settings.STATIC_URL) or req_path.startswith(settings.MEDIA_URL):
             return self.get_response(request)
 
         if normalized_path in PUBLIC_API_PATHS:
@@ -70,6 +70,7 @@ class JWTMiddleware:
                 status=200,
             )
 
+        token_payload = {}
         try:
             token_payload = token_util.verify_token(token, SECRET_KEY)
             token_client = token_payload.get("client")
@@ -77,6 +78,20 @@ class JWTMiddleware:
                 raise ValueError("token client mismatch")
         except ExpiredSignatureError:
             logger.warning(f"token已过期 - {token}")
+            if is_admin:
+                if request.user.is_authenticated:
+                    logout(request)
+                return redirect(reverse("admin:login"))
+            return JsonResponse(
+                ErrorResponse(
+                    code="401",
+                    msg="未登录",
+                    level=ResponseLevel.ERROR,
+                ).model_dump(),
+                status=200,
+            )
+        except ValueError:
+            logger.warning(f"token channel不匹配 - token_client={token_payload.get('client')}, channel={channel}, path={req_path}")
             if is_admin:
                 if request.user.is_authenticated:
                     logout(request)

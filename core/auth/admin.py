@@ -12,7 +12,7 @@ from core.admin_extra.mixins import AdminListImagePreviewMixin
 from core.admin_extra.forms import AdminFormImageUploadForm
 from core.conf import settings
 from core.utils import admin_util
-from .models import User, SimpleuiMenus
+from .models import User, SimpleuiMenus, MobileMenus
 
 
 @admin.register(User)
@@ -139,6 +139,14 @@ class SimpleuiMenusAdmin(AdminBaseMixin, admin.ModelAdmin):
     """定义哪个字段可以编辑"""
     list_editable = ("name", "icon", "url", "path", "depath", "is_active")
 
+    search_fields = ("name", "path")
+
+
+@admin.register(MobileMenus)
+class MobileMenusAdmin(AdminBaseMixin, admin.ModelAdmin):
+    list_display = ("id", "name", "icon", "url", "path", "depath", "sort_no", "is_active")
+    list_display_links = ("id",)
+    list_editable = ("name", "icon", "url", "path", "depath", "sort_no", "is_active")
     search_fields = ("name", "path")
 
 
