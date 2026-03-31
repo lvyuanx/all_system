@@ -74,6 +74,7 @@ class View(BaseApi):
                 username=user.username,
                 full_name=getattr(user, "full_name", None),
                 phone=getattr(user, "phone", None),
+                avatar=user.avatar.url if getattr(user, "avatar", None) else None,
                 channel="mobile",
                 token_tag=token_tag,
                 token_origin=token_read_from[0] if token_read_from else None,

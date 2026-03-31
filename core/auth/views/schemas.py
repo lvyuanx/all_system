@@ -31,6 +31,7 @@ class LoginResponseSchema(BaseModel):
     username: str = Field(..., description="用户名")
     full_name: str | None = Field(default=None, description="姓名")
     phone: str | None = Field(default=None, description="手机号")
+    avatar: str | None = Field(default=None, description="头像URL")
     channel: str = Field(..., description="登录通道：admin/mobile")
     token_tag: str = Field(..., description="Token字段名")
     token_origin: str | None = Field(default=None, description="兼容字段，主来源")
