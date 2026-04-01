@@ -73,3 +73,7 @@ class SalaryQuickDataSchema(BaseModel):
     performance_evaluation_salary: Decimal = Field(..., description="绩效")
     commission_salary: Decimal = Field(..., description="提成")
     other_salary: Decimal = Field(..., description="其他")
+
+class MobileStaffInfoSchema(BaseModel):
+    staff_code: str | None = Field(default=None, description="??")
+    site_name: str | None = Field(default=None, description="??????")

@@ -2,6 +2,7 @@ from core.ninja_extra.apis import apis as CORE_APIS
 from core.auth.apis import apis as AUTH_APIS
 from core.auth.mobile_apis import apis as AUTH_MOBILE_APIS
 from staff.apis import apis as STAFF_APIS
+from staff.mobile_apis import apis as STAFF_MOBILE_APIS
 from bill.apis import apis as BILL_APIS
 from core.common.apis import apis as COMMON_APIS
 from site_mgmt.apis import apis as SITE_MGMT_APIS
@@ -22,4 +23,5 @@ apis = [
     ("A8", "order", ORDER_APIS, "订单模块"),
     ("M1", "mobile/auth", AUTH_MOBILE_APIS, "移动端用户模块"),
     ("M2", "mobile/pattern_library", PATTERN_LIBRARY_MOBILE_APIS, "移动端版式库模块"),
+    ("M3", "mobile/staff", STAFF_MOBILE_APIS, "mobile staff module"),
 ]
