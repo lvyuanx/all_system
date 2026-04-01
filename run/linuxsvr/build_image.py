@@ -30,7 +30,7 @@ SOURCE_OSS_STATIC = ROOT_DIR / "oss" / "static"
 INIT_TEMPLATE = ROOT_DIR / "run" / "linuxsvr" / "init.py"
 NGINX_SCRIPT = ROOT_DIR / "run" / "linuxsvr" / "register_nginx.py"
 DEFAULT_PROJECT = "all_system"
-DEFAULT_BUILD_DIR = ROOT_DIR / "build"
+DEFAULT_BUILD_DIR = Path("/data/build")
 DEFAULT_DATA_ROOT = "/data"
 
 

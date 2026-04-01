@@ -1,0 +1,43 @@
+﻿# Ignore VCS
+.git
+.gitignore
+
+# Python cache/venv
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.py~
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Virtual environments
+.venv/
+venv/
+run/winsvr/venv/
+
+# AI assistant/editor
+.vscode/
+.idea/
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# Logs and runtime data
+logs/
+*.log
+
+# Local data / db
+*.sqlite3
+*.db
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Large local files
+output.pdf
+data.json
