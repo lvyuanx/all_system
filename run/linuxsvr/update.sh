@@ -83,7 +83,8 @@ python3 "$SCRIPT_DIR/build_image.py" "${BUILD_ARGS[@]}"
 
 # ---------- 找到最新产出目录 ----------
 ROOT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
-BUILD_DIR="$ROOT_DIR/build"
+# build_image.py ????? /data/build??????? COPY ???
+BUILD_DIR="/data/build"
 LATEST_DIR=$(ls -td "$BUILD_DIR"/[0-9]* 2>/dev/null | head -1)
 
 if [ -z "$LATEST_DIR" ]; then
