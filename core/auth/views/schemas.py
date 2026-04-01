@@ -51,3 +51,31 @@ class MobileMenuItemSchema(BaseModel):
     sort_no: int = Field(default=0, description="排序")
     has_children: bool = Field(default=False, description="是否有子菜单")
 
+
+class MobileProfileSchema(BaseModel):
+    uid: int = Field(..., description="用户ID")
+    username: str = Field(..., description="用户名")
+    first_name: str | None = Field(default=None, description="名")
+    last_name: str | None = Field(default=None, description="姓")
+    full_name: str | None = Field(default=None, description="姓名")
+    email: str | None = Field(default=None, description="邮箱")
+    phone: str | None = Field(default=None, description="手机号")
+    sex: str | None = Field(default=None, description="性别：M/F/U")
+    age: int | None = Field(default=None, description="年龄")
+    avatar: str | None = Field(default=None, description="头像URL")
+
+
+class MobileProfileUpdateSchema(BaseModel):
+    username: str | None = Field(default=None, description="用户名")
+    first_name: str | None = Field(default=None, description="名")
+    last_name: str | None = Field(default=None, description="姓")
+    email: str | None = Field(default=None, description="邮箱")
+    phone: str | None = Field(default=None, description="手机号")
+    sex: str | None = Field(default=None, description="性别：M/F/U")
+    age: int | None = Field(default=None, description="年龄")
+
+
+class MobileChangePasswordSchema(BaseModel):
+    old_password: str = Field(..., description="旧密码")
+    new_password: str = Field(..., description="新密码")
+
