@@ -36,3 +36,4 @@
 "37","已完成","fas fa-list","/admin/order/order/filter/?order_status=70","0","订单管理/已完成","0","1","7"
 "38","所有订单","fas fa-list","/admin/order/order/","0","订单管理/所有订单","1","1","0"
 "43","图库搜索","fas fa-list","/admin/pattern_library/pattern/search/","0","版式管理/图库搜索","1","1","0"
+"44","移动端菜单","fas fa-list","/admin/core_auth/mobilemenus/","0","菜单管理/移动端菜单","1","1","0"
