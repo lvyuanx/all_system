@@ -2,10 +2,12 @@ from pydantic import BaseModel, Field
 
 
 class PatternListItemSchema(BaseModel):
-    
+
+    pattern_id: int = Field(..., description="版式ID")
     main_image: str = Field(..., description="主图")
     pattern_code: str = Field(..., description="版号")
     pattern_memo: str | None = Field(None, description="备注")
+    tags: list[str] = Field(default_factory=list, description="标签")
 
 
 class EchoImageDataSchema(BaseModel):

@@ -8,6 +8,7 @@ from site_mgmt.apis import apis as SITE_MGMT_APIS
 from client_mgmt.apis import apis as CLIENT_MGMT_APIS
 from pattern_library.apis import apis as PATTERN_LIBRARY_APIS
 from order.apis import apis as ORDER_APIS
+from pattern_library.mobile_apis import apis as PATTERN_LIBRARY_MOBILE_APIS
 
 apis = [
     ("A0", "core", CORE_APIS, "核心模块"),
@@ -20,4 +21,5 @@ apis = [
     ("A7", "pattern_library", PATTERN_LIBRARY_APIS, "版式库模块"),
     ("A8", "order", ORDER_APIS, "订单模块"),
     ("M1", "mobile/auth", AUTH_MOBILE_APIS, "移动端用户模块"),
+    ("M2", "mobile/pattern_library", PATTERN_LIBRARY_MOBILE_APIS, "移动端版式库模块"),
 ]

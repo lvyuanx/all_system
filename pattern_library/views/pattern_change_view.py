@@ -46,7 +46,7 @@ def do(
     
     # 修改
     pattern.memo = memo
-    pattern.tags = Pattern.generate_tags(*tags)
+    pattern.tags = Pattern.generate_tags(*(tags or [])) or ""
     pattern.is_active = is_active
     pattern.save()
     

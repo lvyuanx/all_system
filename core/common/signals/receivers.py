@@ -13,6 +13,10 @@ from .signals import res_unactive_signal
 @receiver(post_save, sender=Resource)
 @signal_util.safe_signal_handler
 async def res_saved_signal_handler(sender, instance: Resource, created, **kwargs):
+
+    if not settings.IMAGE_SEARCH_OPEN:
+        return
+    
     if created and instance.file_type in ["image/jpeg", "image/png"]:
 
         file_path = instance.file.path
@@ -29,6 +33,8 @@ async def res_saved_signal_handler(sender, instance: Resource, created, **kwargs
 @receiver(signal=post_delete, sender=Resource)
 @signal_util.safe_signal_handler
 def res_deleted_signal_handler(sender, instance: Resource, **kwargs):
+    if not settings.IMAGE_SEARCH_OPEN:
+        return
     image_search_adapter.image_delete(instance.stored_name)
 
 
@@ -36,4 +42,6 @@ def res_deleted_signal_handler(sender, instance: Resource, **kwargs):
 @receiver(signal=res_unactive_signal, sender=Resource)
 @signal_util.safe_signal_handler
 def res_unactive_signal_handler(sender, stored_name: str, **kwargs):
+    if not settings.IMAGE_SEARCH_OPEN:
+        return
     image_search_adapter.image_delete(stored_name)
