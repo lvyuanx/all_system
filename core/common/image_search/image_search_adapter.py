@@ -18,6 +18,8 @@ def _http_response(res, url_path):
 
 
 async def image_list(group, page=1, page_size=20, keyword="", order="desc"):
+    if not settings.IMAGE_SEARCH_OPEN:
+        return []
     url = settings.IMAGE_SEARCH_BASE_URL + "/image"
     url_path = urlparse(url).path
     params = {
@@ -38,6 +40,8 @@ async def image_list(group, page=1, page_size=20, keyword="", order="desc"):
 
 
 async def image_add(file, md5, group, filename, content_type):
+    if not settings.IMAGE_SEARCH_OPEN:
+        return
 
     url = settings.IMAGE_SEARCH_BASE_URL + "/image"
     url_path = urlparse(url).path
@@ -58,6 +62,8 @@ async def image_add(file, md5, group, filename, content_type):
     _http_response(res, url_path)
 
 async def rebuild():
+    if not settings.IMAGE_SEARCH_OPEN:
+        return
     url = settings.IMAGE_SEARCH_BASE_URL + "/image/rebuild"
     url_path = urlparse(url).path
     params = {"url": url_path}
@@ -67,6 +73,8 @@ async def rebuild():
 
 
 async def image_clear(group):
+    if not settings.IMAGE_SEARCH_OPEN:
+        return
     url = settings.IMAGE_SEARCH_BASE_URL + "/image/clear"
     url_path = urlparse(url).path
     params = {"group": group, "url": url_path}
@@ -76,6 +84,8 @@ async def image_clear(group):
 
 
 async def image_delete(name):
+    if not settings.IMAGE_SEARCH_OPEN:
+        return
     url = settings.IMAGE_SEARCH_BASE_URL + "/image"
     url_path = urlparse(url).path
     params = {"origin_name": name, "url": url_path}
@@ -85,6 +95,8 @@ async def image_delete(name):
 
 
 async def image_search(file, md5, group):
+    if not settings.IMAGE_SEARCH_OPEN:
+        return
     url = settings.IMAGE_SEARCH_BASE_URL + "/image/search"
     url_path = urlparse(url).path
     params = {"md5": md5, "group": group, "url": url_path}
@@ -104,6 +116,8 @@ async def image_search(file, md5, group):
     return _http_response(res, url_path)
 
 async def get_quota():
+    if not settings.IMAGE_SEARCH_OPEN:
+        return {}
     url = settings.IMAGE_SEARCH_BASE_URL + "/auth/quota"
     url_path = urlparse(url).path
     params = {"url": url_path}
@@ -116,6 +130,8 @@ async def get_quota():
 
 
 async def redeem_jdk(code: str):
+    if not settings.IMAGE_SEARCH_OPEN:
+        return
     url = settings.IMAGE_SEARCH_BASE_URL + "/auth/jdk/redeem"
     url_path = urlparse(url).path
     params = {"url": url_path, "code": code}
