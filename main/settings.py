@@ -420,6 +420,12 @@ DB_CSVS = merge_config(
             ["id"],
         ),
         (
+            BASE_DIR / "run" / "sqls" / "core_auth_mobilemenus.csv",
+            "core_auth.MobileMenus",
+            ["path"],
+            ["id"],
+        ),
+        (
             BASE_DIR / "run" / "sqls" / "core_common_provincecode.csv",
             "core_common.ProvinceCode",
             ["id"],
