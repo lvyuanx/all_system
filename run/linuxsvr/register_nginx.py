@@ -41,7 +41,8 @@ LOCATION_BLOCK = """    location /static/ {{
         add_header Cache-Control "public";
     }}
 
-    location / {{
+    # ninja 接口
+    location /api/ {{
         proxy_pass http://{project}_{site}:8000;
         proxy_http_version 1.1;
         proxy_set_header Host $host;
@@ -51,6 +52,25 @@ LOCATION_BLOCK = """    location /static/ {{
         proxy_connect_timeout 60;
         proxy_send_timeout 60;
         proxy_read_timeout 60;
+    }}
+
+    # django admin
+    location /admin/ {{
+        proxy_pass http://{project}_{site}:8000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_connect_timeout 60;
+        proxy_send_timeout 60;
+        proxy_read_timeout 60;
+    }}
+
+    # 前端静态
+    location / {{
+        root {host_data}/{site}/html;
+        try_files $uri $uri/ /index.html;
     }}
 """
 
