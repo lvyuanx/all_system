@@ -67,6 +67,9 @@ class View(BaseApi):
             expire_seconds=TOKEN_EXPIRE,
         )
 
+        date_joined = user.date_joined
+        date_joined_str = date_joined.strftime("%Y-%m-%d %H:%M:%S") if date_joined else None
+
         response_data = SuccessResponse(
             msg="登录成功",
             data=LoginResponseSchema(
@@ -75,6 +78,8 @@ class View(BaseApi):
                 full_name=getattr(user, "full_name", None),
                 phone=getattr(user, "phone", None),
                 avatar=user.avatar.url if getattr(user, "avatar", None) else None,
+                date_joined=date_joined_str,
+                is_superuser=bool(user.is_superuser),
                 channel="mobile",
                 token_tag=token_tag,
                 token_origin=token_read_from[0] if token_read_from else None,

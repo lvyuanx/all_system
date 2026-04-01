@@ -5,6 +5,7 @@ from .views import (
     mobile_profile_view,
     mobile_profile_update_view,
     mobile_change_password_view,
+    mobile_avatar_update_view,
 )
 
 apis = {
@@ -14,6 +15,7 @@ apis = {
         ("A2", "profile/", mobile_profile_view.View, "查询个人信息"),
         ("A3", "profile/update/", mobile_profile_update_view.View, "修改个人信息"),
         ("A4", "profile/change_password/", mobile_change_password_view.View, "修改密码"),
+        ("A5", "profile/avatar/", mobile_avatar_update_view.View, "修改头像"),
     ],
     "menu": [
         ("B0", "list/", mobile_menu_view.View, "查询移动端菜单"),
