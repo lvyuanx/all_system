@@ -10,9 +10,14 @@ def admin_filter_site(
     request: HttpRequest, queryset: QuerySet, site_field_name: str = "site"
 ):
     user = request.user
+    if not getattr(user, "is_authenticated", False):
+        return queryset.none()
     if user.is_superuser:  # 超级管理员
         return queryset
-    user_site = user.staff.site
+    try:
+        user_site = user.staff.site
+    except Exception:
+        return queryset.none()
     return queryset.filter(**{site_field_name: user_site})
 
 

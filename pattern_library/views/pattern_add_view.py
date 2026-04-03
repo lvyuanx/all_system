@@ -9,6 +9,7 @@ from django.db import transaction
 from django.contrib.contenttypes.models import ContentType
 import uuid, mimetypes, os
 from core.common.utils import res_util
+from pattern_library.utils import image_util
 
 
 @transaction.atomic
@@ -28,6 +29,7 @@ def do(
 
     # 处理主图
     if main_image:
+        main_image = image_util.compress_uploaded_image_lossless(main_image)
         main_res_id = res_util.upload_res(
             request_or_uid=request,
             files=main_image,
@@ -40,6 +42,7 @@ def do(
 
     # 处理辅图
     if images:
+        images = image_util.compress_uploaded_images_lossless(images)
         image_ids = res_util.upload_res(
             request_or_uid=request,
             files=images,

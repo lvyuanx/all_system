@@ -66,3 +66,32 @@ class View(BaseApi):
         )
         qs = await sync_to_async(site_util.admin_filter_site)(request, qs)
         return qs
+
+
+class OrderModuleView(BaseApi):
+
+    api_status = BaseApi.ApiStatus.DEV_DONE
+    methods = ["POST"]
+    finally_code = "000", "移动端按版号查询订单失败"
+    response_schema = schemas.OrderListByPatternItemSchema
+    is_pagination = True
+    pagination_class = Pagination
+    error_codes = []
+
+    @staticmethod
+    async def api(request: HttpRequest):
+        qs = (
+            Order.objects.filter(is_delete=False)
+            .values(
+                "pk",
+                "order_no",
+                "order_status",
+                "receiver_name",
+                "receiver_phone",
+                "payable_amount",
+                "paid_amount",
+            )
+            .order_by("-pk")
+        )
+        qs = await sync_to_async(site_util.admin_filter_site)(request, qs)
+        return qs

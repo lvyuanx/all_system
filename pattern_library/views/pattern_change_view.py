@@ -19,6 +19,7 @@ from core.ninja_extra.api_extra import (BaseApi, File, Form, HttpRequest,
                                         UploadedFile)
 from main.enums import ResCategoryEnum
 from pattern_library.models import Pattern
+from pattern_library.utils import image_util
 
 from . import schemas
 
@@ -53,6 +54,7 @@ def do(
 
     # 处理主图
     if main_image:
+        main_image = image_util.compress_uploaded_image_lossless(main_image)
         main_res_id = res_util.upload_res(
             request_or_uid=request,
             files=main_image,
@@ -65,6 +67,7 @@ def do(
 
     # 处理辅图
     if images:
+        images = image_util.compress_uploaded_images_lossless(images)
         image_ids = res_util.upload_res(
             request_or_uid=request,
             files=images,
