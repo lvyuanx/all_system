@@ -2,7 +2,7 @@ import logging
 
 from django.contrib.auth.models import Permission
 
-from core.auth.models import SimpleuiMenus
+from core.auth.models import SimpleuiMenus, MobileMenus
 
 logger = logging.getLogger(__name__)
 
@@ -49,19 +49,33 @@ menus_perm_dict = {
 
 }
 
+mobile_menus_perm_dict = {
+    "版式管理/版式库": ["view_pattern"],
+    "版式管理/图库搜索": ["view_pattern"],
+    "订单管理": ["view_order"],
+}
 
-def init_menus_perm():
-    
-    # 根据配置查询到多有的菜单项
-    menus = SimpleuiMenus.objects.filter(path__in=menus_perm_dict.keys())
-    
-    # 根据配查询到所有的权限
+
+def _bind_menu_permissions(menu_model, path_perm_dict: dict[str, list[str]]):
+    # 根据配置查询到所有的菜单项
+    menus = menu_model.objects.filter(path__in=path_perm_dict.keys())
+
+    # 根据配置查询到所有的权限
     codenames = []
-    for cs in menus_perm_dict.values():
+    for cs in path_perm_dict.values():
         codenames.extend(cs)
     perms = Permission.objects.filter(codename__in=codenames)
     codename_dict = {perm.codename: perm for perm in perms}
-    
+
     # 给菜单绑定权限
-    for menu in menus: 
-        menu.permissions.add(*[codename_dict[codename] for codename in menus_perm_dict[menu.path]])
+    for menu in menus:
+        menu.permissions.add(*[codename_dict[codename] for codename in path_perm_dict[menu.path]])
+
+
+def init_menus_perm():
+    _bind_menu_permissions(SimpleuiMenus, menus_perm_dict)
+    init_mobile_menus_perm()
+
+
+def init_mobile_menus_perm():
+    _bind_menu_permissions(MobileMenus, mobile_menus_perm_dict)
