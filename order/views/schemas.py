@@ -98,6 +98,7 @@ class MobileOrderListItemSchema(BaseModel):
     receiver_name: str | None = Field(None, description="收货人姓名")
     receiver_phone: str | None = Field(None, description="收货人电话")
     receiver_company: str | None = Field(None, description="收货公司")
+    main_image: str | None = Field(None, description="订单版式主图")
     create_time_str: str | None = Field(None, description="创建时间")
 
 

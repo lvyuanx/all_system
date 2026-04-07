@@ -8,19 +8,20 @@
 from typing import Any
 
 from asgiref.sync import sync_to_async
-from django.db.models import Q, QuerySet, F
+from django.db.models import Q, QuerySet, F, OuterRef, Subquery
 from ninja import Body
 
 from core.ninja_extra.api_extra import BaseApi, HttpRequest
 from core.ninja_extra.base_pagination import AsyncLimitOffsetPagination
-from core.utils import time_util
+from core.utils import time_util, common_util
 from order.enums import (
     OrderPayStatusChoices,
     OrderShipStatusChoices,
     OrderStatusChoices,
     OrderTypeChoices,
 )
-from order.models import Order
+from order.models import Order, OrderItem
+from pattern_library.models import Pattern
 from site_mgmt.utils import site_util
 
 from . import schemas
@@ -144,6 +145,7 @@ class Pagination(AsyncLimitOffsetPagination):
                 if item.get("create_time")
                 else ""
             )
+            item["main_image"] = common_util.media_url(item.get("main_image", ""))
         return results
 
 
@@ -159,8 +161,23 @@ class View(BaseApi):
 
     @staticmethod
     async def api(request: HttpRequest):
+        first_pattern_main_image_subquery = (
+            OrderItem.objects.filter(order_id=OuterRef("pk"), is_delete=False)
+            .annotate(
+                pattern_main_image=Subquery(
+                    Pattern.objects.filter(
+                        code=OuterRef("pattern_code"),
+                        is_delete=False,
+                        is_active=True,
+                    ).values("main_image__file")[:1]
+                )
+            )
+            .order_by("pk")
+            .values("pattern_main_image")[:1]
+        )
         qs = (
             Order.objects.filter(is_delete=False)
+            .annotate(main_image=Subquery(first_pattern_main_image_subquery))
             .values(
                 "order_no",
                 "order_type",
@@ -174,6 +191,7 @@ class View(BaseApi):
                 "receiver_company",
                 "create_time",
                 order_id=F("pk"),
+                main_image=F("main_image"),
             )
             .order_by("-pk")
         )
