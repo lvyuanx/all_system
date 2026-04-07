@@ -8,11 +8,11 @@
 from decimal import Decimal
 
 from asgiref.sync import sync_to_async
-from django.db.models import F
+from django.db.models import F, OuterRef, Subquery
 
 from core.exceptions.base_exceptions import BusinessException
 from core.ninja_extra.api_extra import BaseApi, HttpRequest, Query
-from core.utils import time_util
+from core.utils import time_util, common_util
 from order.enums import (
     OrderDeliveryChoices,
     OrderPayStatusChoices,
@@ -21,6 +21,7 @@ from order.enums import (
     OrderTypeChoices,
 )
 from order.models import Order, OrderItem
+from pattern_library.models import Pattern
 from site_mgmt.utils import site_util
 
 from . import schemas
@@ -108,6 +109,14 @@ class View(BaseApi):
         item_manager = OrderItem.objects.filter(
             order_id=order_id,
             is_delete=False,
+        ).annotate(
+            main_image=Subquery(
+                Pattern.objects.filter(
+                    code=OuterRef("pattern_code"),
+                    is_delete=False,
+                    is_active=True,
+                ).values("main_image__file")[:1]
+            )
         ).values(
             "item_no",
             "pattern_code",
@@ -118,6 +127,7 @@ class View(BaseApi):
             "total_unit",
             "memo",
             item_id=F("pk"),
+            main_image=F("main_image"),
         )
 
         items = []
@@ -126,6 +136,7 @@ class View(BaseApi):
             discount_price = item.get("discount_price") or Decimal("0")
             item["total"] = total
             item["subtotal"] = total - discount_price
+            item["main_image"] = common_util.media_url(item.get("main_image", ""))
             items.append(item)
 
         order_obj["items"] = items

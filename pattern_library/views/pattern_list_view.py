@@ -38,11 +38,13 @@ class Pagination(AsyncLimitOffsetPagination):
         for item in results:
             rst.append(
                 {
+                    "pattern_id": item.get("id", ""),
                     "main_image": common_util.media_url(
                         item.get("main_image__file", "")
                     ),
                     "pattern_code": item.get("code", ""),
                     "pattern_memo": item.get("memo", ""),
+                    "tags": [t for t in (item.get("tags", "") or "").split(",") if t],
                 }
             )
 
@@ -61,4 +63,6 @@ class View(BaseApi):
 
     @staticmethod
     async def api(request: HttpRequest):
-        return Pattern.objects.filter(is_active=True, is_delete=False).values("code", "memo", "main_image__file")
+        return Pattern.objects.filter(is_active=True, is_delete=False).values(
+            "id", "code", "memo", "tags", "main_image__file"
+        )

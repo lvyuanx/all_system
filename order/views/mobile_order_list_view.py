@@ -8,7 +8,7 @@
 from typing import Any
 
 from asgiref.sync import sync_to_async
-from django.db.models import Q, QuerySet, F, OuterRef, Subquery
+from django.db.models import Q, QuerySet, F
 from ninja import Body
 
 from core.ninja_extra.api_extra import BaseApi, HttpRequest
@@ -119,6 +119,47 @@ class Pagination(AsyncLimitOffsetPagination):
         return queryset
 
     async def aprocess_result(self, results: list) -> list:
+        order_ids = [item.get("order_id") for item in results if item.get("order_id") is not None]
+        order_images_map: dict[int, list[str]] = {}
+        if order_ids:
+            order_items = await sync_to_async(list)(
+                OrderItem.objects.filter(order_id__in=order_ids, is_delete=False)
+                .values("order_id", "pattern_code")
+                .order_by("pk")
+            )
+            pattern_codes: list[str] = []
+            for row in order_items:
+                code = row.get("pattern_code")
+                if code:
+                    pattern_codes.append(code)
+
+            pattern_image_map: dict[str, str] = {}
+            if pattern_codes:
+                pattern_rows = await sync_to_async(list)(
+                    Pattern.objects.filter(
+                        code__in=pattern_codes,
+                        is_delete=False,
+                        is_active=True,
+                    ).values("code", "main_image__file")
+                )
+                pattern_image_map = {
+                    row["code"]: common_util.media_url(row.get("main_image__file", ""))
+                    for row in pattern_rows
+                    if row.get("main_image__file")
+                }
+
+            for row in order_items:
+                order_id = row.get("order_id")
+                code = row.get("pattern_code")
+                if order_id is None or not code:
+                    continue
+                image_url = pattern_image_map.get(code)
+                if not image_url:
+                    continue
+                images = order_images_map.setdefault(order_id, [])
+                if image_url not in images:
+                    images.append(image_url)
+
         for item in results:
             item["order_status_str"] = (
                 OrderStatusChoices(item["order_status"]).label
@@ -145,7 +186,7 @@ class Pagination(AsyncLimitOffsetPagination):
                 if item.get("create_time")
                 else ""
             )
-            item["main_image"] = common_util.media_url(item.get("main_image", ""))
+            item["main_images"] = order_images_map.get(item.get("order_id"), [])
         return results
 
 
@@ -161,23 +202,8 @@ class View(BaseApi):
 
     @staticmethod
     async def api(request: HttpRequest):
-        first_pattern_main_image_subquery = (
-            OrderItem.objects.filter(order_id=OuterRef("pk"), is_delete=False)
-            .annotate(
-                pattern_main_image=Subquery(
-                    Pattern.objects.filter(
-                        code=OuterRef("pattern_code"),
-                        is_delete=False,
-                        is_active=True,
-                    ).values("main_image__file")[:1]
-                )
-            )
-            .order_by("pk")
-            .values("pattern_main_image")[:1]
-        )
         qs = (
             Order.objects.filter(is_delete=False)
-            .annotate(main_image=Subquery(first_pattern_main_image_subquery))
             .values(
                 "order_no",
                 "order_type",
@@ -191,7 +217,6 @@ class View(BaseApi):
                 "receiver_company",
                 "create_time",
                 order_id=F("pk"),
-                main_image=F("main_image"),
             )
             .order_by("-pk")
         )
