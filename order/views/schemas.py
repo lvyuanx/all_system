@@ -85,18 +85,9 @@ class MobileOrderListItemSchema(BaseModel):
 
     order_id: int = Field(..., description="订单ID")
     order_no: str = Field(..., description="订单编号")
-    order_type: int = Field(..., description="订单类型")
-    order_type_str: str = Field(..., description="订单类型文本")
     order_status: int = Field(..., description="订单状态")
     order_status_str: str = Field(..., description="订单状态文本")
-    pay_status: int = Field(..., description="支付状态")
-    pay_status_str: str = Field(..., description="支付状态文本")
-    ship_status: int = Field(..., description="发货状态")
-    ship_status_str: str = Field(..., description="发货状态文本")
     payable_amount: Decimal = Field(..., description="应付金额")
-    paid_amount: Decimal = Field(..., description="实付金额")
-    receiver_name: str | None = Field(None, description="收货人姓名")
-    receiver_phone: str | None = Field(None, description="收货人电话")
     receiver_company: str | None = Field(None, description="收货公司")
     main_images: list[str] = Field(default_factory=list, description="订单所有版式主图")
     create_time_str: str | None = Field(None, description="创建时间")
@@ -177,3 +168,19 @@ class OrderActionSchema(BaseModel):
 
     order_id: int = Field(..., description="订单ID")
     operator_memo: str | None = Field(None, description="操作备注")
+
+
+class OrderStatusFlowItemSchema(BaseModel):
+    status: int = Field(..., description="订单状态值")
+    status_str: str = Field(..., description="订单状态文本")
+    is_current: bool = Field(default=False, description="是否当前状态")
+
+
+class OrderStatusBranchSchema(BaseModel):
+    branch: str = Field(..., description="分支编码")
+    branch_name: str = Field(..., description="分支名称")
+    statuses: list[OrderStatusFlowItemSchema] = Field(default_factory=list, description="分支状态列表")
+
+
+class OrderStatusAllFlowSchema(BaseModel):
+    branches: list[OrderStatusBranchSchema] = Field(default_factory=list, description="订单状态分支列表")

@@ -43,5 +43,6 @@ apis = {
         ("C2", "receiver_options/", mobile_order_meta_view.MobileOrderReceiverOptionsView, "移动端收货方信息"),
         ("C3", "pay_status_all_list/", mobile_order_meta_view.MobileOrderPayStatusAllListView, "移动端订单支付状态"),
         ("C4", "ship_status_all_list/", mobile_order_meta_view.MobileOrderShipStatusAllListView, "移动端订单发货状态"),
+        ("C5", "status_flow/", mobile_order_meta_view.MobileOrderStatusFlowView, "移动端订单状态流程"),
     ],
 }

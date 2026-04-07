@@ -6,19 +6,17 @@
 """
 
 from typing import Any
+from decimal import Decimal
 
 from asgiref.sync import sync_to_async
-from django.db.models import Q, QuerySet, F
+from django.db.models import Q, QuerySet, F, Value, DecimalField
 from ninja import Body
 
 from core.ninja_extra.api_extra import BaseApi, HttpRequest
 from core.ninja_extra.base_pagination import AsyncLimitOffsetPagination
 from core.utils import time_util, common_util
 from order.enums import (
-    OrderPayStatusChoices,
-    OrderShipStatusChoices,
     OrderStatusChoices,
-    OrderTypeChoices,
 )
 from order.models import Order, OrderItem
 from pattern_library.models import Pattern
@@ -161,24 +159,10 @@ class Pagination(AsyncLimitOffsetPagination):
                     images.append(image_url)
 
         for item in results:
+            item["payable_amount"] = item.pop("payable_amount_masked", Decimal("0.00"))
             item["order_status_str"] = (
                 OrderStatusChoices(item["order_status"]).label
                 if item.get("order_status") is not None
-                else ""
-            )
-            item["pay_status_str"] = (
-                OrderPayStatusChoices(item["pay_status"]).label
-                if item.get("pay_status") is not None
-                else ""
-            )
-            item["ship_status_str"] = (
-                OrderShipStatusChoices(item["ship_status"]).label
-                if item.get("ship_status") is not None
-                else ""
-            )
-            item["order_type_str"] = (
-                OrderTypeChoices(item["order_type"]).label
-                if item.get("order_type") is not None
                 else ""
             )
             item["create_time_str"] = (
@@ -202,20 +186,28 @@ class View(BaseApi):
 
     @staticmethod
     async def api(request: HttpRequest):
+        cur_user = await common_util.get_user_async(request)
+        amount_perm_packs = ["ORDER_CREATE_MANAGE", "FINANCE_MANAGE"]
+        has_amount_perm = bool(cur_user.is_superuser) or await sync_to_async(
+            cur_user.groups.filter(
+                permission_packs__pack_code__in=amount_perm_packs
+            ).exists
+        )()
         qs = (
             Order.objects.filter(is_delete=False)
+            .annotate(
+                payable_amount_masked=(
+                    F("payable_amount")
+                    if has_amount_perm
+                    else Value(Decimal("0.00"), output_field=DecimalField(max_digits=10, decimal_places=2))
+                )
+            )
             .values(
                 "order_no",
-                "order_type",
                 "order_status",
-                "pay_status",
-                "ship_status",
-                "payable_amount",
-                "paid_amount",
-                "receiver_name",
-                "receiver_phone",
                 "receiver_company",
                 "create_time",
+                "payable_amount_masked",
                 order_id=F("pk"),
             )
             .order_by("-pk")

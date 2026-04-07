@@ -69,6 +69,19 @@ class View(BaseApi):
 
         date_joined = user.date_joined
         date_joined_str = date_joined.strftime("%Y-%m-%d %H:%M:%S") if date_joined else None
+        perm_pack_rows = await sync_to_async(list)(
+            user.groups.filter(permission_packs__isnull=False)
+            .values("permission_packs__pack_code", "permission_packs__pack_name")
+            .distinct()
+        )
+        perm_packs = [
+            {
+                "pack_code": row["permission_packs__pack_code"],
+                "pack_name": row["permission_packs__pack_name"],
+            }
+            for row in perm_pack_rows
+            if row.get("permission_packs__pack_code")
+        ]
 
         response_data = SuccessResponse(
             msg="登录成功",
@@ -87,6 +100,7 @@ class View(BaseApi):
                 token_write_to=token_write_to,
                 token_expire=TOKEN_EXPIRE,
                 token=token if return_token_in_body else None,
+                perm_packs=perm_packs,
             ).model_dump(),
         ).model_dump()
 

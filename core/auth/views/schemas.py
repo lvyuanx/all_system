@@ -41,6 +41,7 @@ class LoginResponseSchema(BaseModel):
     token_write_to: list[str] = Field(default_factory=list, description="Token写入来源")
     token_expire: int = Field(..., description="Token过期秒数")
     token: str | None = Field(default=None, description="登录返回Token")
+    perm_packs: list[PermPackItemSchema] = Field(default_factory=list, description="权限包列表")
 
 
 class MobileMenuItemSchema(BaseModel):

@@ -40,6 +40,21 @@ class View(BaseApi):
 
     @staticmethod
     async def api(request: HttpRequest, order_id: int = Query(..., description="订单ID")):
+        cur_user = await common_util.get_user_async(request)
+        perm_pack_codes = set(
+            await sync_to_async(list)(
+                cur_user.groups.filter(permission_packs__isnull=False)
+                .values_list("permission_packs__pack_code", flat=True)
+                .distinct()
+            )
+        )
+        has_finance_perm = bool(cur_user.is_superuser) or bool(
+            perm_pack_codes.intersection({"ORDER_CREATE_MANAGE", "FINANCE_MANAGE"})
+        )
+        has_logistics_perm = bool(cur_user.is_superuser) or bool(
+            perm_pack_codes.intersection({"ORDER_COMPLETE_MANAGE", "ORDER_CREATE_MANAGE"})
+        )
+
         order_manager = Order.objects.filter(pk=order_id, is_delete=False)
         if not await order_manager.aexists():
             raise BusinessException("001")
@@ -137,7 +152,32 @@ class View(BaseApi):
             item["total"] = total
             item["subtotal"] = total - discount_price
             item["main_image"] = common_util.media_url(item.get("main_image", ""))
+            if not has_finance_perm:
+                item["unit_price"] = Decimal("0")
+                item["discount_price"] = Decimal("0")
+                item["total"] = Decimal("0")
+                item["subtotal"] = Decimal("0")
             items.append(item)
+
+        if not has_finance_perm:
+            order_obj["total_amount"] = Decimal("0")
+            order_obj["discount_amount"] = Decimal("0")
+            order_obj["shipping_fee"] = Decimal("0")
+            order_obj["payable_amount"] = Decimal("0")
+            order_obj["paid_amount"] = Decimal("0")
+            order_obj["pay_status_str"] = ""
+
+        if not has_logistics_perm:
+            order_obj["ship_status_str"] = ""
+            order_obj["tracking_no"] = None
+            order_obj["shipping_party"] = None
+            order_obj["shipping_party_company"] = None
+            order_obj["shipping_party_phone"] = None
+            order_obj["shipping_party_address"] = None
+            order_obj["receiver_name"] = None
+            order_obj["receiver_phone"] = None
+            order_obj["receiver_company"] = None
+            order_obj["receiver_address"] = None
 
         order_obj["items"] = items
         return schemas.MobileOrderInfoSchema(**order_obj)

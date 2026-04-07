@@ -12,6 +12,7 @@ from core.utils.common_util import choices_to_schema
 from order import enums
 from order.models import Order
 from site_mgmt.utils import site_util
+from . import schemas
 
 
 class MobileOrderReceiverOptionsView(BaseApi):
@@ -79,3 +80,56 @@ class MobileOrderShipStatusAllListView(BaseApi):
     @staticmethod
     async def api(request: HttpRequest):
         return choices_to_schema(enums.OrderShipStatusChoices)
+
+
+class MobileOrderStatusFlowView(BaseApi):
+
+    api_status = BaseApi.ApiStatus.DEV_IN_PROGRESS
+    methods = ["GET"]
+    finally_code = "000", "查询订单状态流程失败"
+    response_schema = schemas.OrderStatusAllFlowSchema
+    error_codes = []
+
+    @staticmethod
+    async def api(request: HttpRequest):
+        complete_flow = [
+            enums.OrderStatusChoices.CREATED,
+            enums.OrderStatusChoices.CONFIRMED,
+            enums.OrderStatusChoices.SCHEDULED,
+            enums.OrderStatusChoices.PRODUCING,
+            enums.OrderStatusChoices.FINISHED,
+            enums.OrderStatusChoices.SHIPPED,
+            enums.OrderStatusChoices.COMPLETED,
+        ]
+        cancel_flow = [
+            enums.OrderStatusChoices.CREATED,
+            enums.OrderStatusChoices.CANCELED,
+        ]
+        return schemas.OrderStatusAllFlowSchema(
+            branches=[
+                schemas.OrderStatusBranchSchema(
+                    branch="complete",
+                    branch_name="创建到完成",
+                    statuses=[
+                        schemas.OrderStatusFlowItemSchema(
+                            status=int(status),
+                            status_str=status.label,
+                            is_current=False,
+                        )
+                        for status in complete_flow
+                    ],
+                ),
+                schemas.OrderStatusBranchSchema(
+                    branch="cancel",
+                    branch_name="创建到取消",
+                    statuses=[
+                        schemas.OrderStatusFlowItemSchema(
+                            status=int(status),
+                            status_str=status.label,
+                            is_current=False,
+                        )
+                        for status in cancel_flow
+                    ],
+                ),
+            ]
+        )
