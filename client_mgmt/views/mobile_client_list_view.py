@@ -28,7 +28,9 @@ class Pagination(AsyncLimitOffsetPagination):
         search = input_filter.get("search")
         if search:
             queryset = queryset.filter(
-                Q(client_name__contains=search) | Q(client_phone__contains=search)
+                Q(client_name__contains=search)
+                | Q(client_phone__contains=search)
+                | Q(company_name__contains=search)
             )
 
         company_name = input_filter.get("company_name")
@@ -83,7 +85,7 @@ class Pagination(AsyncLimitOffsetPagination):
                     "client_age": item.get("client_age"),
                     "company_name": item.get("company_name"),
                     "company_phone": item.get("company_phone"),
-                    "company_logo": common_util.media_url(item.get("company_logo", "")),
+                    "company_logo": common_util.media_url(item.get("company_logo_file", "")),
                     "full_address": province + city + district + detail,
                     "total_amount": float(item.get("total_amount") or Decimal("0")),
                     "total_arrears": float(item.get("total_arrears") or Decimal("0")),
@@ -133,5 +135,5 @@ class View(BaseApi):
             "total_order_count",
             "total_end_order_count",
             client_id=F("pk"),
-            company_logo=F("company_logo"),
+            company_logo_file=F("company_logo"),
         )

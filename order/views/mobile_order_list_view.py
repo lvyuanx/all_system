@@ -20,6 +20,7 @@ from order.enums import (
 )
 from order.models import Order, OrderItem
 from pattern_library.models import Pattern
+from client_mgmt.models import Client
 from site_mgmt.utils import site_util
 
 from . import schemas
@@ -171,6 +172,24 @@ class Pagination(AsyncLimitOffsetPagination):
                 else ""
             )
             item["main_images"] = order_images_map.get(item.get("order_id"), [])
+
+        # 批量查询 receiver_phone → client_id 映射
+        phones = list({item["receiver_phone"] for item in results if item.get("receiver_phone")})
+        phone_to_client_id: dict[str, int] = {}
+        if phones:
+            client_rows = await sync_to_async(list)(
+                Client.objects.filter(client_phone__in=phones, is_active=True)
+                .values("client_phone", client_id=F("pk"))
+            )
+            for row in client_rows:
+                phone = row.get("client_phone")
+                if phone and phone not in phone_to_client_id:
+                    phone_to_client_id[phone] = row["client_id"]
+
+        for item in results:
+            phone = item.pop("receiver_phone", None)
+            item["receiver_client_id"] = phone_to_client_id.get(phone) if phone else None
+
         return results
 
 
@@ -206,6 +225,7 @@ class View(BaseApi):
                 "order_no",
                 "order_status",
                 "receiver_company",
+                "receiver_phone",
                 "create_time",
                 "payable_amount_masked",
                 order_id=F("pk"),

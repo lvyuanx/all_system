@@ -61,7 +61,7 @@ class View(BaseApi):
             "total_arrears",
             "total_order_count",
             "total_end_order_count",
-            company_logo=F("company_logo"),
+            company_logo_file=F("company_logo"),
             client_id=F("pk"),
         ).afirst()
 
@@ -96,7 +96,7 @@ class View(BaseApi):
             client_age=client_obj.get("client_age"),
             company_name=client_obj.get("company_name"),
             company_phone=client_obj.get("company_phone"),
-            company_logo=common_util.media_url(client_obj.get("company_logo", "")),
+            company_logo=common_util.media_url(client_obj.get("company_logo_file", "")),
             address_province=province or None,
             address_city=city or None,
             address_district=district or None,

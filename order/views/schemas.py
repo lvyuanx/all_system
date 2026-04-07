@@ -91,6 +91,7 @@ class MobileOrderListItemSchema(BaseModel):
     receiver_company: str | None = Field(None, description="收货公司")
     main_images: list[str] = Field(default_factory=list, description="订单所有版式主图")
     create_time_str: str | None = Field(None, description="创建时间")
+    receiver_client_id: int | None = Field(None, description="关联客户ID")
 
 
 class OrderItemInfoSchema(BaseModel):
@@ -140,6 +141,7 @@ class MobileOrderInfoSchema(BaseModel):
     receiver_phone: str | None = Field(None, description="收货电话")
     receiver_company: str | None = Field(None, description="收货公司")
     receiver_address: str | None = Field(None, description="收货地址")
+    receiver_client_id: int | None = Field(None, description="关联客户ID")
     memo: str | None = Field(None, description="备注")
     create_time_str: str | None = Field(None, description="创建时间")
     items: list[OrderItemInfoSchema] = Field(..., description="订单项")

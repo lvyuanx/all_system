@@ -22,6 +22,7 @@ from order.enums import (
 )
 from order.models import Order, OrderItem
 from pattern_library.models import Pattern
+from client_mgmt.models import Client
 from site_mgmt.utils import site_util
 
 from . import schemas
@@ -180,4 +181,16 @@ class View(BaseApi):
             order_obj["receiver_address"] = None
 
         order_obj["items"] = items
+
+        # 查询关联客户ID
+        receiver_phone = order_obj.get("receiver_phone")
+        receiver_client_id = None
+        if receiver_phone:
+            client = await Client.objects.filter(
+                client_phone=receiver_phone, is_active=True
+            ).values(client_id=F("pk")).afirst()
+            if client:
+                receiver_client_id = client["client_id"]
+        order_obj["receiver_client_id"] = receiver_client_id
+
         return schemas.MobileOrderInfoSchema(**order_obj)

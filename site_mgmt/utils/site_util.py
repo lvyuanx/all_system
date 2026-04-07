@@ -33,7 +33,14 @@ def get_cur_sites(request: HttpRequest) -> QuerySet[SysSite]:
     except Staff.DoesNotExist:
         return SysSite.objects.none()
 
-    return staff.site.all()
+    # staff.site may be FK (single site) or M2M manager
+    site_attr = getattr(staff, "site", None)
+    if site_attr is None:
+        return SysSite.objects.none()
+    if hasattr(site_attr, "all"):
+        return site_attr.all()
+    # FK: wrap single site into queryset
+    return SysSite.objects.filter(pk=site_attr.pk)
 
 
 async def aget_cur_sites(request: HttpRequest) -> list[SysSite]:
