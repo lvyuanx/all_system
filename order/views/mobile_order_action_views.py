@@ -30,6 +30,14 @@ def _status_error(status: int):
     return BusinessException("002", {"status_name": OrderStatusChoices(status).label})
 
 
+async def _apply_transition(order: Order, user, memo: str | None, action: str):
+    def _do():
+        sm = OrderStateMachine(order, user, memo)
+        getattr(sm, action)()
+        sm.save_state()
+    await sync_to_async(_do, thread_sensitive=True)()
+
+
 class CancelView(BaseApi):
 
     api_status = BaseApi.ApiStatus.DEV_IN_PROGRESS
@@ -49,10 +57,8 @@ class CancelView(BaseApi):
         if order.order_status not in [OrderStatusChoices.CREATED, OrderStatusChoices.CONFIRMED]:
             raise _status_error(order.order_status)
 
-        sm = OrderStateMachine(order, request.user, data.operator_memo)
-        sm.cancel()
-        sm.save_state()
-        order_canceled_signal.send(sender=Order, instance=order)
+        await _apply_transition(order, request.user, data.operator_memo, "cancel")
+        await sync_to_async(order_canceled_signal.send, thread_sensitive=True)(sender=Order, instance=order)
 
 
 class ConfirmView(BaseApi):
@@ -74,9 +80,7 @@ class ConfirmView(BaseApi):
         if order.order_status != OrderStatusChoices.CREATED:
             raise _status_error(order.order_status)
 
-        sm = OrderStateMachine(order, request.user, data.operator_memo)
-        sm.confirm()
-        sm.save_state()
+        await _apply_transition(order, request.user, data.operator_memo, "confirm")
 
 
 class ScheduleView(BaseApi):
@@ -98,9 +102,7 @@ class ScheduleView(BaseApi):
         if order.order_status != OrderStatusChoices.CONFIRMED:
             raise _status_error(order.order_status)
 
-        sm = OrderStateMachine(order, request.user, data.operator_memo)
-        sm.schedule()
-        sm.save_state()
+        await _apply_transition(order, request.user, data.operator_memo, "schedule")
 
 
 class StartProductionView(BaseApi):
@@ -122,9 +124,7 @@ class StartProductionView(BaseApi):
         if order.order_status != OrderStatusChoices.SCHEDULED:
             raise _status_error(order.order_status)
 
-        sm = OrderStateMachine(order, request.user, data.operator_memo)
-        sm.start_production()
-        sm.save_state()
+        await _apply_transition(order, request.user, data.operator_memo, "start_production")
 
 
 class FinishProductionView(BaseApi):
@@ -146,9 +146,7 @@ class FinishProductionView(BaseApi):
         if order.order_status != OrderStatusChoices.PRODUCING:
             raise _status_error(order.order_status)
 
-        sm = OrderStateMachine(order, request.user, data.operator_memo)
-        sm.finish_production()
-        sm.save_state()
+        await _apply_transition(order, request.user, data.operator_memo, "finish_production")
 
 
 class CompleteView(BaseApi):
@@ -170,7 +168,5 @@ class CompleteView(BaseApi):
         if order.order_status != OrderStatusChoices.SHIPPED:
             raise _status_error(order.order_status)
 
-        sm = OrderStateMachine(order, request.user, data.operator_memo)
-        sm.complete()
-        sm.save_state()
-        order_complete_signal.send(sender=Order, instance=order)
+        await _apply_transition(order, request.user, data.operator_memo, "complete")
+        await sync_to_async(order_complete_signal.send, thread_sensitive=True)(sender=Order, instance=order)
