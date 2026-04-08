@@ -121,6 +121,7 @@ class StaffListView(BaseApi):
         qs = await _get_staff_queryset_by_scope(request)
         return qs.distinct().values(
             "staff_code",
+            "user_id",
             full_name=F("user__full_name"),
             username=F("user__username"),
             phone=F("user__phone"),
@@ -128,7 +129,6 @@ class StaffListView(BaseApi):
             is_active=F("user__is_active"),
             site_name=F("site__site_name"),
             staff_id=F("pk"),
-            user_id=F("user_id"),
         ).order_by("-id")
 
 
@@ -148,9 +148,9 @@ class StaffDetailView(BaseApi):
         staff = await qs.filter(user_id=user_id).values(
             "staff_code",
             "site_id",
+            "user_id",
             site_name=F("site__site_name"),
             staff_id=F("pk"),
-            user_id=F("user_id"),
             full_name=F("user__full_name"),
             username=F("user__username"),
             first_name=F("user__first_name"),
