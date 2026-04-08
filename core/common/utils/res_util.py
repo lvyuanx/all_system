@@ -113,11 +113,12 @@ def unactive_res(res):
     from ..models import Resource
     if isinstance(res, int):
         res = Resource.objects.get(pk=res)
-    res.unactive()
-    res_unactive_signal.send(
-        sender=Resource,
-        stored_name=res.stored_name
-    )
+    with transaction.atomic():
+        res.unactive()
+        res_unactive_signal.send(
+            sender=Resource,
+            stored_name=res.stored_name,
+        )
 
 
 def batch_unactive_res(res: Union[List[int], QuerySet]):
@@ -137,5 +138,6 @@ def batch_unactive_res(res: Union[List[int], QuerySet]):
         res_list = list(res_queryset)
         for r in res_list:
             r.unactive()
-        
+            res_unactive_signal.send(sender=Resource, stored_name=r.stored_name)
+
 

@@ -23,7 +23,8 @@ class Pattern(model_util.PermissionHelperMixin, model_util.StructureMoelMixin, m
     
     @staticmethod
     def generate_tags( *tags: str) -> str:
-        if not tags: return
+        if not tags:
+            return ""
         return "," + ",".join(tags) + ","
     
     @property
