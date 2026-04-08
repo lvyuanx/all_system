@@ -35,13 +35,21 @@ class DocsLoginMiddlware:
             if not token:
                 user = http_util.check_basic_auth(request)  # 通过HTTP Basic的方式认证
                 if user: # 认证成功
-                    new_token = token_util.create_token(
+                    new_token, jti = token_util.create_token_with_jti(
                         payload={
                             "uid": user.pk,
+                            "client": "admin",
                         },
                         secret=SECRET_KEY,
                         expire_seconds=TOKEN_EXPIRE
                     ) # 生成token
+                    token_util.register_sso_session(
+                        user_id=user.pk,
+                        channel="admin",
+                        jti=jti,
+                        max_sessions=token_util.get_sso_max_sessions("admin"),
+                        expire_seconds=TOKEN_EXPIRE,
+                    )
                     request.new_token = new_token
                 else:  # 认证失败
                     return self.return_login_response()

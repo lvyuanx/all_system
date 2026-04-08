@@ -26,7 +26,7 @@ class AdminLoginToJwtMiddleware:
         response = self.get_response(request)
         user = request.user
         if user.is_authenticated and user.is_staff and getattr(request, 'admin_login_success', False):  # 登录用户且是后台工作人员
-            token = token_util.create_token(
+            token, jti = token_util.create_token_with_jti(
                 payload={
                     "uid": user.pk,
                     "client": "admin",
@@ -34,6 +34,13 @@ class AdminLoginToJwtMiddleware:
                 secret=SECRET_KEY,
                 expire_seconds=TOKEN_EXPIRE
             ) # 生成token
+            token_util.register_sso_session(
+                user_id=user.pk,
+                channel="admin",
+                jti=jti,
+                max_sessions=token_util.get_sso_max_sessions("admin"),
+                expire_seconds=TOKEN_EXPIRE,
+            )
             token_util.set_token_by_origins(
                 response=response,
                 token_name=ADMIN_CHANNEL_CONF["token_tag"],

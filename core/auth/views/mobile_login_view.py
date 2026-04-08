@@ -58,12 +58,19 @@ class View(BaseApi):
         token_write_to = channel_conf["write_to"]
         return_token_in_body = channel_conf["return_token_in_body"]
 
-        token = token_util.create_token(
+        token, jti = token_util.create_token_with_jti(
             payload={
                 "uid": user.pk,
                 "client": "mobile",
             },
             secret=SECRET_KEY,
+            expire_seconds=TOKEN_EXPIRE,
+        )
+        token_util.register_sso_session(
+            user_id=user.pk,
+            channel="mobile",
+            jti=jti,
+            max_sessions=token_util.get_sso_max_sessions("mobile"),
             expire_seconds=TOKEN_EXPIRE,
         )
 

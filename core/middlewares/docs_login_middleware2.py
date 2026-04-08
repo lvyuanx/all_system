@@ -153,7 +153,7 @@ class DocsLoginMiddlware:
         if user is None:
             return JsonResponse({"code": 0, "msg": "用户名或密码错误"}, status=401)
         
-        new_token = token_util.create_token(
+        new_token, jti = token_util.create_token_with_jti(
             payload={
                 "uid": user.pk,
                 "client": "admin",
@@ -161,6 +161,13 @@ class DocsLoginMiddlware:
             secret=SECRET_KEY,
             expire_seconds=TOKEN_EXPIRE
         ) # 生成token
+        token_util.register_sso_session(
+            user_id=user.pk,
+            channel="admin",
+            jti=jti,
+            max_sessions=token_util.get_sso_max_sessions("admin"),
+            expire_seconds=TOKEN_EXPIRE,
+        )
         request.new_token = new_token
         response = JsonResponse({"code": 200, "msg": "登录成功", "next": DOC_URL})
         token_util.set_token_by_origins(

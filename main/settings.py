@@ -155,6 +155,8 @@ AUTH_USER_MODEL = "core_auth.User"
 TOKEN_TAG = merge_config("TOKEN_TAG", "X-Authorization")
 TOKEN_ORIGIN = merge_config("TOKEN_ORIGIN", "cookie")
 TOKEN_EXPIRE = merge_config("TOKEN_EXPIRE", 7 * 24 * 60 * 60)
+SSO_MAX_ADMIN_SESSIONS = merge_config("SSO_MAX_ADMIN_SESSIONS", 1)
+SSO_MAX_MOBILE_SESSIONS = merge_config("SSO_MAX_MOBILE_SESSIONS", 1)
 MOBILE_AUTH_CHANNEL = merge_config(
     "MOBILE_AUTH_CHANNEL",
     {

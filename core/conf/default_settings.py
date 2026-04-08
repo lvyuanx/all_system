@@ -5,6 +5,8 @@ NINJA_BASE_URL = "api/"  # ninja跟路径
 TOKEN_TAG = "X-Authorization"   # token标记名称
 TOKEN_ORIGIN = "cookie"         # token来源
 TOKEN_EXPIRE = 60 * 60 * 24 * 7 # token过期时间
+SSO_MAX_ADMIN_SESSIONS = 1
+SSO_MAX_MOBILE_SESSIONS = 1
 MOBILE_AUTH_CHANNEL = {
     "token_tag": "Authorization",
     "read_from": ["header", "cookie"],

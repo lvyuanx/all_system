@@ -76,6 +76,12 @@ class JWTMiddleware:
             token_client = token_payload.get("client")
             if token_client and token_client != channel:
                 raise ValueError("token client mismatch")
+            max_sessions = token_util.get_sso_max_sessions(channel)
+            if max_sessions > 0:
+                uid = token_payload.get("uid")
+                jti = token_payload.get("jti")
+                if not uid or not token_util.is_sso_session_active(uid, channel, jti, max_sessions):
+                    raise ValueError("token sso invalid")
         except ExpiredSignatureError:
             logger.warning(f"token已过期 - {token}")
             if is_admin:

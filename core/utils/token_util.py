@@ -8,12 +8,14 @@
 # Description: token工具
 """
 import time
+import uuid
 from abc import ABC, abstractmethod
 
 import orjson
 import jwt
 from jwt import PyJWTError
 from django.http import HttpRequest, HttpResponse
+from django.core.cache import cache
 
 
 from core.conf import settings
@@ -145,6 +147,13 @@ def create_token(payload: dict, secret: str, expire_seconds: int = settings.TOKE
         token = token.decode('utf-8')
     return token
 
+
+def create_token_with_jti(payload: dict, secret: str, expire_seconds: int = settings.TOKEN_EXPIRE) -> tuple[str, str]:
+    payload = payload.copy()
+    payload.setdefault("jti", uuid.uuid4().hex)
+    token = create_token(payload=payload, secret=secret, expire_seconds=expire_seconds)
+    return token, payload["jti"]
+
 def verify_token(token: str, secret: str) -> dict:
     """
     校验 JWT Token
@@ -158,6 +167,50 @@ def verify_token(token: str, secret: str) -> dict:
         return payload
     except PyJWTError as e:
         raise e
+
+
+def get_sso_max_sessions(channel: str) -> int:
+    if channel == "admin":
+        return int(getattr(settings, "SSO_MAX_ADMIN_SESSIONS", 1))
+    if channel == "mobile":
+        return int(getattr(settings, "SSO_MAX_MOBILE_SESSIONS", 1))
+    return 0
+
+
+def _sso_cache_key(user_id: int | str, channel: str) -> str:
+    return f"sso:{channel}:{user_id}"
+
+
+def register_sso_session(
+    user_id: int | str,
+    channel: str,
+    jti: str,
+    max_sessions: int,
+    expire_seconds: int,
+):
+    if max_sessions <= 0:
+        return
+    key = _sso_cache_key(user_id, channel)
+    sessions = cache.get(key, [])
+    if not isinstance(sessions, list):
+        sessions = []
+    sessions = [s for s in sessions if s != jti]
+    sessions.append(jti)
+    if len(sessions) > max_sessions:
+        sessions = sessions[-max_sessions:]
+    cache.set(key, sessions, timeout=expire_seconds)
+
+
+def is_sso_session_active(user_id: int | str, channel: str, jti: str, max_sessions: int) -> bool:
+    if max_sessions <= 0:
+        return True
+    if not jti:
+        return False
+    key = _sso_cache_key(user_id, channel)
+    sessions = cache.get(key, [])
+    if not isinstance(sessions, list):
+        return False
+    return jti in sessions
 
 
 
