@@ -52,7 +52,7 @@ menus_perm_dict = {
 mobile_menus_perm_dict = {
     "版式管理/版式库": ["view_pattern"],
     "版式管理/图库搜索": ["view_pattern"],
-    "版式管理/添加板式": ["edit_pattern"],
+    "版式管理/添加板式": ["change_pattern"],
     
     "站点管理/地址管理": ["view_siteaddress"],
     "站点管理/系统站点": ["view_syssite"],
@@ -82,7 +82,7 @@ mobile_menus_perm_dict = {
     
     "客户管理/客户列表": ["view_client"],
     
-    "员工管理/员工列表": ["view_staff"],
+    "员工管理": ["change_staff"],
     
     "票据管理/模板管理": ["view_billtemplate"],
     "票据管理/票据库": ["view_bill"],
