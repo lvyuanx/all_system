@@ -17,7 +17,8 @@ class EchoImageDataSchema(BaseModel):
 
 
 class PatternInfoSchema(BaseModel):
-    
+
+    id: int = Field(..., description="版式ID")
     code: str = Field(..., description="版号")
     memo: str | None = Field(None, description="备注")
     is_active: bool = Field(..., description="是否启用")

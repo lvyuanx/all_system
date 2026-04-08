@@ -49,6 +49,7 @@ class View(BaseApi):
                 images.append(schemas.EchoImageDataSchema(name=file.name, url=file.url, rid=img.pk))
 
         return {
+            "id": pattern.pk,
             "code": pattern.code,
             "memo": pattern.memo,
             "is_active": pattern.is_active,

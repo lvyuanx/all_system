@@ -59,6 +59,7 @@ class View(BaseApi):
                 "order_status",
                 "receiver_name",
                 "receiver_phone",
+                "receiver_company",
                 "payable_amount",
                 "paid_amount",
             )
@@ -88,6 +89,7 @@ class OrderModuleView(BaseApi):
                 "order_status",
                 "receiver_name",
                 "receiver_phone",
+                "receiver_company",
                 "payable_amount",
                 "paid_amount",
             )

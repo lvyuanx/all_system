@@ -77,3 +77,50 @@ class SalaryQuickDataSchema(BaseModel):
 class MobileStaffInfoSchema(BaseModel):
     staff_code: str | None = Field(default=None, description="??")
     site_name: str | None = Field(default=None, description="??????")
+
+
+class MobileStaffListItemSchema(BaseModel):
+    staff_id: int = Field(..., description="员工ID")
+    user_id: int = Field(..., description="用户ID")
+    staff_code: str = Field(..., description="工号")
+    full_name: str | None = Field(default=None, description="姓名")
+    username: str = Field(..., description="用户名")
+    phone: str | None = Field(default=None, description="手机号")
+    avatar: str | None = Field(default=None, description="头像")
+    is_active: bool = Field(..., description="账号是否启用")
+    site_name: str | None = Field(default=None, description="所属站点")
+    group_names: list[str] = Field(default_factory=list, description="权限组名称列表")
+
+
+class MobileStaffDetailSchema(BaseModel):
+    staff_id: int = Field(..., description="员工ID")
+    user_id: int = Field(..., description="用户ID")
+    staff_code: str = Field(..., description="工号")
+    full_name: str | None = Field(default=None, description="姓名")
+    username: str = Field(..., description="用户名")
+    first_name: str | None = Field(default=None, description="名")
+    last_name: str | None = Field(default=None, description="姓")
+    email: str | None = Field(default=None, description="邮箱")
+    phone: str | None = Field(default=None, description="手机号")
+    sex: str | None = Field(default=None, description="性别")
+    age: int | None = Field(default=None, description="年龄")
+    avatar: str | None = Field(default=None, description="头像")
+    is_active: bool = Field(..., description="账号是否启用")
+    site_id: int | None = Field(default=None, description="所属站点ID")
+    site_name: str | None = Field(default=None, description="所属站点")
+    group_ids: list[int] = Field(default_factory=list, description="权限组ID列表")
+    group_names: list[str] = Field(default_factory=list, description="权限组名称列表")
+
+
+class MobileStaffStatusChangeSchema(BaseModel):
+    user_id: int = Field(..., description="用户ID")
+
+
+class MobileStaffUpdateGroupsSchema(BaseModel):
+    user_id: int = Field(..., description="用户ID")
+    group_ids: list[int] = Field(default_factory=list, description="权限组ID列表")
+
+
+class MobileGroupOptionSchema(BaseModel):
+    group_id: int = Field(..., description="权限组ID")
+    group_name: str = Field(..., description="权限组名称")

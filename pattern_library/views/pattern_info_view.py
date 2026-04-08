@@ -53,6 +53,7 @@ class View(BaseApi):
 
         # 4️⃣ 返回 schema 对应结构
         return {
+            "id": pattern.pk,
             "code": pattern.code,
             "memo": pattern.memo,  # 允许 None，你 schema 已经写成 str | None
             "is_active": pattern.is_active,
