@@ -13,6 +13,8 @@ from ninja import Body
 from core.exceptions.base_exceptions import BusinessException
 from core.ninja_extra.api_extra import BaseApi, HttpRequest
 from order.models import Order, OrderItem
+from flow_engine.models import FlowDefinition
+from flow_engine.enums import FlowVersionStatusChoices
 from django.db import transaction
 from site_mgmt.utils import site_util
 from . import schemas
@@ -29,6 +31,7 @@ def do_create(request: HttpRequest, data: schemas.OrderCreateSchema):
         with transaction.atomic():
             order = Order(
                 order_type=data.order_type,
+                flow_definition_id=data.flow_definition_id,
                 total_amount=total_amount,
                 discount_amount=discount_amount,
                 payable_amount=total_amount - discount_amount,
@@ -69,6 +72,7 @@ class View(BaseApi):
     error_codes = [
         ("001", "请最少添加一个订单项"),
         ("002", "您没有该站点的订单创建权限"),
+        ("003", "流程模板不存在或已停用"),
     ]
 
     
@@ -77,7 +81,18 @@ class View(BaseApi):
     async def api(request: HttpRequest, data: schemas.OrderCreateSchema = Body(...)):
         if not data.items:
             # 订单项不能为空
-            raise BusinessException("002")
+            raise BusinessException("001")
+
+        if data.flow_definition_id:
+            exists = await sync_to_async(
+                FlowDefinition.objects.filter(
+                    pk=data.flow_definition_id,
+                    is_active=True,
+                    versions__status=FlowVersionStatusChoices.PUBLISHED,
+                ).exists
+            )()
+            if not exists:
+                raise BusinessException("003")
         
         cur_sites = await site_util.aget_cur_sites(request)
         if data.site_id not in [item.pk for item in cur_sites]:

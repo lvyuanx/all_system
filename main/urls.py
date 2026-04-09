@@ -26,6 +26,7 @@ from staff.urls import urls as STAFF_URLS
 from bill.urls import urls as BILL_URLS
 from order.urls import urls as ORDER_URLS
 from pattern_library.urls import urls as PATTERN_LIBRARY_URLS
+from flow_engine.urls import urls as FLOW_ENGINE_URLS
 from .page_views.home_page import home_page
 
 urlpatterns = [
@@ -36,6 +37,7 @@ urlpatterns = [
     path('admin/', include(BILL_URLS)),
     path('admin/', include(ORDER_URLS)),
     path('admin/', include(PATTERN_LIBRARY_URLS)),
+    path('admin/', include(FLOW_ENGINE_URLS)),
     path('admin/', admin.site.urls),
 ] + NINJA_URLS
 

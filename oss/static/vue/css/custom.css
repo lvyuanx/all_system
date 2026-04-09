@@ -95,9 +95,7 @@ body,
     justify-content: center;
 }
 
-.el-table__header {
-    width: 100% !important;
-}
+/* Do not force table header width; Element Plus manages synced widths with body/fixed columns. */
 
 
 .form-row.errors {

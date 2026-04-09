@@ -55,18 +55,18 @@ class FlowBuilder:
         self.flow = FlowDefinition.objects.create(
             name=self.name,
             code=self.code,
-            created_by=self.created_by,
         )
         logger.debug(f"[FlowBuilder] ✅ FlowDefinition created id={self.flow.id}")
         return self
 
-    def add_node(self, name: str, node_type: str, permissions=None, is_auto=False, order=None):
+    def add_node(self, name: str, node_type: str, permissions=None, is_auto=False, order=None, code=None):
         """添加节点，可指定权限"""
         if not self.flow:
             raise ValueError("请先调用 create_flow() 创建流程定义")
 
         node = FlowNode.objects.create(
             flow=self.flow,
+            code=code or name,
             name=name,
             node_type=node_type,
             is_auto=is_auto,
@@ -108,8 +108,11 @@ class FlowBuilder:
             raise KeyError(f"未找到节点：{node_name}")
 
         start_node = self.node_map[node_name]
-        self.flow.start_node = start_node
-        self.flow.save(update_fields=["start_node"])
+        self.flow.nodes.filter(node_type="start").exclude(pk=start_node.pk).update(
+            node_type="task"
+        )
+        start_node.node_type = "start"
+        start_node.save(update_fields=["node_type"])
         logger.info(f"[FlowBuilder] 设置起点: {node_name}")
         return self
 

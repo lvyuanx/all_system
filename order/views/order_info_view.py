@@ -43,6 +43,7 @@ class View(BaseApi):
         order_obj = await order_manager.values(
             "site_id",
             "order_type",
+            "flow_definition_id",
             "shipping_party",
             "shipping_party_phone",
             "shipping_party_address",

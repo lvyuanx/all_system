@@ -15,6 +15,7 @@ from django.contrib.auth.models import AbstractUser
 from django.utils import timezone
 
 from  order.models import Order, OrderCa
+from flow_engine.flow_engine import FlowEngine
 from .enums import OrderStatusChoices
 from core.utils import time_util
 
@@ -109,6 +110,28 @@ class OrderStateMachine:
         """
         self.model_obj.order_status = int(self.state)  # 转回整数枚举
         self.model_obj.save()
+        self._start_flow_if_needed()
+
+    def _start_flow_if_needed(self):
+        """
+        When order enters production and flow is configured, start flow instance.
+        """
+        if self.model_obj.order_status != OrderStatusChoices.PRODUCING:
+            return
+        if not self.model_obj.flow_definition_id:
+            return
+        if self.model_obj.flow_instance_id:
+            return
+
+        instance = FlowEngine.start_for_business(
+            flow_def=self.model_obj.flow_definition,
+            business_type=self.model_obj._meta.label,
+            business_id=str(self.model_obj.pk),
+            creator=self.operator_user,
+            context={"order_id": self.model_obj.pk, "order_no": self.model_obj.order_no},
+        )
+        self.model_obj.flow_instance = instance
+        self.model_obj.save(update_fields=["flow_instance"])
 
     def log_transition(self):
         """

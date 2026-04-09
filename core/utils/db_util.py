@@ -2,7 +2,7 @@
 import csv
 from typing import List, Dict, Optional
 
-def read_csv_as_dicts(csv_file: str, encoding: str = "utf-8", skip_fields: Optional[List[str]] = None) -> List[Dict]:
+def read_csv_as_dicts(csv_file: str, encoding: str = "utf-8-sig", skip_fields: Optional[List[str]] = None) -> List[Dict]:
     """
     读取 CSV 文件，返回字典列表，可选择跳过指定字段。
     

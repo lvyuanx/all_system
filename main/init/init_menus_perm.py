@@ -46,7 +46,7 @@ menus_perm_dict = {
     
     "菜单管理/菜单列表": ["view_simpleuimenus"],
 
-
+    "流程管理/流程列表": ["view_flowdefinition"],
 }
 
 mobile_menus_perm_dict = {

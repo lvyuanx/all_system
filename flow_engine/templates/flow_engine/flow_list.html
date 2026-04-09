@@ -1,0 +1,180 @@
+{% extends "vue_setup_base.html" %}
+{% load i18n %}
+{% load static %}
+{% load simpletags %}
+
+{% block title %}
+{{ title }}
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    #app > .page-container {
+        overflow: hidden;
+        padding: 8px;
+    }
+
+</style>
+{% endblock %}
+
+{% block content %}
+<div id="app">
+    <div class="page-header">
+        <el-page-header title="{% trans 'Back' %}" @back="goBack" content="{{title}}"></el-page-header>
+        <div class="header-right">
+            <el-button type="primary" @click="createFlow">新建流程</el-button>
+        </div>
+    </div>
+    <div class="page-container" v-loading="pageData.pageLoading">
+        <common-table
+            :data="pageData.tableData"
+            :columns="pageData.columns"
+            :loading="pageData.loading"
+            :border="true"
+            :actions-width="260"
+            :filterForm="pageData.filterForm"
+            @update:filterForm="onFilterUpdate"
+            @page-change="onFilterSearch"
+        >
+            <template #filter="{ model }">
+                <el-form-item label="关键词">
+                    <el-input v-model="model.keyword" placeholder="流程编码/名称" clearable />
+                </el-form-item>
+                <el-form-item label="状态">
+                    <el-select v-model="model.is_active" clearable style="width: 120px">
+                        <el-option label="启用" :value="1" />
+                        <el-option label="禁用" :value="0" />
+                    </el-select>
+                </el-form-item>
+            </template>
+
+            <template #actions="{ row }">
+                <el-button link type="primary" @click="editFlow(row)">设计</el-button>
+                <el-button link type="success" @click="publishFlow(row)">发布</el-button>
+                <el-button link :type="row.is_active ? 'warning' : 'success'" @click="toggleFlow(row)">
+                    [[ row.is_active ? '禁用' : '启用' ]]
+                </el-button>
+                <el-button link type="danger" :disabled="row.bind_order_count > 0" @click="deleteFlow(row)">
+                    删除
+                </el-button>
+            </template>
+        </common-table>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script type="module">
+    import CommonTable from "{% static 'vue/js/CommonTable.js' %}";
+    const { reactive, onMounted, inject } = Vue;
+
+    window.createApp({
+        components: { CommonTable },
+        setup() {
+            const ElMessage = inject("ElMessage");
+            const ElMessageBox = inject("ElMessageBox");
+
+            const goBack = () => {
+                window.location.href = "{% get_previous_url %}";
+            };
+
+            const pageData = reactive({
+                pageLoading: true,
+                loading: false,
+                filterForm: {
+                    keyword: "",
+                    is_active: null,
+                },
+                columns: [
+                    { prop: "code", label: "编码", width: 180 },
+                    { prop: "name", label: "名称", minWidth: 300 },
+                    { prop: "version", label: "版本", width: 100 },
+                    { prop: "is_active", label: "启用", width: 90 },
+                    { prop: "bind_order_count", label: "绑定订单数", width: 120 },
+                    { prop: "update_time_str", label: "更新时间", minWidth: 260 },
+                ],
+                tableData: [],
+            });
+
+            const loadList = async (filters = null) => {
+                pageData.loading = true;
+                try {
+                    const query = filters || pageData.filterForm;
+                    const res = await request.get("/flow_engine/flow_definition_page_list", query);
+                    pageData.tableData = res || [];
+                } finally {
+                    pageData.loading = false;
+                }
+            };
+
+            const onFilterUpdate = (val) => {
+                pageData.filterForm = val;
+            };
+
+            const onFilterSearch = async (payload) => {
+                await loadList(payload?.filters || pageData.filterForm);
+            };
+
+            const createFlow = () => {
+                window.location.href = "/admin/flow_engine/definition/add/";
+            };
+
+            const editFlow = (row) => {
+                window.location.href = `/admin/flow_engine/definition/${row.flow_id}/change/`;
+            };
+
+            const publishFlow = async (row) => {
+                await request.post("/flow_engine/flow_definition_publish", { flow_id: row.flow_id });
+                ElMessage.success("发布成功");
+                await loadList();
+            };
+
+            const toggleFlow = async (row) => {
+                await request.post("/flow_engine/flow_definition_toggle", {
+                    flow_id: row.flow_id,
+                    is_active: !row.is_active,
+                });
+                ElMessage.success(row.is_active ? "已禁用" : "已启用");
+                await loadList();
+            };
+
+            const deleteFlow = async (row) => {
+                if ((row.bind_order_count || 0) > 0) {
+                    ElMessage.warning("当前流程已绑定订单，不能删除");
+                    return;
+                }
+                await ElMessageBox.confirm(
+                    `确认删除流程【${row.name}】吗？`,
+                    "删除确认",
+                    {
+                        confirmButtonText: "确定",
+                        cancelButtonText: "取消",
+                        type: "warning",
+                    }
+                );
+                await request.post("/flow_engine/flow_definition_delete", { flow_id: row.flow_id });
+                ElMessage.success("删除成功");
+                await loadList();
+            };
+
+            onMounted(async () => {
+                await loadList();
+                pageData.pageLoading = false;
+            });
+
+            return {
+                goBack,
+                pageData,
+                loadList,
+                onFilterUpdate,
+                onFilterSearch,
+                createFlow,
+                editFlow,
+                publishFlow,
+                toggleFlow,
+                deleteFlow,
+            };
+        },
+    });
+</script>
+{% endblock %}

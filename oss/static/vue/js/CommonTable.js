@@ -4,17 +4,18 @@ export default {
     data: { type: Array, default: () => [] },
     columns: { type: Array, default: () => [] },
     loading: { type: Boolean, default: false },
-    selectableIsShow: { type: Boolean, default: false },  // 是否显示多选按框
+    selectableIsShow: { type: Boolean, default: false },  // 是否显示多选按�?
     selectable: { type: Function, default: (row, rowIdx) => true },
     height: { type: [String, Number], default: "100%" },
     isPaginated: { type: Boolean, default: false },
     currentPage: { type: Number, default: 1 },
     pageSize: { type: Number, default: 10 },
     totalCount: { type: Number, default: 0 },
-    filterForm: { type: Object, default: () => ({}) }, // 父组件传入
+    filterForm: { type: Object, default: () => ({}) }, // 父组件传�?
     rowClassName: { type: [String, Function], default: "" },
     headerClassName: { type: String, default: "common-table-header" },
     border: { type: Boolean, default: false },
+    actionsWidth: { type: [String, Number], default: 160 },
   },
   data() {
     return {
@@ -22,7 +23,7 @@ export default {
       localCurrentPage: this.currentPage,
       localPageSize: this.pageSize,
       localTotalCount: this.totalCount,
-      localFilterForm: { ...this.filterForm }, // 内部可修改
+      localFilterForm: { ...this.filterForm }, // 内部可修�?
       previewSrcList: [],
     };
   },
@@ -162,7 +163,7 @@ export default {
           </template>
         </el-table-column>
 
-        <el-table-column v-if="$slots.actions" label="操作" align="center" width="160" fixed="right">
+        <el-table-column v-if="$slots.actions" label="操作" align="center" :width="actionsWidth" fixed="right">
           <template #default="scope">
             <slot name="actions" :row="scope.row" :idx="scope.$index"></slot>
           </template>

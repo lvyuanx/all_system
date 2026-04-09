@@ -1,144 +1,482 @@
 import json
+import hashlib
 import logging
-from django.db import transaction
-from django.contrib.auth import get_user_model
-from django.core.exceptions import PermissionDenied
+from typing import Iterable
 
-from flow_engine.models import FlowInstance, FlowLog, FlowTask
+from django.db import transaction
+from django.db.models import Max, Q
+from django.utils import timezone
+from django.core.exceptions import PermissionDenied
+from django.contrib.auth import get_user_model
+
+from flow_engine.enums import (
+    NodeTypeChoices,
+    FlowStatusChoices,
+    TaskStatusChoices,
+    ApprovalModeChoices,
+    RuleTypeChoices,
+    FlowVersionStatusChoices,
+    FlowMigrationStatusChoices,
+)
+from flow_engine.models import (
+    FlowDefinition,
+    FlowVersion,
+    FlowNodeVersion,
+    FlowTransitionVersion,
+    FlowNodeGroup,
+    FlowNodeGroupRule,
+    FlowInstance,
+    FlowTask,
+    FlowLog,
+    FlowMigrationPlan,
+    FlowMigrationJob,
+)
 from flow_engine.utils.flow_engine_util import SafeEvaluator
 
 logger = logging.getLogger(__name__)
+User = get_user_model()
+
+
+class FlowEngineError(Exception):
+    pass
 
 
 class FlowEngine:
-    """通用工作流引擎（Django权限控制版）"""
+    """Workflow engine with version snapshots and group-based permissions."""
 
     def __init__(self, instance: FlowInstance):
         self.instance = instance
         self.flow = instance.flow
-        logger.debug(f"[FlowEngine] 初始化流程实例 id={instance.id}, flow={self.flow.name}")
+        self.version = instance.flow_version
+        logger.debug(
+            "[FlowEngine] init instance=%s flow=%s version=%s",
+            instance.id,
+            getattr(self.flow, "name", None),
+            getattr(self.version, "version_label", None),
+        )
 
-    # ----------------------------
-    # 公共方法
-    # ----------------------------
-    def start(self, user=None):
-        """启动流程"""
-        start_node = self.flow.nodes.filter(node_type="start").first()
+    # -------------------------------------------------------------
+    # Publish & Start helpers
+    # -------------------------------------------------------------
+    @classmethod
+    def publish_definition(cls, flow_def: FlowDefinition, published_by=None) -> FlowVersion:
+        """Publish a new version snapshot from a definition."""
+        if not flow_def:
+            raise FlowEngineError("Flow definition is required.")
+        if not flow_def.nodes.exists():
+            raise FlowEngineError("Flow definition has no nodes.")
+        if not flow_def.nodes.filter(node_type=NodeTypeChoices.START).exists():
+            raise FlowEngineError("Flow definition has no start node.")
+
+        with transaction.atomic():
+            FlowVersion.objects.filter(
+                definition=flow_def, status=FlowVersionStatusChoices.PUBLISHED
+            ).update(status=FlowVersionStatusChoices.RETIRED, retired_at=timezone.now())
+
+            latest = (
+                FlowVersion.objects.filter(definition=flow_def)
+                .aggregate(max_no=Max("version_no"))
+                .get("max_no")
+                or 0
+            )
+            version_no = latest + 1
+            version = FlowVersion.objects.create(
+                definition=flow_def,
+                version_no=version_no,
+                status=FlowVersionStatusChoices.PUBLISHED,
+                published_at=timezone.now(),
+                published_by=published_by,
+            )
+            flow_def.version = version.version_label
+            flow_def.save(update_fields=["version"])
+
+            # copy nodes
+            node_map: dict[int, FlowNodeVersion] = {}
+            for node in flow_def.nodes.all().order_by("order", "id"):
+                v_node = FlowNodeVersion.objects.create(
+                    flow_version=version,
+                    code=node.code,
+                    name=node.name,
+                    node_type=node.node_type,
+                    approval_mode=getattr(node, "approval_mode", ApprovalModeChoices.ANY),
+                    form_schema=node.form_schema,
+                    is_auto=node.is_auto,
+                    order=node.order,
+                )
+                if node.permissions.exists():
+                    v_node.permissions.set(node.permissions.all())
+                node_map[node.id] = v_node
+
+                # copy groups and rules
+                for group in node.groups.all().order_by("order", "id"):
+                    v_group = FlowNodeGroup.objects.create(
+                        node_version=v_node,
+                        key=group.key,
+                        name=group.name,
+                        min_approve_count=group.min_approve_count,
+                        order=group.order,
+                    )
+                    for rule in group.rules.all():
+                        FlowNodeGroupRule.objects.create(
+                            group=v_group,
+                            rule_type=rule.rule_type,
+                            perm_pack=rule.perm_pack,
+                            user=rule.user,
+                        )
+
+            # copy transitions
+            for trans in flow_def.transitions.all().order_by("id"):
+                FlowTransitionVersion.objects.create(
+                    flow_version=version,
+                    source=node_map.get(trans.source_id),
+                    target=node_map.get(trans.target_id),
+                    condition_expr=trans.condition_expr,
+                    description=trans.description,
+                )
+
+            snapshot = cls._build_snapshot(version)
+            snapshot_str = json.dumps(snapshot, sort_keys=True, ensure_ascii=False)
+            version.snapshot_json = snapshot
+            version.snapshot_hash = hashlib.sha256(snapshot_str.encode("utf-8")).hexdigest()
+            version.save(update_fields=["snapshot_json", "snapshot_hash"])
+
+            logger.info(
+                "[FlowEngine] published flow=%s version=%s",
+                flow_def.code,
+                version.version_label,
+            )
+            return version
+
+    @classmethod
+    def start_for_business(
+        cls,
+        flow_def: FlowDefinition,
+        business_type: str,
+        business_id: str,
+        creator=None,
+        context: dict | None = None,
+        version: FlowVersion | None = None,
+    ) -> FlowInstance:
+        """Create and start a flow instance for a business object."""
+        if not flow_def:
+            raise FlowEngineError("Flow definition is required.")
+        if not flow_def.is_active:
+            raise FlowEngineError("Flow definition is inactive.")
+
+        flow_version = version or cls.get_latest_published_version(flow_def)
+        if not flow_version:
+            raise FlowEngineError("No published version found.")
+
+        with transaction.atomic():
+            existing = FlowInstance.objects.filter(
+                business_type=business_type, business_id=business_id
+            ).first()
+            if existing:
+                if not existing.current_node_id:
+                    cls(existing).start(user=creator, context=context or {})
+                return existing
+            instance = FlowInstance.objects.create(
+                flow=flow_def,
+                flow_version=flow_version,
+                business_type=business_type,
+                business_id=business_id,
+                creator=creator,
+                context=context or {},
+            )
+            engine = cls(instance)
+            engine.start(user=creator, context=context or {})
+            return instance
+
+    @classmethod
+    def get_latest_published_version(cls, flow_def: FlowDefinition) -> FlowVersion | None:
+        return (
+            FlowVersion.objects.filter(
+                definition=flow_def, status=FlowVersionStatusChoices.PUBLISHED
+            )
+            .order_by("-version_no", "-published_at")
+            .first()
+        )
+
+    # -------------------------------------------------------------
+    # Instance lifecycle
+    # -------------------------------------------------------------
+    def start(self, user=None, context: dict | None = None):
+        if self.instance.current_node_id:
+            return
+
+        start_node = FlowNodeVersion.objects.filter(
+            flow_version=self.version, node_type=NodeTypeChoices.START
+        ).order_by("order", "id").first()
         if not start_node:
-            raise Exception("流程未定义开始节点")
+            raise FlowEngineError("Start node not found.")
 
         if user and not self._check_node_permission(start_node, user):
-            raise PermissionError(f"用户 {user} 无权启动流程 {self.flow.name}")
+            raise PermissionDenied("User has no permission to start this flow.")
 
         self.instance.current_node = start_node
-        self.instance.status = "running"
+        self.instance.status = FlowStatusChoices.RUNNING
+        if context:
+            self.instance.context = {**(self.instance.context or {}), **context}
         self.instance.save()
 
-        FlowLog.objects.create(instance=self.instance, node=start_node, user=user, action="start", message="流程启动")
-        logger.info(f"[FlowEngine] 流程启动 id={self.instance.id}, 起点={start_node.name}, user={user}")
-        self._enter_node(start_node)
+        FlowLog.objects.create(
+            instance=self.instance,
+            node=start_node,
+            user=user,
+            action="start",
+            message="flow started",
+        )
+
+        self._enter_node(start_node, context or {})
 
     @transaction.atomic
-    def approve(self, user, comment=None, context=None):
-        """审批通过"""
+    def approve(self, user, comment: str | None = None, context: dict | None = None, task_id: int | None = None):
         node = self.instance.current_node
+        if not node:
+            raise FlowEngineError("No current node.")
+
         self._check_node_permission(node, user)
 
-        task = FlowTask.objects.filter(
-            instance=self.instance, node=node, assignee=user, status="pending"
-        ).first()
-        if not task:
-            raise Exception("无可处理任务或非当前节点处理人")
+        task_qs = FlowTask.objects.filter(
+            instance=self.instance,
+            node=node,
+            assignee=user,
+            status=TaskStatusChoices.PENDING,
+        )
+        if task_id:
+            task_qs = task_qs.filter(id=task_id)
 
-        task.status = "approved"
+        tasks = list(task_qs)
+        if not tasks and user.is_superuser:
+            task_qs = FlowTask.objects.filter(
+                instance=self.instance,
+                node=node,
+                status=TaskStatusChoices.PENDING,
+            )
+            if task_id:
+                task_qs = task_qs.filter(id=task_id)
+            tasks = list(task_qs)
+        if not tasks:
+            raise FlowEngineError("No pending task for current node.")
+        if len(tasks) > 1 and not task_id:
+            raise FlowEngineError("Multiple tasks found, task_id is required.")
+
+        task = tasks[0]
+        task.status = TaskStatusChoices.APPROVED
         task.comment = comment
-        task.save()
-        FlowLog.objects.create(instance=self.instance, node=node, user=user, action="approve", message=comment)
+        task.finish_time = timezone.now()
+        task.save(update_fields=["status", "comment", "finish_time"])
 
-        logger.info(f"[FlowEngine] 审批通过 user={user}, node={node.name}, comment={comment}")
-        self._exit_node(node)
-        self._go_next(context or {})
+        FlowLog.objects.create(
+            instance=self.instance,
+            node=node,
+            user=user,
+            action="approve",
+            message=comment,
+        )
+
+        if self._is_node_complete(node):
+            self._exit_node(node)
+            self._go_next(context or {})
 
     @transaction.atomic
-    def reject(self, user, comment=None):
-        """审批驳回到上一步"""
+    def reject(self, user, comment: str | None = None, task_id: int | None = None):
         node = self.instance.current_node
+        if not node:
+            raise FlowEngineError("No current node.")
+
         self._check_node_permission(node, user)
 
-        task = FlowTask.objects.filter(
-            instance=self.instance, node=node, assignee=user, status="pending"
-        ).first()
-        if not task:
-            raise Exception("无可处理任务或非当前节点处理人")
+        task_qs = FlowTask.objects.filter(
+            instance=self.instance,
+            node=node,
+            assignee=user,
+            status=TaskStatusChoices.PENDING,
+        )
+        if task_id:
+            task_qs = task_qs.filter(id=task_id)
 
-        task.status = "rejected"
+        tasks = list(task_qs)
+        if not tasks and user.is_superuser:
+            task_qs = FlowTask.objects.filter(
+                instance=self.instance,
+                node=node,
+                status=TaskStatusChoices.PENDING,
+            )
+            if task_id:
+                task_qs = task_qs.filter(id=task_id)
+            tasks = list(task_qs)
+        if not tasks:
+            raise FlowEngineError("No pending task for current node.")
+        if len(tasks) > 1 and not task_id:
+            raise FlowEngineError("Multiple tasks found, task_id is required.")
+
+        task = tasks[0]
+        task.status = TaskStatusChoices.REJECTED
         task.comment = comment
-        task.save()
+        task.finish_time = timezone.now()
+        task.save(update_fields=["status", "comment", "finish_time"])
 
-        FlowLog.objects.create(instance=self.instance, node=node, user=user, action="reject", message=comment)
-        self.instance.status = "rejected"
-        self.instance.save()
-        logger.warning(f"[FlowEngine] 审批驳回 user={user}, node={node.name}, comment={comment}")
+        FlowLog.objects.create(
+            instance=self.instance,
+            node=node,
+            user=user,
+            action="reject",
+            message=comment,
+        )
 
-    def next(self, user=None, context=None):
-        """直接推进节点（自动节点或条件节点用）"""
+        self.instance.status = FlowStatusChoices.REJECTED
+        self.instance.save(update_fields=["status"])
+
+    def next(self, user=None, context: dict | None = None):
         node = self.instance.current_node
+        if not node:
+            raise FlowEngineError("No current node.")
         if user:
             self._check_node_permission(node, user)
-        logger.info(f"[FlowEngine] 手动推进流程 id={self.instance.id}, node={node.name}, user={user}")
         self._go_next(context or {})
 
-    # ----------------------------
-    # 权限校验
-    # ----------------------------
-    def _check_permission(self, user):
-        """检查当前用户是否有权限操作当前节点"""
-        node = self.instance.current_node
+    # -------------------------------------------------------------
+    # Migration
+    # -------------------------------------------------------------
+    @classmethod
+    def migrate_instance(
+        cls,
+        plan: FlowMigrationPlan,
+        instance: FlowInstance,
+        operator=None,
+    ) -> FlowMigrationJob:
+        job = FlowMigrationJob.objects.create(
+            plan=plan,
+            instance=instance,
+            status=FlowMigrationStatusChoices.RUNNING,
+        )
 
-        # 超级用户永远放行
-        if user.is_superuser:
-            return True
+        try:
+            if instance.flow_version_id != plan.from_version_id:
+                raise FlowEngineError("Instance version does not match migration plan.")
+            if plan.definition_id != instance.flow_id:
+                raise FlowEngineError("Migration plan does not match flow definition.")
 
-        # 没有权限限制的节点默认放行
-        node_perms = node.permissions.all()
-        if not node_perms.exists():
-            return True
+            rule_json = plan.rule_json or {}
+            node_map = {
+                item.get("from"): item.get("to")
+                for item in rule_json.get("node_map", [])
+                if item.get("from") and item.get("to")
+            }
+            task_policy = rule_json.get("task_policy", "cancel_and_recreate")
 
-        user_perms = user.get_all_permissions()
-        for p in node_perms:
-            full_code = f"{p.content_type.app_label}.{p.codename}"
-            if full_code in user_perms:
-                return True
+            target_version = plan.to_version
+            target_node = None
+            if instance.current_node:
+                from_code = instance.current_node.code
+                to_code = node_map.get(from_code, from_code)
+                target_node = FlowNodeVersion.objects.filter(
+                    flow_version=target_version, code=to_code
+                ).first()
+            if not target_node:
+                target_node = FlowNodeVersion.objects.filter(
+                    flow_version=target_version, node_type=NodeTypeChoices.START
+                ).order_by("order", "id").first()
 
-        raise PermissionDenied(f"用户[{user}]无权操作节点[{node.name}]")
+            if not target_node:
+                raise FlowEngineError("Target node not found in new version.")
 
-    # ----------------------------
-    # 内部流程逻辑
-    # ----------------------------
-    def _go_next(self, context):
-        """推进到下一个节点"""
+            # handle tasks
+            if task_policy == "finish_then_migrate":
+                if FlowTask.objects.filter(
+                    instance=instance, status=TaskStatusChoices.PENDING
+                ).exists():
+                    raise FlowEngineError("Pending tasks exist, cannot migrate now.")
+
+            if task_policy == "cancel_and_recreate":
+                FlowTask.objects.filter(
+                    instance=instance, status=TaskStatusChoices.PENDING
+                ).update(status=TaskStatusChoices.CANCELED, finish_time=timezone.now())
+            elif task_policy == "keep_and_continue":
+                pending_tasks = FlowTask.objects.filter(
+                    instance=instance, status=TaskStatusChoices.PENDING
+                ).select_related("node")
+                for task in pending_tasks:
+                    from_code = task.node.code if task.node else None
+                    to_code = node_map.get(from_code, from_code)
+                    if not to_code:
+                        continue
+                    new_node = FlowNodeVersion.objects.filter(
+                        flow_version=target_version, code=to_code
+                    ).first()
+                    if new_node and new_node.id != task.node_id:
+                        task.node = new_node
+                        task.save(update_fields=["node"])
+
+            # update context by form_map if provided
+            form_map = rule_json.get("form_map", [])
+            if form_map and isinstance(instance.context, dict):
+                instance.context = cls._apply_form_map(instance.context, form_map)
+
+            instance.flow_version = target_version
+            instance.current_node = target_node
+            instance.save(update_fields=["flow_version", "current_node", "context"])
+
+            FlowLog.objects.create(
+                instance=instance,
+                node=target_node,
+                user=operator,
+                action="migrate",
+                message=f"migrate to {target_version.version_label}",
+            )
+
+            if task_policy == "cancel_and_recreate":
+                cls(instance)._enter_node(target_node, {})
+
+            job.status = FlowMigrationStatusChoices.SUCCESS
+            job.result_json = {"to_version": target_version.version_label}
+            job.finish_time = timezone.now()
+            job.save(update_fields=["status", "result_json", "finish_time"])
+            return job
+        except Exception as exc:
+            job.status = FlowMigrationStatusChoices.FAILED
+            job.result_json = {"error": str(exc)}
+            job.finish_time = timezone.now()
+            job.save(update_fields=["status", "result_json", "finish_time"])
+            raise
+
+    # -------------------------------------------------------------
+    # Internal helpers
+    # -------------------------------------------------------------
+    def _go_next(self, context: dict):
+        if context:
+            self.instance.context = {**(self.instance.context or {}), **context}
+            self.instance.save(update_fields=["context"])
+        merged_context = self.instance.context or {}
         current = self.instance.current_node
-        next_node = self._get_next_node(current, context)
-        logger.debug(f"[FlowEngine] 当前节点={current.name}, 下一个节点={getattr(next_node, 'name', None)}")
+        next_node = self._get_next_node(current, merged_context)
 
         if not next_node:
-            self.instance.status = "finished"
-            self.instance.save()
-            FlowLog.objects.create(instance=self.instance, node=current, action="finish", message="流程结束")
-            logger.info(f"[FlowEngine] 流程结束 id={self.instance.id}")
+            self.instance.status = FlowStatusChoices.FINISHED
+            self.instance.save(update_fields=["status"])
+            FlowLog.objects.create(
+                instance=self.instance,
+                node=current,
+                action="finish",
+                message="flow finished",
+            )
             return
 
         self.instance.current_node = next_node
-        self.instance.save()
-        FlowLog.objects.create(instance=self.instance, node=next_node, action="enter", message=f"进入节点：{next_node.name}")
-        logger.info(f"[FlowEngine] 进入下一个节点 id={self.instance.id}, node={next_node.name}")
-        self._enter_node(next_node)
+        self.instance.save(update_fields=["current_node"])
+        FlowLog.objects.create(
+            instance=self.instance,
+            node=next_node,
+            action="enter",
+            message=f"enter node: {next_node.name}",
+        )
+        self._enter_node(next_node, merged_context)
 
-    def _get_next_node(self, node, context):
-        """解析下一个节点"""
-        transitions = node.source_transitions.all()
-        if node.node_type == "condition":
-            logger.debug(f"[FlowEngine] 条件节点解析: {node.name}, context={context}")
+    def _get_next_node(self, node: FlowNodeVersion, context: dict):
+        transitions = node.outgoing_transitions.all()
+
+        if node.node_type == NodeTypeChoices.CONDITION:
             for t in transitions:
                 if not t.condition_expr:
                     continue
@@ -146,47 +484,249 @@ class FlowEngine:
                     expr = json.loads(t.condition_expr)
                     evaluator = SafeEvaluator(context)
                     if evaluator.eval_expr(expr):
-                        logger.debug(f"[FlowEngine] 条件命中: {t.condition_expr} → {t.target.name}")
                         return t.target
-                except Exception as e:
-                    logger.exception(f"[FlowEngine] 条件解析错误 node={node.name}: {e}")
+                except Exception as exc:
+                    logger.exception("condition eval error: %s", exc)
 
             default_t = transitions.filter(condition_expr__isnull=True).first()
-            if default_t:
-                logger.debug(f"[FlowEngine] 条件未命中，使用默认分支 → {default_t.target.name}")
-                return default_t.target
-            return None
+            return default_t.target if default_t else None
 
-        t = transitions.filter(condition_expr__isnull=True).first()
-        return t.target if t else None
+        default_t = transitions.filter(condition_expr__isnull=True).first()
+        return default_t.target if default_t else None
 
-    def _enter_node(self, node):
-        """节点进入事件"""
-        logger.debug(f"[FlowEngine] 进入节点: {node.name} ({node.node_type})")
-        if node.node_type == "task":
-            FlowTask.objects.create(instance=self.instance, node=node, assignee=self._find_assignee(node))
-            logger.info(f"[FlowEngine] 创建任务 node={node.name}")
-        elif node.node_type == "condition":
-            self._go_next({})
-        elif node.node_type == "end":
-            self.instance.status = "finished"
-            self.instance.save()
-            logger.info(f"[FlowEngine] 流程结束节点触发 id={self.instance.id}")
+    def _enter_node(self, node: FlowNodeVersion, context: dict):
+        if node.node_type in (NodeTypeChoices.START, NodeTypeChoices.CONDITION):
+            self._go_next(context)
+            return
+        if node.node_type == NodeTypeChoices.END:
+            self.instance.status = FlowStatusChoices.FINISHED
+            self.instance.save(update_fields=["status"])
+            return
 
-    def _exit_node(self, node):
-        """节点退出事件"""
-        FlowTask.objects.filter(instance=self.instance, node=node, status="pending").update(status="done")
-        logger.debug(f"[FlowEngine] 节点退出: {node.name}")
+        if node.is_auto:
+            self._go_next(context)
+            return
 
-    def _find_assignee(self, node):
-        """根据权限分配处理人"""
-        User = get_user_model()
-        if node.role:
-            users = [u for u in User.objects.all() if u.has_perm(node.role)]
-            if users:
-                assignee = users[0]
-                logger.debug(f"[FlowEngine] 节点 {node.name} 分配给具有权限 {node.role} 的用户 {assignee}")
-                return assignee
-        assignee = User.objects.filter(is_superuser=True).first()
-        logger.debug(f"[FlowEngine] 节点 {node.name} 未找到匹配权限用户，默认分配 {assignee}")
-        return assignee
+        self._create_tasks(node)
+
+    def _exit_node(self, node: FlowNodeVersion):
+        FlowTask.objects.filter(
+            instance=self.instance,
+            node=node,
+            status=TaskStatusChoices.PENDING,
+        ).update(status=TaskStatusChoices.CANCELED, finish_time=timezone.now())
+
+    def _create_tasks(self, node: FlowNodeVersion):
+        groups = list(node.groups.all().order_by("order", "id"))
+        created = 0
+
+        if groups:
+            for group in groups:
+                candidate_ids = self._get_group_candidates(group)
+                if len(candidate_ids) < max(group.min_approve_count, 1):
+                    logger.warning(
+                        "node=%s group=%s candidates=%s < min_approve_count=%s",
+                        node.id,
+                        group.key,
+                        len(candidate_ids),
+                        group.min_approve_count,
+                    )
+                for uid in candidate_ids:
+                    _, was_created = FlowTask.objects.get_or_create(
+                        instance=self.instance,
+                        node=node,
+                        assignee_id=uid,
+                        group_key=group.key,
+                        defaults={"status": TaskStatusChoices.PENDING},
+                    )
+                    if was_created:
+                        created += 1
+        else:
+            candidate_ids = self._get_permission_candidates(node)
+            if not candidate_ids:
+                super_user = User.objects.filter(is_superuser=True).first()
+                if super_user:
+                    candidate_ids = [super_user.id]
+            for uid in candidate_ids:
+                _, was_created = FlowTask.objects.get_or_create(
+                    instance=self.instance,
+                    node=node,
+                    assignee_id=uid,
+                    defaults={"status": TaskStatusChoices.PENDING},
+                )
+                if was_created:
+                    created += 1
+
+        if created == 0:
+            logger.warning("no tasks created for node=%s", node.id)
+
+    def _check_node_permission(self, node: FlowNodeVersion, user) -> bool:
+        if user.is_superuser:
+            return True
+
+        groups = list(node.groups.all())
+        if groups:
+            for group in groups:
+                if user.id in self._get_group_candidates(group):
+                    return True
+            raise PermissionDenied("User has no permission for this node.")
+
+        # fallback to permissions
+        perms = node.permissions.all()
+        if not perms.exists():
+            return True
+        user_perms = user.get_all_permissions()
+        for p in perms:
+            full_code = f"{p.content_type.app_label}.{p.codename}"
+            if full_code in user_perms:
+                return True
+        raise PermissionDenied("User has no permission for this node.")
+
+    def _get_group_candidates(self, group: FlowNodeGroup) -> list[int]:
+        candidate_ids: set[int] = set()
+        for rule in group.rules.all():
+            if rule.rule_type == RuleTypeChoices.USER and rule.user_id:
+                candidate_ids.add(rule.user_id)
+            elif rule.rule_type == RuleTypeChoices.PERM_PACK and rule.perm_pack_id:
+                pack_user_ids = (
+                    User.objects.filter(groups__permission_packs=rule.perm_pack)
+                    .values_list("id", flat=True)
+                    .distinct()
+                )
+                candidate_ids.update(pack_user_ids)
+        return list(candidate_ids)
+
+    def _get_permission_candidates(self, node: FlowNodeVersion) -> list[int]:
+        perms = node.permissions.all()
+        if not perms.exists():
+            return []
+        candidates = User.objects.filter(
+            Q(user_permissions__in=perms) | Q(groups__permissions__in=perms)
+        ).values_list("id", flat=True)
+        return list(set(candidates))
+
+    def _is_node_complete(self, node: FlowNodeVersion) -> bool:
+        groups = list(node.groups.all())
+        if not groups:
+            return FlowTask.objects.filter(
+                instance=self.instance,
+                node=node,
+                status=TaskStatusChoices.APPROVED,
+            ).exists()
+
+        group_results: list[bool] = []
+        for group in groups:
+            approved_count = FlowTask.objects.filter(
+                instance=self.instance,
+                node=node,
+                group_key=group.key,
+                status=TaskStatusChoices.APPROVED,
+            ).count()
+            group_results.append(approved_count >= max(group.min_approve_count, 1))
+
+        if node.approval_mode == ApprovalModeChoices.ALL:
+            return all(group_results) if group_results else False
+        return any(group_results) if group_results else False
+
+    # -------------------------------------------------------------
+    # Snapshot utilities
+    # -------------------------------------------------------------
+    @staticmethod
+    def _build_snapshot(version: FlowVersion) -> dict:
+        nodes = []
+        for node in version.nodes.all().order_by("order", "id"):
+            perm_codes = [
+                f"{p.content_type.app_label}.{p.codename}" for p in node.permissions.all()
+            ]
+            groups = []
+            for group in node.groups.all().order_by("order", "id"):
+                rules = []
+                for rule in group.rules.all():
+                    if rule.rule_type == RuleTypeChoices.PERM_PACK and rule.perm_pack:
+                        rules.append(
+                            {
+                                "type": "perm_pack",
+                                "pack_code": rule.perm_pack.pack_code,
+                                "pack_name": rule.perm_pack.pack_name,
+                            }
+                        )
+                    elif rule.rule_type == RuleTypeChoices.USER and rule.user:
+                        rules.append(
+                            {
+                                "type": "user",
+                                "user_id": rule.user_id,
+                                "user_name": getattr(rule.user, "full_name", None),
+                            }
+                        )
+                groups.append(
+                    {
+                        "key": group.key,
+                        "name": group.name,
+                        "min_approve_count": group.min_approve_count,
+                        "rules": rules,
+                    }
+                )
+
+            nodes.append(
+                {
+                    "code": node.code,
+                    "name": node.name,
+                    "node_type": node.node_type,
+                    "approval_mode": node.approval_mode,
+                    "is_auto": node.is_auto,
+                    "order": node.order,
+                    "form_schema": node.form_schema,
+                    "permissions": perm_codes,
+                    "groups": groups,
+                }
+            )
+
+        transitions = []
+        for trans in version.transitions.all().order_by("id"):
+            transitions.append(
+                {
+                    "from": trans.source.code,
+                    "to": trans.target.code,
+                    "condition_expr": trans.condition_expr,
+                    "description": trans.description,
+                }
+            )
+
+        return {
+            "definition_code": version.definition.code,
+            "definition_name": version.definition.name,
+            "version_no": version.version_no,
+            "published_at": version.published_at.isoformat() if version.published_at else None,
+            "nodes": nodes,
+            "transitions": transitions,
+        }
+
+    @staticmethod
+    def _apply_form_map(context: dict, form_map: Iterable[dict]) -> dict:
+        def _get_path(data: dict, path: str):
+            cur = data
+            for part in path.split("."):
+                if not isinstance(cur, dict):
+                    return None
+                cur = cur.get(part)
+            return cur
+
+        def _set_path(data: dict, path: str, value):
+            cur = data
+            parts = path.split(".")
+            for part in parts[:-1]:
+                if part not in cur or not isinstance(cur[part], dict):
+                    cur[part] = {}
+                cur = cur[part]
+            cur[parts[-1]] = value
+
+        new_context = dict(context)
+        for item in form_map:
+            src = item.get("from")
+            dst = item.get("to")
+            if not src or not dst:
+                continue
+            val = _get_path(new_context, src)
+            if val is not None:
+                _set_path(new_context, dst, val)
+        return new_context

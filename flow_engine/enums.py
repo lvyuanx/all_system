@@ -12,6 +12,7 @@ class FlowStatusChoices(models.TextChoices):
     RUNNING = "running", "运行中"
     FINISHED = "finished", "已完成"
     CANCELED = "canceled", "已取消"
+    REJECTED = "rejected", "已驳回"
 
 
 class TaskStatusChoices(models.TextChoices):
@@ -19,6 +20,8 @@ class TaskStatusChoices(models.TextChoices):
     PENDING = "pending", "待处理"
     APPROVED = "approved", "已通过"
     REJECTED = "rejected", "已驳回"
+    CANCELED = "canceled", "已取消"
+    DONE = "done", "已完成"
 
 
 class NodeTypeChoices(models.TextChoices):
@@ -27,3 +30,30 @@ class NodeTypeChoices(models.TextChoices):
     TASK = "task", "任务节点"
     CONDITION = "condition", "条件判断节点"
     END = "end", "结束节点"
+
+
+class ApprovalModeChoices(models.TextChoices):
+    """节点审批模式"""
+    ANY = "any", "任意满足"
+    ALL = "all", "全部满足"
+
+
+class RuleTypeChoices(models.TextChoices):
+    """节点授权规则类型"""
+    PERM_PACK = "perm_pack", "权限包"
+    USER = "user", "指定人"
+
+
+class FlowVersionStatusChoices(models.TextChoices):
+    """流程版本状态"""
+    DRAFT = "draft", "草稿"
+    PUBLISHED = "published", "已发布"
+    RETIRED = "retired", "已停用"
+
+
+class FlowMigrationStatusChoices(models.TextChoices):
+    """迁移任务状态"""
+    PENDING = "pending", "待执行"
+    RUNNING = "running", "执行中"
+    SUCCESS = "success", "成功"
+    FAILED = "failed", "失败"

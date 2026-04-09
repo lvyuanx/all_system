@@ -19,6 +19,7 @@ class OrderCreateSchema(BaseModel):
 
     site_id: int = Field(..., description="站点ID")
     order_type: int = Field(..., description="订单类型")
+    flow_definition_id: int | None = Field(None, description="流程模板ID")
     shipping_party: str = Field(..., description="发货方")
     shipping_party_phone: str = Field(..., description="发货方电话")
     shipping_party_address: str = Field(..., description="发货方地址")

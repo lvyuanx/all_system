@@ -1,4 +1,4 @@
-"id","name","icon","url","new_tab","path","depath","is_active","sort_no"
+﻿"id","name","icon","url","new_tab","path","depath","is_active","sort_no"
 "1","用户管理","fas fa-users-cog",,"0","用户管理","0","1","0"
 "2","用户列表","fas fa-users","/admin/core_auth/user/","0","用户管理/用户列表","1","1","0"
 "3","角色管理","fas fa-user-shield","/admin/auth/group/","0","用户管理/角色管理","1","1","1"
@@ -37,3 +37,5 @@
 "38","所有订单","fas fa-list","/admin/order/order/","0","订单管理/所有订单","1","1","0"
 "43","图库搜索","fas fa-list","/admin/pattern_library/pattern/search/","0","版式管理/图库搜索","1","1","0"
 "44","移动端菜单","fas fa-list","/admin/core_auth/mobilemenus/","0","菜单管理/移动端菜单","1","1","0"
+"45","流程管理","fas fa-project-diagram",,"0","流程管理","0","1","0"
+"46","流程列表","fas fa-list","/admin/flow_engine/definition/list/","0","流程管理/流程列表","1","1","0"

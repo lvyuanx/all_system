@@ -124,12 +124,13 @@
                                 :value="item.value" :disabled="isDisabledMode" />
                         </el-select>
                     </el-form-item>
-                    <!-- <el-form-item label="订单工作流" prop="flow_definition">
-                        <el-select v-model="pageData.fromData.flow_definition" placeholder="请选择订单工作流">
+                    <el-form-item label="订单工作流" prop="flow_definition_id">
+                        <el-select v-model="pageData.fromData.flow_definition_id" placeholder="请选择订单工作流"
+                            :disabled="isDisabledMode">
                             <el-option v-for="item in pageData.flowDefinitionOptions" :key="item.value"
                                 :label="item.label" :value="item.value" />
                         </el-select>
-                    </el-form-item> -->
+                    </el-form-item>
                     <el-form-item label="订单配送方式" prop="delivery_method">
                         <el-select v-model="pageData.fromData.delivery_method" placeholder="请选择订单配送方式">
                             <el-option v-for="item in pageData.deliveryMethodOptions" :key="item.value"
@@ -455,7 +456,7 @@
                 fromData: {
                     site_id: "",
                     order_type: "",
-                    flow_definition: null,
+                    flow_definition_id: null,
                     shipping_party: "",
                     shipping_party_company: "",
                     shipping_party_phone: "",
@@ -516,6 +517,7 @@
                 pageData.deliveryMethodOptions = await request.get("/order/order_delivery_all_list")
                 pageData.orderTpyeOptions = await request.get("/order/order_type_all_list")
                 pageData.siteOptions = await request.get("/site_mgmt/cur_site_options")
+                pageData.flowDefinitionOptions = await request.get("/flow_engine/flow_definition_list")
             }
 
             // ------------------------------- 发货方/收货方 --------------------------------
