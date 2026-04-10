@@ -43,7 +43,9 @@ class View(BaseApi):
         order_obj = await order_manager.values(
             "site_id",
             "order_type",
+            "order_status",
             "flow_definition_id",
+            "flow_instance_id",
             "shipping_party",
             "shipping_party_phone",
             "shipping_party_address",
@@ -54,6 +56,7 @@ class View(BaseApi):
             "receiver_address",
             "receiver_company",
             "memo",
+            flow_definition_name=F("flow_definition__name"),
             order_id=F("pk"),
         ).afirst()
         

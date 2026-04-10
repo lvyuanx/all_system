@@ -39,3 +39,4 @@
 "44","移动端菜单","fas fa-list","/admin/core_auth/mobilemenus/","0","菜单管理/移动端菜单","1","1","0"
 "45","流程管理","fas fa-project-diagram",,"0","流程管理","0","1","0"
 "46","流程列表","fas fa-list","/admin/flow_engine/definition/list/","0","流程管理/流程列表","1","1","0"
+"47","表单设计器","fas fa-wpforms","/admin/flow_engine/form/list/","0","流程管理/表单设计器","1","1","1"

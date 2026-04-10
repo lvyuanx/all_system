@@ -9,6 +9,61 @@
 
 {% block extra_css %}
 <style>
+    .flow-summary-card {
+        width: 100%;
+        max-width: 600px;
+        border: 1px solid #e5e7eb;
+        border-radius: 10px;
+        background: #f8fafc;
+        padding: 14px 16px;
+        margin-bottom: 16px;
+    }
+
+    .flow-summary-title {
+        font-size: 16px;
+        line-height: 24px;
+        font-weight: 600;
+        color: #111827;
+    }
+
+    .flow-summary-row {
+        margin-top: 8px;
+        font-size: 14px;
+        line-height: 22px;
+        color: #334155;
+    }
+
+    .flow-action-card {
+        width: 100%;
+        max-width: 600px;
+        border: 1px solid #dbeafe;
+        border-radius: 10px;
+        background: #ffffff;
+        padding: 14px 16px;
+        margin-bottom: 16px;
+    }
+
+    .flow-action-title {
+        font-size: 16px;
+        line-height: 24px;
+        font-weight: 600;
+        color: #111827;
+        margin-bottom: 10px;
+    }
+
+    .flow-action-empty {
+        width: 100%;
+        max-width: 600px;
+        border: 1px dashed #cbd5e1;
+        border-radius: 10px;
+        background: #f8fafc;
+        padding: 14px 16px;
+        margin-bottom: 16px;
+        color: #475569;
+        font-size: 14px;
+        line-height: 22px;
+    }
+
     .timeline-container {
         display: flex;
         flex-direction: column;
@@ -52,7 +107,7 @@
                         </div>
                         {% endif %}
                         <div class="timeline-footer">
-                            操作人: {{ item.item_user }} {{ item.item_phone }}
+                            操作人: {{ item.item_user|default:"系统" }}{% if item.item_phone %} {{ item.item_phone }}{% endif %}
                         </div>
                     </div>
                 </el-timeline-item>
@@ -66,16 +121,9 @@
 
 {% block extra_js %}
 <script type="module">
-
-    // 引入父页面的组件
     window.initVueApp({
         data() {
-            return {
-
-            }
-        },
-        methods: {
-
+            return {};
         }
     });
 </script>

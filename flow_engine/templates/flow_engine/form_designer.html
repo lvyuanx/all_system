@@ -1,0 +1,900 @@
+﻿{% extends "vue_setup_base.html" %}
+{% load i18n %}
+{% load static %}
+{% load simpletags %}
+
+{% block title %}
+{{ title }}
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    :root {
+        --fd-bg: #f7f8fc;
+        --fd-panel: #ffffff;
+        --fd-border: #e8ecf3;
+        --fd-border-strong: #d8dfeb;
+        --fd-primary: #3f63f1;
+        --fd-primary-soft: #edf1ff;
+        --fd-text: #1f2a44;
+        --fd-text-soft: #5b6780;
+        --fd-danger: #d14343;
+    }
+
+    .fd-shell {
+        height: calc(100vh - 114px);
+        min-height: 680px;
+        display: grid;
+        grid-template-columns: 260px minmax(0, 1fr) 360px;
+        background: var(--fd-bg);
+        border: 1px solid var(--fd-border);
+        border-radius: 14px;
+        overflow: hidden;
+    }
+
+    .fd-left,
+    .fd-right {
+        background: var(--fd-panel);
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .fd-center {
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+        border-left: 1px solid var(--fd-border);
+        border-right: 1px solid var(--fd-border);
+        background: #fbfcff;
+    }
+
+    .fd-panel-head {
+        padding: 14px 16px;
+        border-bottom: 1px solid var(--fd-border);
+        color: var(--fd-text);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        font-weight: 700;
+    }
+
+    .fd-head-sub {
+        font-size: 12px;
+        color: var(--fd-text-soft);
+        font-weight: 500;
+    }
+
+    .fd-left-scroll,
+    .fd-right-scroll,
+    .fd-center-scroll {
+        min-height: 0;
+        height: 100%;
+    }
+
+    .fd-components {
+        padding: 12px;
+    }
+
+    .fd-palette-search {
+        margin-bottom: 10px;
+    }
+
+    .fd-palette-tabs {
+        margin-bottom: 8px;
+    }
+
+    .fd-group + .fd-group {
+        margin-top: 14px;
+    }
+
+    .fd-group-title {
+        margin-bottom: 8px;
+        font-size: 12px;
+        color: #6b7385;
+        font-weight: 700;
+    }
+
+    .fd-group-list {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+    }
+
+    .fd-comp-item {
+        border: 1px dashed var(--fd-border-strong);
+        border-radius: 10px;
+        background: #f8faff;
+        padding: 9px 8px;
+        cursor: grab;
+        user-select: none;
+        transition: all 0.16s ease;
+    }
+
+    .fd-comp-item:hover {
+        border-color: var(--fd-primary);
+        color: var(--fd-primary);
+        background: var(--fd-primary-soft);
+    }
+
+    .fd-comp-icon {
+        width: 22px;
+        height: 22px;
+        border-radius: 7px;
+        background: #fff;
+        border: 1px solid var(--fd-border);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 11px;
+        margin-bottom: 6px;
+    }
+
+    .fd-comp-label {
+        font-size: 12px;
+        line-height: 1.35;
+        word-break: break-word;
+    }
+
+    .fd-left-tip {
+        margin-top: 12px;
+        font-size: 12px;
+        color: var(--fd-text-soft);
+        line-height: 1.7;
+        background: #f8faff;
+        border: 1px solid var(--fd-border);
+        border-radius: 10px;
+        padding: 10px;
+    }
+
+    .fd-toolbar {
+        height: 52px;
+        border-bottom: 1px solid var(--fd-border);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 0 14px;
+        background: #fff;
+    }
+
+    .fd-toolbar-left,
+    .fd-toolbar-right {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        flex-wrap: wrap;
+    }
+
+    .fd-toolbar-right .el-tag {
+        margin-right: 6px;
+    }
+
+    .fd-center-body {
+        padding: 12px;
+        min-height: 0;
+    }
+
+    .fd-form-switch {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto auto;
+        gap: 8px;
+        margin-bottom: 10px;
+    }
+
+    .fd-canvas {
+        border: 1px dashed var(--fd-border-strong);
+        border-radius: 12px;
+        background: #fff;
+        min-height: 430px;
+        padding: 12px;
+        position: relative;
+    }
+
+    .fd-drop-hint {
+        border: 1px dashed var(--fd-border-strong);
+        border-radius: 10px;
+        padding: 16px 14px;
+        text-align: center;
+        color: var(--fd-text-soft);
+        line-height: 1.7;
+        background: #fafcff;
+    }
+
+    .fd-node {
+        border: 1px solid var(--fd-border);
+        border-radius: 12px;
+        background: #fff;
+        margin-bottom: 10px;
+        transition: all 0.15s ease;
+    }
+
+    .fd-node.active {
+        border-color: var(--fd-primary);
+        box-shadow: 0 0 0 3px rgba(63, 99, 241, 0.14);
+    }
+
+    .fd-node-head {
+        min-height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 0 10px;
+        border-bottom: 1px solid #eff2f7;
+        cursor: pointer;
+    }
+
+    .fd-node-title {
+        min-width: 0;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--fd-text);
+        font-weight: 600;
+        font-size: 13px;
+    }
+
+    .fd-node-title span {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .fd-node-actions {
+        display: flex;
+        align-items: center;
+        gap: 2px;
+    }
+
+    .fd-node-body {
+        padding: 10px;
+    }
+
+    .fd-preview-control {
+        width: 100%;
+    }
+
+    .fd-preview-text {
+        border: 1px solid #d7deea;
+        border-radius: 8px;
+        min-height: 34px;
+        padding: 7px 10px;
+        font-size: 12px;
+        color: #6a768f;
+        background: #fff;
+    }
+
+    .fd-preview-heading {
+        margin: 0;
+        line-height: 1.35;
+        color: var(--fd-text);
+        font-weight: 700;
+    }
+
+    .fd-preview-h1 {
+        font-size: 28px;
+    }
+
+    .fd-preview-h2 {
+        font-size: 24px;
+    }
+
+    .fd-preview-h3 {
+        font-size: 20px;
+    }
+
+    .fd-preview-h4 {
+        font-size: 18px;
+    }
+
+    .fd-preview-h5 {
+        font-size: 16px;
+    }
+
+    .fd-preview-paragraph {
+        margin: 0;
+        color: #4a566f;
+        line-height: 1.8;
+        white-space: pre-wrap;
+    }
+
+    .fd-preview-variable {
+        margin: 4px 0 8px;
+        border: 1px dashed #c9d4ea;
+        border-radius: 8px;
+        background: #f8faff;
+        padding: 8px 10px;
+        color: #35415f;
+        font-size: 13px;
+    }
+
+    .fd-preview-inline {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+        color: #4a566f;
+        font-size: 12px;
+    }
+
+    .fd-container {
+        border: 1px dashed #aab7ce;
+        border-radius: 10px;
+        background: #fafcff;
+        min-height: 90px;
+        padding: 10px;
+    }
+
+    .workflow-form-container-head {
+        display: none !important;
+    }
+
+    .fd-container.fd-drop-active {
+        border-color: var(--fd-primary);
+        background: #f1f5ff;
+        box-shadow: 0 0 0 3px rgba(63, 99, 241, 0.14);
+    }
+
+    .fd-container-empty {
+        border: 1px dashed #cad3e2;
+        border-radius: 8px;
+        text-align: center;
+        color: var(--fd-text-soft);
+        font-size: 12px;
+        padding: 10px 8px;
+        background: #fff;
+    }
+
+    .fd-child {
+        border: 1px solid var(--fd-border);
+        border-radius: 8px;
+        background: #fff;
+        min-width: 0;
+    }
+
+    .fd-child.active {
+        border-color: var(--fd-primary);
+        box-shadow: 0 0 0 2px rgba(63, 99, 241, 0.12);
+    }
+
+    .fd-right-tabs {
+        padding: 0 10px;
+        border-bottom: 1px solid var(--fd-border);
+    }
+
+    .fd-right-body {
+        padding: 12px;
+    }
+
+    .fd-empty-text {
+        border: 1px dashed var(--fd-border-strong);
+        border-radius: 10px;
+        background: #fafcff;
+        padding: 14px;
+        color: var(--fd-text-soft);
+        line-height: 1.7;
+        font-size: 13px;
+    }
+
+    .fd-option-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 6px;
+        margin-bottom: 8px;
+    }
+
+    .fd-option-actions {
+        grid-column: 1 / span 2;
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+    }
+
+    .fd-dialog-actions {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 8px;
+        margin-top: 12px;
+    }
+
+    .fd-json {
+        font-family: Consolas, "Courier New", monospace;
+    }
+
+    .fd-danger {
+        color: var(--fd-danger);
+    }
+
+    .fd-preview-form {
+        padding: 6px 2px 0;
+    }
+
+    .fd-preview-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+        margin-top: 8px;
+    }
+
+    .fd-preview-result {
+        margin-top: 12px;
+        border: 1px dashed var(--fd-border-strong);
+        border-radius: 10px;
+        padding: 10px;
+        background: #fafcff;
+    }
+
+    .fd-build-version {
+        margin-left: 8px;
+        color: #8a96ad;
+        font-size: 12px;
+    }
+
+    @media (max-width: 1360px) {
+        .fd-shell {
+            grid-template-columns: 220px minmax(0, 1fr) 320px;
+        }
+    }
+
+    @media (max-width: 1160px) {
+        .fd-shell {
+            grid-template-columns: 1fr;
+            height: auto;
+            min-height: calc(100vh - 114px);
+        }
+
+        .fd-center {
+            border: none;
+            border-top: 1px solid var(--fd-border);
+            border-bottom: 1px solid var(--fd-border);
+        }
+
+        .fd-left,
+        .fd-right,
+        .fd-center {
+            min-height: 380px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div id="app">
+    <div class="page-header">
+        <el-page-header title="{% trans 'Back' %}" @back="goBack" content="{{ title }}"></el-page-header>
+        <div class="header-right">
+            <span class="fd-build-version">build: 20260410-25</span>
+            <el-button @click="gotoFlowDesigner">流程设计器</el-button>
+            <el-button type="primary" :loading="pageData.saving" @click="saveFormLibrary">保存表单库</el-button>
+        </div>
+    </div>
+
+    <div class="page-container" v-loading="pageData.pageLoading || pageData.saving">
+        <div class="fd-shell">
+            <section class="fd-left">
+                <div class="fd-panel-head">
+                    <span>组件库</span>
+                    <span class="fd-head-sub">点击或拖拽添加</span>
+                </div>
+                <el-scrollbar class="fd-left-scroll">
+                    <div class="fd-components">
+                        <div class="fd-group" v-for="group in componentGroups" :key="group.title">
+                            <div class="fd-group-title">[[ group.title ]]</div>
+                            <div class="fd-group-list">
+                                <div
+                                    v-for="item in (group.list || [])"
+                                    :key="item.value"
+                                    class="fd-comp-item"
+                                    draggable="true"
+                                    @dragstart="onPaletteDragStart(item.value)"
+                                    @click="addComponentByClick(item.value)">
+                                    <div class="fd-comp-icon">[[ item.thumb ]]</div>
+                                    <div class="fd-comp-label">[[ item.label ]]</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="fd-left-tip">
+                            支持容器组件（Grid），并且支持容器内继续嵌套容器。<br>
+                            为避免循环，不能把容器拖入它自身或其子容器中。<br>
+                            文本组件与变量组组件为展示型组件，不参与表单提交字段校验。
+                        </div>
+                    </div>
+                </el-scrollbar>
+            </section>
+
+            <section class="fd-center">
+                <div class="fd-toolbar">
+                    <div class="fd-toolbar-left">
+                        <el-button link @click="undo" :disabled="!canUndo">撤销</el-button>
+                        <el-button link @click="redo" :disabled="!canRedo">重做</el-button>
+                        <el-button link @click="openPreviewDialog" :disabled="!activeForm">运行预览</el-button>
+                        <el-button link @click="openJsonDialog" :disabled="!forms.length">查看 JSON</el-button>
+                        <el-button link @click="importJsonFile">导入 JSON</el-button>
+                        <el-button link @click="downloadJsonFile" :disabled="!forms.length">导出 JSON</el-button>
+                        <el-button link @click="copyJsonPayload" :disabled="!forms.length">复制 JSON</el-button>
+                        <el-button link class="fd-danger" @click="clearActiveForm" :disabled="!activeForm">清空当前表单</el-button>
+                    </div>
+                    <div class="fd-toolbar-right">
+                        <el-tag type="info">[[ activeFormNodeCount ]] 个组件</el-tag>
+                        <el-tag v-if="activeForm" type="success">[[ activeForm.code || '未设置编码' ]]</el-tag>
+                    </div>
+                </div>
+
+                <el-scrollbar class="fd-center-scroll">
+                    <div class="fd-center-body">
+                        <div class="fd-form-switch">
+                            <el-select
+                                v-model="selectedFormIndexValue"
+                                @change="onSelectFormByValue"
+                                placeholder="选择表单">
+                                <el-option
+                                    v-for="(form, idx) in forms"
+                                    :key="form.id || idx"
+                                    :label="form.name || `表单${idx + 1}`"
+                                    :value="String(idx)" />
+                            </el-select>
+                            <el-button type="primary" plain @click="addForm">新增表单</el-button>
+                            <el-button type="danger" plain :disabled="selectedFormIndex < 0" @click="removeForm">删除表单</el-button>
+                        </div>
+
+                        <div
+                            class="fd-canvas"
+                            @dragover.prevent="onCanvasDragOver"
+                            @drop="onCanvasDrop">
+                            <template v-if="activeForm">
+                                <div v-if="!activeForm.nodes.length" class="fd-drop-hint">
+                                    将左侧组件拖到这里，或直接点击组件进行添加。
+                                </div>
+
+                                <designer-node-item
+                                    v-for="node in activeForm.nodes"
+                                    :key="node.id"
+                                    :node="node"
+                                    :selected-node-id="selectedNodeId"
+                                    :component-label="componentLabel"
+                                    :select-node="selectNode"
+                                    :move-node="moveNode"
+                                    :copy-node="copyNode"
+                                    :remove-node="removeNode"
+                                    :on-node-drag-start="onNodeDragStart"
+                                    :on-node-drop="onNodeDrop"
+                                    :on-container-drop="onContainerDrop"
+                                    :on-container-drag-over="onContainerDragOver"
+                                    :on-container-drag-leave="onContainerDragLeave"
+                                    :is-container-drop-active="isContainerDropActive"
+                                    :container-style="containerStyle"></designer-node-item>
+                            </template>
+                            <div v-else class="fd-drop-hint">请先新增一个表单。</div>
+                        </div>
+                    </div>
+                </el-scrollbar>
+            </section>
+
+            <section class="fd-right">
+                <div class="fd-panel-head">
+                    <span>属性面板</span>
+                    <span class="fd-head-sub" v-if="selectedNode">[[ componentLabel(selectedNode.component) ]]</span>
+                </div>
+                <div class="fd-right-tabs">
+                    <el-tabs v-model="activeRightTab">
+                        <el-tab-pane label="组件属性" name="field"></el-tab-pane>
+                        <el-tab-pane label="表单属性" name="form"></el-tab-pane>
+                    </el-tabs>
+                </div>
+                <el-scrollbar class="fd-right-scroll">
+                    <div class="fd-right-body">
+                        <template v-if="activeRightTab === 'field'">
+                            <template v-if="selectedNode">
+                                <el-form label-width="90px">
+                                    <el-form-item label="组件类型">
+                                        <el-input :model-value="componentLabel(selectedNode.component)" disabled />
+                                    </el-form-item>
+                                    <el-form-item label="显示名称" v-if="!isTextComponent(selectedNode) && !isVariableComponent(selectedNode)">
+                                        <el-input v-model="selectedNode.label" placeholder="请输入显示名称" />
+                                    </el-form-item>
+
+                                    <template v-if="selectedNode.component === 'container'">
+                                        <el-form-item label="布局模式">
+                                            <el-input model-value="Grid（固定）" disabled />
+                                        </el-form-item>
+                                        <el-form-item label="列数">
+                                            <el-input-number v-model="selectedNode.grid_columns" :min="1" :max="6" />
+                                        </el-form-item>
+                                        <el-form-item label="间距 gap">
+                                            <el-input-number v-model="selectedNode.gap" :min="0" :max="80" />
+                                        </el-form-item>
+                                        <el-form-item label="内边距">
+                                            <el-input-number v-model="selectedNode.padding" :min="0" :max="80" />
+                                        </el-form-item>
+                                    </template>
+
+                                    <template v-else-if="isTextComponent(selectedNode)">
+                                        <el-form-item label="文本类型">
+                                            <el-input :model-value="componentLabel(selectedNode.component)" disabled />
+                                        </el-form-item>
+                                        <el-form-item label="显示名称">
+                                            <el-input v-model="selectedNode.label" placeholder="用于组件标识（可选）" />
+                                        </el-form-item>
+                                        <el-form-item label="文本对齐">
+                                            <el-radio-group v-model="selectedNode.text_align">
+                                                <el-radio-button label="left">左对齐</el-radio-button>
+                                                <el-radio-button label="center">居中</el-radio-button>
+                                                <el-radio-button label="right">右对齐</el-radio-button>
+                                            </el-radio-group>
+                                        </el-form-item>
+                                        <el-form-item label="垂直对齐">
+                                            <el-radio-group v-model="selectedNode.text_v_align">
+                                                <el-radio-button label="top">顶部</el-radio-button>
+                                                <el-radio-button label="middle">居中</el-radio-button>
+                                                <el-radio-button label="bottom">底部</el-radio-button>
+                                            </el-radio-group>
+                                        </el-form-item>
+                                        <el-form-item label="文本高度">
+                                            <el-input-number v-model="selectedNode.text_min_height" :min="0" :max="500" />
+                                        </el-form-item>
+                                        <el-form-item label="文本内容">
+                                            <el-input
+                                                v-model="selectedNode.content"
+                                                type="textarea"
+                                                :autosize="{ minRows: 2, maxRows: 6 }"
+                                                placeholder="请输入文本内容" />
+                                        </el-form-item>
+                                    </template>
+
+                                    <template v-else-if="isVariableComponent(selectedNode)">
+                                        <el-form-item label="变量类型">
+                                            <el-input :model-value="componentLabel(selectedNode.component)" disabled />
+                                        </el-form-item>
+                                        <el-form-item label="变量键">
+                                            <el-input v-model="selectedNode.variable_key" disabled />
+                                        </el-form-item>
+                                        <el-form-item label="预览值">
+                                            <el-input :model-value="resolveVariablePreviewText(selectedNode)" disabled />
+                                        </el-form-item>
+                                    </template>
+
+                                    <template v-else>
+                                        <el-form-item label="字段标识">
+                                            <el-input v-model="selectedNode.key" placeholder="如：quality_note" />
+                                        </el-form-item>
+                                        <el-form-item label="是否禁用">
+                                            <el-switch v-model="selectedNode.disabled" />
+                                        </el-form-item>
+                                        <el-form-item label="占位提示" v-if="showPlaceholder(selectedNode)">
+                                            <el-input v-model="selectedNode.placeholder" placeholder="请输入占位提示" />
+                                        </el-form-item>
+                                        <el-form-item label="默认值" v-if="showDefaultField(selectedNode)">
+                                            <el-input v-model="selectedNode.default" placeholder="请输入默认值" />
+                                        </el-form-item>
+                                        <el-form-item label="默认值来源">
+                                            <el-select v-model="selectedNode.default_config.source_type">
+                                                <el-option label="固定值" value="literal" />
+                                                <el-option label="流程上下文" value="context" />
+                                                <el-option label="枚举" value="enum" />
+                                                <el-option label="数据库" value="db" />
+                                            </el-select>
+                                        </el-form-item>
+                                        <el-form-item label="上下文路径" v-if="selectedNode.default_config.source_type === 'context'">
+                                            <el-input v-model="selectedNode.default_config.context_path" placeholder="如: form.NODE_A.amount" />
+                                        </el-form-item>
+                                        <el-form-item label="枚举编码" v-if="selectedNode.default_config.source_type === 'enum'">
+                                            <el-input v-model="selectedNode.default_config.enum_code" placeholder="如: order.status" />
+                                        </el-form-item>
+                                        <el-form-item label="数据源编码" v-if="selectedNode.default_config.source_type === 'db'">
+                                            <el-input v-model="selectedNode.default_config.db_source_code" placeholder="如: order.field" />
+                                        </el-form-item>
+                                        <el-form-item label="读取路径">
+                                            <el-input v-model="selectedNode.context_binding.read_path" placeholder="为空时走默认路径" />
+                                        </el-form-item>
+                                        <el-form-item label="写入路径">
+                                            <el-input v-model="selectedNode.context_binding.write_path" placeholder="为空时走默认路径" />
+                                        </el-form-item>
+                                        <el-form-item label="写入策略">
+                                            <el-select v-model="selectedNode.context_binding.write_mode">
+                                                <el-option label="覆盖写入" value="overwrite" />
+                                                <el-option label="仅空值写入" value="merge_if_absent" />
+                                            </el-select>
+                                        </el-form-item>
+                                        <el-form-item label="必填">
+                                            <el-switch v-model="selectedNode.required" />
+                                        </el-form-item>
+
+                                        <el-form-item label="行数" v-if="selectedNode.component === 'textarea'">
+                                            <el-input-number v-model="selectedNode.rows" :min="2" :max="12" />
+                                        </el-form-item>
+
+                                        <template v-if="selectedNode.component === 'number'">
+                                            <el-form-item label="最小值">
+                                                <el-input-number v-model="selectedNode.min" :step="1" />
+                                            </el-form-item>
+                                            <el-form-item label="最大值">
+                                                <el-input-number v-model="selectedNode.max" :step="1" />
+                                            </el-form-item>
+                                            <el-form-item label="步长">
+                                                <el-input-number v-model="selectedNode.step" :min="0.01" :step="1" />
+                                            </el-form-item>
+                                        </template>
+
+                                        <template v-if="selectedNode.component === 'file'">
+                                            <el-form-item label="accept">
+                                                <el-input v-model="selectedNode.accept" placeholder="如：.pdf,.jpg,image/*" />
+                                            </el-form-item>
+                                            <el-form-item label="多文件">
+                                                <el-switch v-model="selectedNode.multiple" />
+                                            </el-form-item>
+                                        </template>
+
+                                        <template v-if="selectedNode.component === 'switch'">
+                                            <el-form-item label="默认值">
+                                                <el-switch v-model="selectedNode.default" />
+                                            </el-form-item>
+                                        </template>
+
+                                        <template v-if="['select', 'radio', 'checkbox'].includes(selectedNode.component)">
+                                            <el-form-item label="选项来源">
+                                                <el-select v-model="selectedNode.options_config.source_type">
+                                                    <el-option label="手工维护" value="manual" />
+                                                    <el-option label="枚举" value="enum" />
+                                                    <el-option label="流程上下文" value="context" />
+                                                    <el-option label="数据库" value="db" />
+                                                </el-select>
+                                            </el-form-item>
+                                            <el-form-item label="枚举编码" v-if="selectedNode.options_config.source_type === 'enum'">
+                                                <el-input v-model="selectedNode.options_config.enum_code" placeholder="如: order.status" />
+                                            </el-form-item>
+                                            <el-form-item label="上下文路径" v-if="selectedNode.options_config.source_type === 'context'">
+                                                <el-input v-model="selectedNode.options_config.context_path" placeholder="如: options.audit_status" />
+                                            </el-form-item>
+                                            <el-form-item label="数据源编码" v-if="selectedNode.options_config.source_type === 'db'">
+                                                <el-input v-model="selectedNode.options_config.db_source_code" placeholder="如: site.address_options_by_order" />
+                                            </el-form-item>
+                                            <el-form-item label="回退手工选项" v-if="selectedNode.options_config.source_type !== 'manual'">
+                                                <el-switch v-model="selectedNode.options_config.fallback_to_manual" />
+                                            </el-form-item>
+                                            <el-form-item label="选项">
+                                                <div style="width:100%">
+                                                    <div
+                                                        class="fd-option-row"
+                                                        v-for="(option, index) in selectedNode.options"
+                                                        :key="option.id || index"
+                                                        v-show="selectedNode.options_config.source_type === 'manual' || selectedNode.options_config.fallback_to_manual">
+                                                        <el-input v-model="option.label" placeholder="显示名称" />
+                                                        <el-input v-model="option.value" placeholder="提交值" />
+                                                        <div class="fd-option-actions">
+                                                            <el-button link @click="moveOption(selectedNode, index, -1)" :disabled="index === 0">上移</el-button>
+                                                            <el-button link @click="moveOption(selectedNode, index, 1)" :disabled="index === selectedNode.options.length - 1">下移</el-button>
+                                                            <el-button link type="danger" @click="removeOption(selectedNode, index)">删除</el-button>
+                                                        </div>
+                                                    </div>
+                                                    <el-button
+                                                        size="small"
+                                                        type="primary"
+                                                        plain
+                                                        @click="addOption(selectedNode)"
+                                                        v-if="selectedNode.options_config.source_type === 'manual' || selectedNode.options_config.fallback_to_manual">新增选项</el-button>
+                                                </div>
+                                            </el-form-item>
+                                        </template>
+                                    </template>
+
+                                    <el-form-item label="CSS 样式">
+                                        <el-input
+                                            v-model="selectedNode.css_text"
+                                            type="textarea"
+                                            :autosize="{ minRows: 2, maxRows: 5 }"
+                                            placeholder="如：width: 280px;" />
+                                    </el-form-item>
+                                    <el-form-item label="JS 脚本">
+                                        <el-input
+                                            v-model="selectedNode.js_text"
+                                            type="textarea"
+                                            :autosize="{ minRows: 3, maxRows: 6 }"
+                                            placeholder="可访问 value、formData、field、helpers；return 值可覆盖当前字段" />
+                                    </el-form-item>
+                                    <el-form-item>
+                                        <el-button type="danger" plain @click="removeNode(selectedNode.id)">删除该组件</el-button>
+                                    </el-form-item>
+                                </el-form>
+                            </template>
+                            <div v-else class="fd-empty-text">
+                                在中间画布点击一个组件，这里会显示该组件的可配置属性。
+                            </div>
+                        </template>
+
+                        <template v-if="activeRightTab === 'form'">
+                            <template v-if="activeForm">
+                                <el-form label-width="90px">
+                                    <el-form-item label="表单编码">
+                                        <el-input v-model="activeForm.code" placeholder="如：quality_check" />
+                                    </el-form-item>
+                                    <el-form-item label="表单名称">
+                                        <el-input v-model="activeForm.name" placeholder="如：质检表单" />
+                                    </el-form-item>
+                                    <el-form-item label="描述">
+                                        <el-input
+                                            v-model="activeForm.description"
+                                            type="textarea"
+                                            :autosize="{ minRows: 2, maxRows: 4 }"
+                                            placeholder="可选" />
+                                    </el-form-item>
+                                </el-form>
+                                <div class="fd-empty-text">
+                                    当前表单共 [[ activeForm.nodes.length ]] 个组件。<br>
+                                    保存后会同步到当前流程定义的表单库。
+                                </div>
+                            </template>
+                            <div v-else class="fd-empty-text">当前没有可编辑的表单，请先新增。</div>
+                        </template>
+                    </div>
+                </el-scrollbar>
+            </section>
+        </div>
+    </div>
+
+    <el-dialog v-model="previewDialog.visible" title="表单预览" width="70%">
+        <div class="fd-preview-form">
+            <el-form
+                ref="previewFormRef"
+                :model="previewDialog.formData"
+                :rules="previewDialog.rules"
+                label-width="100px"
+                v-if="previewHasNodes">
+                <preview-field-render
+                    v-for="node in previewNodes"
+                    :key="`preview-${node.id}`"
+                    :node="node"
+                    :form-data="previewDialog.formData"
+                    :component-label="componentLabel"
+                    :container-style="containerStyle"
+                    :run-script="runFieldScript"
+                    @file-change="onPreviewFileChange"></preview-field-render>
+            </el-form>
+            <div class="fd-preview-actions" v-if="previewHasNodes">
+                <el-button @click="resetPreviewForm">重置</el-button>
+                <el-button type="primary" @click="submitPreviewForm">提交预览</el-button>
+            </div>
+            <div class="fd-preview-result" v-if="previewDialog.submittedJson">
+                <el-input
+                    :model-value="previewDialog.submittedJson"
+                    type="textarea"
+                    class="fd-json"
+                    :autosize="{ minRows: 8, maxRows: 16 }"
+                    readonly />
+            </div>
+            <div v-if="!previewHasNodes" class="fd-empty-text">暂无可预览内容。</div>
+        </div>
+    </el-dialog>
+
+    <el-dialog v-model="jsonDialog.visible" title="表单 JSON" width="68%">
+        <el-input
+            v-model="jsonDialog.content"
+            type="textarea"
+            class="fd-json"
+            :autosize="{ minRows: 16, maxRows: 24 }"
+            placeholder='{"flow_id": 1, "forms": []}' />
+        <div class="fd-dialog-actions">
+            <el-button @click="copyJsonText(jsonDialog.content)">复制</el-button>
+            <el-button type="primary" @click="applyJsonContent">应用 JSON</el-button>
+        </div>
+    </el-dialog>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script type="module">
+    import { mountFlowFormDesigner } from "{% static 'flow_engine/js/form_designer.js' %}?v=20260410-25";
+
+    mountFlowFormDesigner({
+        flowId: Number("{{ flow_id }}"),
+        previousUrl: "/admin/flow_engine/definition/list/",
+        currentUser: {
+            username: "{{ request.user.username|default:''|escapejs }}",
+            phone: "{{ request.user.phone|default:''|escapejs }}",
+            full_name: "{{ request.user.get_full_name|default:''|escapejs }}",
+        },
+    });
+</script>
+{% endblock %}

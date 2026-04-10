@@ -68,9 +68,9 @@
             }
 
             // 自定义插值符号 [[ ]]
-            app.config.compilerOptions = {
-                delimiters: ['[[', ']]']
-            };
+            // 这里不要整体替换 compilerOptions，直接设置属性，避免被运行时忽略
+            app.config.compilerOptions = app.config.compilerOptions || {};
+            app.config.compilerOptions.delimiters = ['[[', ']]'];
 
             // 挂载 SimpleUI 插件
             if (window.SimpleUIExtra) {

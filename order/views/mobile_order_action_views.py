@@ -136,6 +136,7 @@ class FinishProductionView(BaseApi):
     error_codes = [
         ("001", "未查询到订单信息"),
         ("002", "当前订单状态[{status_name}]无法进行该操作"),
+        ("003", "当前订单已绑定流程，请先完成流程后再生产完成"),
     ]
 
     @staticmethod
@@ -146,6 +147,10 @@ class FinishProductionView(BaseApi):
         if order.order_status != OrderStatusChoices.PRODUCING:
             raise _status_error(order.order_status)
 
+        sm = OrderStateMachine(order, request.user, data.operator_memo)
+        allowed, _ = sm.can_finish_production()
+        if not allowed:
+            raise BusinessException("003")
         await _apply_transition(order, request.user, data.operator_memo, "finish_production")
 
 

@@ -86,6 +86,10 @@ class View(BaseApi):
             )
 
         sm = OrderStateMachine(order, request.user, data.operator_memo)
+        if data.action == "finish_production":
+            allowed, _ = sm.can_finish_production()
+            if not allowed:
+                raise BusinessException("003", {"status_name": "生产中(流程未完成)"})
         getattr(sm, action_cfg["trigger"])()
         sm.save_state()
 

@@ -113,6 +113,18 @@ class OrderAdmin(
                 "url": lambda obj: reverse("order_timeline", kwargs={"pk": obj.pk}),
             }
         ]
+        if obj.order_status == OrderStatusChoices.PRODUCING and obj.flow_definition_id:
+            operate_buttons_config = [
+                {
+                    "name": "流程",
+                    "type": "text",
+                    "mode": "modal",
+                    "icon": "el-icon-share",
+                    "modal_width": "70vw",
+                    "modal_height": "85vh",
+                    "url": lambda obj: reverse("order_workflow", kwargs={"pk": obj.pk}),
+                }
+            ] + operate_buttons_config
         if obj.order_status == OrderStatusChoices.FINISHED:
             operate_buttons_config = [
                 {
@@ -296,14 +308,22 @@ class OrderAdmin(
             return
 
         count = 0
+        skipped = 0
         with transaction.atomic():
             for obj in queryset:
                 sm = OrderStateMachine(obj, request.user)
+                allowed, _ = sm.can_finish_production()
+                if not allowed:
+                    skipped += 1
+                    continue
                 sm.finish_production()
                 sm.save_state()
                 count += 1
                 admin_util.log_custom_actions(request, [obj], "订单生产完成", 2)
-        messages.success(request, f"{count} 条记录已批量生产完成。")
+        if count:
+            messages.success(request, f"{count} 条记录已批量生产完成。")
+        if skipped:
+            messages.warning(request, f"{skipped} 条订单已绑定流程且未完成，已跳过。")
     
     
     @admin_util.btn(

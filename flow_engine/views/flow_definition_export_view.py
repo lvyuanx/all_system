@@ -37,6 +37,7 @@ class View(BaseApi):
                 is_active=detail.is_active,
                 nodes=detail.nodes,
                 transitions=detail.transitions,
+                form_library=detail.form_library,
             )
 
         return await sync_to_async(_export, thread_sensitive=True)()

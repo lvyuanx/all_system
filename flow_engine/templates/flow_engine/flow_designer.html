@@ -229,6 +229,67 @@
         align-items: center;
         margin-bottom: 8px;
     }
+
+    .form-builder-toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 12px;
+    }
+
+    .form-field-list {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .form-field-card {
+        border: 1px solid #dbe5ef;
+        border-radius: 14px;
+        background: #f8fafc;
+        padding: 14px;
+    }
+
+    .form-field-card.dragging {
+        opacity: 0.65;
+    }
+
+    .form-field-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 10px;
+    }
+
+    .form-field-title {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-weight: 600;
+        color: #0f172a;
+    }
+
+    .form-drag-handle {
+        cursor: grab;
+        color: #64748b;
+        user-select: none;
+    }
+
+    .form-option-row {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        margin-bottom: 8px;
+    }
+
+    .form-builder-empty {
+        border: 1px dashed #cbd5e1;
+        border-radius: 12px;
+        padding: 14px;
+        color: #64748b;
+        background: #f8fafc;
+    }
 </style>
 {% endblock %}
 
@@ -237,14 +298,27 @@
     <div class="page-header">
         <el-page-header title="{% trans 'Back' %}" @back="goBack" content="{{title}}"></el-page-header>
         <div class="header-right">
-            <el-button @click="openImportDialog">导入JSON</el-button>
-            <el-button @click="exportFlowJson" :disabled="!flowId">导出JSON</el-button>
-            <el-button type="primary" @click="saveFlow">保存</el-button>
-            <el-button type="success" @click="publishFlow" :disabled="!flowId">发布版本</el-button>
+            <span v-if="pageData.saving || pageData.publishing" class="status-hint" style="padding:0 8px 0 0;">
+                [[ pageData.publishing ? '正在保存并发布...' : '正在保存...' ]]
+            </span>
+            <el-button @click="openFlowFormDesigner" :disabled="pageData.saving || pageData.publishing">表单设计器</el-button>
+            <el-button @click="refreshFormLibrary" :disabled="!flowId || pageData.saving || pageData.publishing">刷新表单库</el-button>
+            <el-button @click="openImportDialog" :disabled="pageData.saving || pageData.publishing">导入JSON</el-button>
+            <el-button @click="exportFlowJson" :disabled="!flowId || pageData.saving || pageData.publishing">导出JSON</el-button>
+            <el-button type="primary" @click="saveFlow" :loading="pageData.saving" :disabled="pageData.publishing">
+                [[ pageData.saving ? '保存中...' : '保存' ]]
+            </el-button>
+            <el-button type="success" @click="publishFlow" :loading="pageData.publishing" :disabled="pageData.saving">
+                [[ pageData.publishing ? '发布中...' : '发布版本' ]]
+            </el-button>
         </div>
     </div>
 
-    <div class="page-container" v-loading="pageData.pageLoading">
+    <div
+        class="page-container"
+        v-loading="pageData.pageLoading || pageData.saving || pageData.publishing"
+        :element-loading-text="pageData.publishing ? '正在保存并发布流程，请稍候...' : (pageData.saving ? '正在保存流程，请稍候...' : '正在加载...')"
+    >
         <div class="designer-root">
             <div class="designer-panel">
                 <div class="panel-head">节点库</div>
@@ -483,13 +557,278 @@
                     </el-form-item>
                 </el-col>
             </el-row>
-            <el-form-item label="表单配置(JSON)">
-                <el-input
-                    v-model="nodeDialog.form.form_schema_text"
-                    type="textarea"
-                    :autosize="{ minRows: 3, maxRows: 8 }"
-                    placeholder="可选 JSON，不要手动写 __ui"
-                />
+            <el-form-item label="节点表单">
+                <div style="width: 100%;">
+                    <el-row :gutter="12" style="margin-bottom: 8px;">
+                        <el-col :span="12">
+                            <el-form-item label="表单来源">
+                                <el-select v-model="nodeDialog.form.form_ref_code" clearable placeholder="自定义节点表单" @change="onNodeFormRefChange">
+                                    <el-option v-for="item in formLibraryOptions" :key="item.code" :label="item.name" :value="item.code" />
+                                </el-select>
+                            </el-form-item>
+                        </el-col>
+                        <el-col :span="12">
+                            <el-form-item label="快速入口">
+                                <el-button type="primary" plain @click="openFlowFormDesigner">打开表单设计器</el-button>
+                            </el-form-item>
+                        </el-col>
+                    </el-row>
+                    <div class="form-builder-toolbar">
+                        <el-button size="small" type="primary" plain @click="addFormField('input')" :disabled="!!nodeDialog.form.form_ref_code">单行输入</el-button>
+                        <el-button size="small" type="primary" plain @click="addFormField('textarea')" :disabled="!!nodeDialog.form.form_ref_code">多行文本</el-button>
+                        <el-button size="small" type="primary" plain @click="addFormField('file')" :disabled="!!nodeDialog.form.form_ref_code">文件上传</el-button>
+                        <el-button size="small" type="primary" plain @click="addFormField('radio')" :disabled="!!nodeDialog.form.form_ref_code">单选</el-button>
+                        <el-button size="small" type="primary" plain @click="addFormField('checkbox')" :disabled="!!nodeDialog.form.form_ref_code">多选</el-button>
+                        <el-button size="small" type="primary" plain @click="addFormField('number')" :disabled="!!nodeDialog.form.form_ref_code">数字</el-button>
+                        <el-button size="small" type="primary" plain @click="addFormField('select')" :disabled="!!nodeDialog.form.form_ref_code">下拉选择</el-button>
+                        <el-button size="small" type="primary" plain @click="addFormField('switch')" :disabled="!!nodeDialog.form.form_ref_code">开关</el-button>
+                        <el-button size="small" type="primary" plain @click="addFormField('date')" :disabled="!!nodeDialog.form.form_ref_code">日期</el-button>
+                        <el-button size="small" type="primary" plain @click="addFormField('datetime')" :disabled="!!nodeDialog.form.form_ref_code">日期时间</el-button>
+                    </div>
+                    <el-alert
+                        v-if="nodeDialog.form.form_ref_code"
+                        :title="`当前节点引用表单: ${currentNodeFormRefName || nodeDialog.form.form_ref_code}`"
+                        type="info"
+                        :closable="false"
+                        style="margin-bottom: 12px;"
+                    />
+                    <el-alert
+                        v-if="nodeDialog.form.legacy_form_schema && !nodeDialog.form.form_fields.length"
+                        title="当前节点存在旧版 JSON 表单配置，暂时无法直接可视化编辑。你可以新增字段开始迁移，保存后将切换为可视化结构。"
+                        type="warning"
+                        :closable="false"
+                        style="margin-bottom: 12px;"
+                    />
+                    <div v-if="!nodeDialog.form.form_fields.length" class="form-builder-empty">
+                        这个节点还没有表单字段。点击上面的按钮添加字段，然后拖动字段卡片即可调整顺序。
+                    </div>
+                    <div v-else class="form-field-list">
+                        <div
+                            v-for="(field, fieldIndex) in nodeDialog.form.form_fields"
+                            :key="field.id || field.key || fieldIndex"
+                            class="form-field-card"
+                            :class="{ dragging: nodeDialog.dragIndex === fieldIndex }"
+                            :draggable="!nodeDialog.form.form_ref_code"
+                            @dragstart="onFormFieldDragStart(fieldIndex)"
+                            @dragover.prevent
+                            @drop="onFormFieldDrop(fieldIndex)"
+                            @dragend="onFormFieldDragEnd"
+                        >
+                            <div class="form-field-head">
+                                <div class="form-field-title">
+                                    <span class="form-drag-handle">拖动</span>
+                                    <span>[[ field.label || field.key || ('字段' + (fieldIndex + 1)) ]]</span>
+                                </div>
+                                <el-button link type="danger" :disabled="!!nodeDialog.form.form_ref_code" @click="removeFormField(fieldIndex)">删除字段</el-button>
+                            </div>
+                            <el-row :gutter="12">
+                                <el-col :span="8">
+                                    <el-form-item label="字段标识">
+                                        <el-input v-model="field.key" :disabled="!!nodeDialog.form.form_ref_code" placeholder="如: quality_note" />
+                                    </el-form-item>
+                                </el-col>
+                                <el-col :span="8">
+                                    <el-form-item label="字段名称">
+                                        <el-input v-model="field.label" :disabled="!!nodeDialog.form.form_ref_code" placeholder="如: 质检说明" />
+                                    </el-form-item>
+                                </el-col>
+                                <el-col :span="8">
+                                    <el-form-item label="字段类型">
+                                        <el-select v-model="field.component" :disabled="!!nodeDialog.form.form_ref_code">
+                                            <el-option label="单行输入" value="input" />
+                                            <el-option label="多行文本" value="textarea" />
+                                            <el-option label="数字" value="number" />
+                                            <el-option label="文件上传" value="file" />
+                                            <el-option label="单选" value="radio" />
+                                            <el-option label="多选" value="checkbox" />
+                                            <el-option label="下拉选择" value="select" />
+                                            <el-option label="开关" value="switch" />
+                                            <el-option label="日期" value="date" />
+                                            <el-option label="日期时间" value="datetime" />
+                                        </el-select>
+                                    </el-form-item>
+                                </el-col>
+                            </el-row>
+                            <el-row :gutter="12">
+                                <el-col :span="8">
+                                    <el-form-item label="占位提示">
+                                        <el-input v-model="field.placeholder" :disabled="!!nodeDialog.form.form_ref_code" placeholder="可选" />
+                                    </el-form-item>
+                                </el-col>
+                                <el-col :span="6">
+                                    <el-form-item label="默认值">
+                                        <el-input v-model="field.default" :disabled="!!nodeDialog.form.form_ref_code" placeholder="可选" />
+                                    </el-form-item>
+                                </el-col>
+                                <el-col :span="5">
+                                    <el-form-item label="必填">
+                                        <el-switch v-model="field.required" :disabled="!!nodeDialog.form.form_ref_code" />
+                                    </el-form-item>
+                                </el-col>
+                                <el-col :span="5" v-if="field.component === 'textarea'">
+                                    <el-form-item label="行数">
+                                        <el-input-number v-model="field.rows" :disabled="!!nodeDialog.form.form_ref_code" :min="2" :max="10" />
+                                    </el-form-item>
+                                </el-col>
+                            </el-row>
+                            <el-row :gutter="12">
+                                <el-col :span="8">
+                                    <el-form-item label="默认值来源">
+                                        <el-select v-model="field.default_config.source_type" :disabled="!!nodeDialog.form.form_ref_code">
+                                            <el-option label="固定值" value="literal" />
+                                            <el-option label="流程上下文" value="context" />
+                                            <el-option label="枚举" value="enum" />
+                                            <el-option label="数据库" value="db" />
+                                        </el-select>
+                                    </el-form-item>
+                                </el-col>
+                                <el-col :span="8" v-if="field.default_config.source_type === 'context'">
+                                    <el-form-item label="上下文路径">
+                                        <el-input v-model="field.default_config.context_path" :disabled="!!nodeDialog.form.form_ref_code" placeholder="如: form.NODE_A.amount" />
+                                    </el-form-item>
+                                </el-col>
+                                <el-col :span="8" v-if="field.default_config.source_type === 'enum'">
+                                    <el-form-item label="枚举编码">
+                                        <el-input v-model="field.default_config.enum_code" :disabled="!!nodeDialog.form.form_ref_code" placeholder="如: order.status" />
+                                    </el-form-item>
+                                </el-col>
+                                <el-col :span="8" v-if="field.default_config.source_type === 'db'">
+                                    <el-form-item label="数据源编码">
+                                        <el-input v-model="field.default_config.db_source_code" :disabled="!!nodeDialog.form.form_ref_code" placeholder="如: order.field" />
+                                    </el-form-item>
+                                </el-col>
+                            </el-row>
+                            <el-row :gutter="12">
+                                <el-col :span="8">
+                                    <el-form-item label="读取路径">
+                                        <el-input v-model="field.context_binding.read_path" :disabled="!!nodeDialog.form.form_ref_code" placeholder="为空则走默认路径" />
+                                    </el-form-item>
+                                </el-col>
+                                <el-col :span="8">
+                                    <el-form-item label="写入路径">
+                                        <el-input v-model="field.context_binding.write_path" :disabled="!!nodeDialog.form.form_ref_code" placeholder="为空则走默认路径" />
+                                    </el-form-item>
+                                </el-col>
+                                <el-col :span="8">
+                                    <el-form-item label="写入策略">
+                                        <el-select v-model="field.context_binding.write_mode" :disabled="!!nodeDialog.form.form_ref_code">
+                                            <el-option label="覆盖写入" value="overwrite" />
+                                            <el-option label="仅空值写入" value="merge_if_absent" />
+                                        </el-select>
+                                    </el-form-item>
+                                </el-col>
+                            </el-row>
+                            <el-row v-if="field.component === 'number'" :gutter="12">
+                                <el-col :span="8">
+                                    <el-form-item label="最小值">
+                                        <el-input-number v-model="field.min" :disabled="!!nodeDialog.form.form_ref_code" />
+                                    </el-form-item>
+                                </el-col>
+                                <el-col :span="8">
+                                    <el-form-item label="最大值">
+                                        <el-input-number v-model="field.max" :disabled="!!nodeDialog.form.form_ref_code" />
+                                    </el-form-item>
+                                </el-col>
+                                <el-col :span="8">
+                                    <el-form-item label="步长">
+                                        <el-input-number v-model="field.step" :disabled="!!nodeDialog.form.form_ref_code" :min="1" />
+                                    </el-form-item>
+                                </el-col>
+                            </el-row>
+                            <el-row v-if="field.component === 'file'" :gutter="12">
+                                <el-col :span="12">
+                                    <el-form-item label="accept">
+                                        <el-input v-model="field.accept" :disabled="!!nodeDialog.form.form_ref_code" placeholder="如: .pdf,.jpg 或 image/*" />
+                                    </el-form-item>
+                                </el-col>
+                                <el-col :span="12">
+                                    <el-form-item label="多文件">
+                                        <el-switch v-model="field.multiple" :disabled="!!nodeDialog.form.form_ref_code" />
+                                    </el-form-item>
+                                </el-col>
+                            </el-row>
+                            <div v-if="['select', 'radio', 'checkbox'].includes(field.component)">
+                                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                                    <span style="font-weight:600;color:#334155;">选项配置</span>
+                                    <el-button
+                                        size="small"
+                                        type="primary"
+                                        plain
+                                        :disabled="!!nodeDialog.form.form_ref_code || field.options_config.source_type !== 'manual'"
+                                        @click="addFormFieldOption(field)"
+                                    >新增选项</el-button>
+                                </div>
+                                <el-row :gutter="12" style="margin-bottom: 8px;">
+                                    <el-col :span="8">
+                                        <el-form-item label="选项来源">
+                                            <el-select v-model="field.options_config.source_type" :disabled="!!nodeDialog.form.form_ref_code">
+                                                <el-option label="手工维护" value="manual" />
+                                                <el-option label="枚举" value="enum" />
+                                                <el-option label="流程上下文" value="context" />
+                                                <el-option label="数据库" value="db" />
+                                            </el-select>
+                                        </el-form-item>
+                                    </el-col>
+                                    <el-col :span="8" v-if="field.options_config.source_type === 'enum'">
+                                        <el-form-item label="枚举编码">
+                                            <el-input v-model="field.options_config.enum_code" :disabled="!!nodeDialog.form.form_ref_code" placeholder="如: order.status" />
+                                        </el-form-item>
+                                    </el-col>
+                                    <el-col :span="8" v-if="field.options_config.source_type === 'context'">
+                                        <el-form-item label="上下文路径">
+                                            <el-input v-model="field.options_config.context_path" :disabled="!!nodeDialog.form.form_ref_code" placeholder="如: options.audit_status" />
+                                        </el-form-item>
+                                    </el-col>
+                                    <el-col :span="8" v-if="field.options_config.source_type === 'db'">
+                                        <el-form-item label="数据源编码">
+                                            <el-input v-model="field.options_config.db_source_code" :disabled="!!nodeDialog.form.form_ref_code" placeholder="如: site.address_options_by_order" />
+                                        </el-form-item>
+                                    </el-col>
+                                </el-row>
+                                <div v-if="field.options_config.source_type !== 'manual'" style="margin-bottom:8px;">
+                                    <el-switch
+                                        v-model="field.options_config.fallback_to_manual"
+                                        active-text="动态失败时回退手工选项"
+                                        :disabled="!!nodeDialog.form.form_ref_code"
+                                    />
+                                </div>
+                                <div
+                                    v-if="(field.options_config.source_type === 'manual' || field.options_config.fallback_to_manual) && !field.options.length"
+                                    class="form-builder-empty"
+                                >请至少添加一个选项。</div>
+                                <div v-else-if="field.options_config.source_type === 'manual' || field.options_config.fallback_to_manual">
+                                    <div v-for="(option, optionIndex) in field.options" :key="option.id || optionIndex" class="form-option-row">
+                                        <el-input v-model="option.label" :disabled="!!nodeDialog.form.form_ref_code" placeholder="显示名" />
+                                        <el-input v-model="option.value" :disabled="!!nodeDialog.form.form_ref_code" placeholder="提交值" />
+                                        <el-button link type="danger" :disabled="!!nodeDialog.form.form_ref_code" @click="removeFormFieldOption(field, optionIndex)">删除</el-button>
+                                    </div>
+                                </div>
+                            </div>
+                            <el-row :gutter="12">
+                                <el-col :span="12">
+                                    <el-form-item label="CSS样式">
+                                        <el-input
+                                            v-model="field.css_text"
+                                            :disabled="!!nodeDialog.form.form_ref_code"
+                                            type="textarea"
+                                            :autosize="{ minRows: 2, maxRows: 4 }"
+                                            placeholder="例如: width:280px; border:1px solid #dbeafe;" />
+                                    </el-form-item>
+                                </el-col>
+                                <el-col :span="12">
+                                    <el-form-item label="JS脚本">
+                                        <el-input
+                                            v-model="field.js_text"
+                                            :disabled="!!nodeDialog.form.form_ref_code"
+                                            type="textarea"
+                                            :autosize="{ minRows: 2, maxRows: 4 }"
+                                            placeholder="可访问 value、formData、field、helpers；return 可覆盖当前值" />
+                                    </el-form-item>
+                                </el-col>
+                            </el-row>
+                        </div>
+                    </div>
+                </div>
             </el-form-item>
 
             <div class="panel-head" style="border:0;padding:8px 0;">审批组</div>
@@ -545,7 +884,7 @@
 
 {% block extra_js %}
 <script type="module">
-    const { reactive, ref, computed, onMounted, onBeforeUnmount, inject } = Vue;
+    const { reactive, ref, computed, onMounted, onBeforeUnmount, inject, nextTick } = Vue;
 
     window.createApp({
         setup() {
@@ -553,9 +892,21 @@
             const goBack = () => {
                 window.location.href = "{% get_previous_url %}";
             };
+            const openFlowFormDesigner = async () => {
+                if (!flowId.value) {
+                    ElMessage.warning("请先保存流程后再进入表单设计器");
+                    const saved = await saveFlow({ showMessage: false });
+                    if (!saved || !flowId.value) return;
+                }
+                window.open(`/admin/flow_engine/definition/${flowId.value}/form_designer/`, "_blank");
+            };
 
             const flowId = ref("{{flow_id}}");
-            const pageData = reactive({ pageLoading: true });
+            const pageData = reactive({
+                pageLoading: true,
+                saving: false,
+                publishing: false,
+            });
             const flowFormRef = ref(null);
             const canvasWrapRef = ref(null);
             const canvasBoardRef = ref(null);
@@ -615,17 +966,28 @@
                 { label: "权限包", value: "perm_pack" },
                 { label: "指定人", value: "user" },
             ];
+            const FORM_REF_CODE_KEY = "__form_ref_code";
+            const FORM_REF_NAME_KEY = "__form_ref_name";
 
             const permPackOptions = ref([]);
             const userOptions = ref([]);
             const userLoading = ref(false);
+            const formLibrary = reactive([]);
+            const formLibraryOptions = computed(() =>
+                formLibrary.map((item) => ({
+                    code: item.code,
+                    name: `${item.name || item.code}${item.code ? ` (${item.code})` : ""}`,
+                }))
+            );
 
             const NODE_WIDTH = 220;
             const NODE_HEIGHT = 100;
+            let formFieldSeed = 1;
 
             const nodeDialog = reactive({
                 visible: false,
                 editIndex: -1,
+                dragIndex: -1,
                 form: {
                     code: "",
                     name: "",
@@ -637,8 +999,18 @@
                     y: 120,
                     form_schema_text: "",
                     form_schema: null,
+                    form_ref_code: "",
+                    form_fields: [],
+                    legacy_form_schema: null,
                     groups: [],
                 },
+            });
+
+            const currentNodeFormRefName = computed(() => {
+                const refCode = nodeDialog.form?.form_ref_code || "";
+                if (!refCode) return "";
+                const matched = formLibrary.find((item) => item.code === refCode);
+                return matched?.name || "";
             });
 
             const selectedNode = computed(() => {
@@ -689,7 +1061,351 @@
                 if (!schema || typeof schema !== "object") return null;
                 const cloned = deepClone(schema);
                 delete cloned.__ui;
+                delete cloned.__form_library;
                 return Object.keys(cloned).length ? cloned : null;
+            };
+
+            const normalizeLibraryFields = (fields) => {
+                const raw = Array.isArray(fields) ? fields : [];
+                return raw
+                    .map((field, index) => {
+                        const key = (field?.key || field?.name || field?.prop || "").toString().trim();
+                        const label = (field?.label || field?.title || field?.name || "").toString().trim();
+                        if (!key || !label) return null;
+                        const component = (field?.component || field?.widget || field?.type || "input").toString();
+                        const payload = {
+                            key,
+                            label,
+                            component,
+                            required: !!field?.required,
+                            order: Number.isFinite(Number(field?.order)) ? Number(field.order) : index,
+                        };
+                        if (field?.placeholder) payload.placeholder = field.placeholder;
+                        if (Object.prototype.hasOwnProperty.call(field || {}, "default")) payload.default = field.default;
+                        if (Object.prototype.hasOwnProperty.call(field || {}, "default_value") && !Object.prototype.hasOwnProperty.call(payload, "default")) {
+                            payload.default = field.default_value;
+                        }
+                        if (field?.default_config && typeof field.default_config === "object") {
+                            payload.default_config = deepClone(field.default_config);
+                        }
+                        if (field?.context_binding && typeof field.context_binding === "object") {
+                            payload.context_binding = deepClone(field.context_binding);
+                        }
+                        if (field?.options_config && typeof field.options_config === "object") {
+                            payload.options_config = deepClone(field.options_config);
+                        }
+                        if (field?.rows) payload.rows = field.rows;
+                        if (field?.min !== undefined && field?.min !== null) payload.min = field.min;
+                        if (field?.max !== undefined && field?.max !== null) payload.max = field.max;
+                        if (field?.step !== undefined && field?.step !== null) payload.step = field.step;
+                        if (field?.accept) payload.accept = field.accept;
+                        if (field?.multiple) payload.multiple = true;
+                        if (field?.css_text) payload.css_text = field.css_text;
+                        if (field?.js_text) payload.js_text = field.js_text;
+                        if (Array.isArray(field?.options || field?.choices || field?.enum)) {
+                            payload.options = (field.options || field.choices || field.enum)
+                                .map((option) => {
+                                    const label = typeof option === "object"
+                                        ? (option.label ?? option.name ?? String(option.value ?? option.id ?? "")).toString().trim()
+                                        : String(option ?? "").trim();
+                                    const value = typeof option === "object"
+                                        ? (option.value ?? option.id ?? option.label ?? option.name ?? "")
+                                        : option;
+                                    if (!label || value === "" || value === undefined || value === null) {
+                                        return null;
+                                    }
+                                    return { label, value };
+                                })
+                                .filter(Boolean);
+                        }
+                        return payload;
+                    })
+                    .filter(Boolean)
+                    .sort((a, b) => (a.order || 0) - (b.order || 0));
+            };
+
+            const normalizeFormLibrary = (rawLibrary) => {
+                const raw = Array.isArray(rawLibrary) ? rawLibrary : [];
+                const existed = new Set();
+                const normalized = [];
+                raw.forEach((item, index) => {
+                    if (!item || typeof item !== "object") return;
+                    const code = (item.code || "").toString().trim();
+                    if (!code || existed.has(code)) return;
+                    existed.add(code);
+                    normalized.push({
+                        code,
+                        name: (item.name || code).toString().trim(),
+                        description: (item.description || "").toString().trim(),
+                        order: Number.isFinite(Number(item.order)) ? Number(item.order) : index,
+                        fields: normalizeLibraryFields(item.fields),
+                    });
+                });
+                normalized.sort((a, b) => (a.order || 0) - (b.order || 0));
+                normalized.forEach((item, idx) => {
+                    item.order = idx;
+                });
+                return normalized;
+            };
+
+            const findLibraryForm = (code) => {
+                if (!code) return null;
+                return formLibrary.find((item) => item.code === code) || null;
+            };
+
+            const nextFormFieldId = () => {
+                const id = `field_${formFieldSeed}`;
+                formFieldSeed += 1;
+                return id;
+            };
+
+            const nextFormOptionId = () => {
+                const id = `option_${formFieldSeed}`;
+                formFieldSeed += 1;
+                return id;
+            };
+
+            const defaultFieldLabelMap = {
+                input: "单行输入",
+                textarea: "多行文本",
+                number: "数字",
+                file: "文件上传",
+                radio: "单选",
+                checkbox: "多选",
+                select: "下拉选择",
+                switch: "开关",
+                date: "日期",
+                datetime: "日期时间",
+            };
+
+            const createEmptyFieldOption = () => ({
+                id: nextFormOptionId(),
+                label: "",
+                value: "",
+            });
+
+            const normalizeDefaultConfig = (field, defaultValue) => {
+                const raw = field?.default_config;
+                const sourceType = (raw?.source_type || "literal").toString().toLowerCase();
+                return {
+                    source_type: sourceType,
+                    value: Object.prototype.hasOwnProperty.call(raw || {}, "value")
+                        ? raw.value
+                        : defaultValue,
+                    context_path: raw?.context_path || "",
+                    enum_code: raw?.enum_code || "",
+                    db_source_code: raw?.db_source_code || "",
+                    fallback_value: Object.prototype.hasOwnProperty.call(raw || {}, "fallback_value")
+                        ? raw.fallback_value
+                        : "",
+                };
+            };
+
+            const normalizeContextBinding = (field) => {
+                const raw = field?.context_binding;
+                return {
+                    read_path: raw?.read_path || "",
+                    write_path: raw?.write_path || "",
+                    write_mode: ["overwrite", "merge_if_absent"].includes(raw?.write_mode)
+                        ? raw.write_mode
+                        : "overwrite",
+                };
+            };
+
+            const normalizeOptionsConfig = (field) => {
+                const raw = field?.options_config;
+                return {
+                    source_type: (raw?.source_type || "manual").toString().toLowerCase(),
+                    context_path: raw?.context_path || "",
+                    enum_code: raw?.enum_code || "",
+                    db_source_code: raw?.db_source_code || "",
+                    label_key: raw?.label_key || "label",
+                    value_key: raw?.value_key || "value",
+                    fallback_to_manual: Object.prototype.hasOwnProperty.call(raw || {}, "fallback_to_manual")
+                        ? !!raw.fallback_to_manual
+                        : true,
+                };
+            };
+
+            const createEmptyFormField = (component = "input") => ({
+                id: nextFormFieldId(),
+                key: "",
+                label: defaultFieldLabelMap[component] || "新字段",
+                component,
+                placeholder: "",
+                default: component === "switch" ? false : "",
+                required: false,
+                rows: component === "textarea" ? 3 : undefined,
+                min: undefined,
+                max: undefined,
+                step: component === "number" ? 1 : undefined,
+                accept: component === "file" ? "" : undefined,
+                multiple: component === "file" ? false : undefined,
+                css_text: "",
+                js_text: "",
+                default_config: {
+                    source_type: "literal",
+                    value: component === "switch" ? false : "",
+                    context_path: "",
+                    enum_code: "",
+                    db_source_code: "",
+                    fallback_value: "",
+                },
+                context_binding: {
+                    read_path: "",
+                    write_path: "",
+                    write_mode: "overwrite",
+                },
+                options_config: {
+                    source_type: "manual",
+                    context_path: "",
+                    enum_code: "",
+                    db_source_code: "",
+                    label_key: "label",
+                    value_key: "value",
+                    fallback_to_manual: true,
+                },
+                options: ["select", "radio", "checkbox"].includes(component) ? [createEmptyFieldOption()] : [],
+            });
+
+            const normalizeFormSchemaFields = (schema) => {
+                const rawFields = Array.isArray(schema)
+                    ? schema
+                    : Array.isArray(schema?.fields)
+                        ? schema.fields
+                        : [];
+                return rawFields.map((field) => ({
+                    ...(field || {}),
+                    id: nextFormFieldId(),
+                    key: field?.key || field?.name || field?.prop || "",
+                    label: field?.label || field?.title || field?.name || "",
+                    component: field?.component || field?.widget || field?.type || "input",
+                    placeholder: field?.placeholder || "",
+                    default: Object.prototype.hasOwnProperty.call(field || {}, "default")
+                        ? field.default
+                        : field?.default_value ?? "",
+                    required: !!field?.required,
+                    rows: field?.rows,
+                    min: field?.min,
+                    max: field?.max,
+                    step: field?.step,
+                    accept: field?.accept,
+                    multiple: !!field?.multiple,
+                    css_text: field?.css_text || "",
+                    js_text: field?.js_text || "",
+                    default_config: normalizeDefaultConfig(
+                        field,
+                        Object.prototype.hasOwnProperty.call(field || {}, "default")
+                            ? field.default
+                            : field?.default_value ?? ""
+                    ),
+                    context_binding: normalizeContextBinding(field),
+                    options_config: normalizeOptionsConfig(field),
+                    options: Array.isArray(field?.options || field?.choices || field?.enum)
+                        ? (field.options || field.choices || field.enum).map((option) => ({
+                            id: nextFormOptionId(),
+                            label: typeof option === "object" ? option.label ?? option.name ?? String(option.value ?? option.id ?? "") : String(option ?? ""),
+                            value: typeof option === "object" ? option.value ?? option.id ?? option.label ?? option.name ?? "" : option,
+                        }))
+                        : [],
+                }));
+            };
+
+            const buildFormSchemaFromFields = (fields) => {
+                const normalizedFields = (fields || [])
+                    .map((field, index) => {
+                        const key = (field.key || "").trim();
+                        const label = (field.label || "").trim();
+                        if (!key || !label) return null;
+                        const payload = {
+                            key,
+                            label,
+                            component: field.component || "input",
+                            required: !!field.required,
+                        };
+                        if (field.placeholder) payload.placeholder = field.placeholder;
+                        if (field.default !== "" && field.default !== undefined && field.default !== null) payload.default = field.default;
+                        const defaultSource = (field?.default_config?.source_type || "literal").toString().toLowerCase();
+                        const defaultConfig = {
+                            source_type: defaultSource,
+                            value: field?.default_config?.value,
+                            context_path: field?.default_config?.context_path || "",
+                            enum_code: field?.default_config?.enum_code || "",
+                            db_source_code: field?.default_config?.db_source_code || "",
+                            fallback_value: field?.default_config?.fallback_value,
+                        };
+                        if (
+                            defaultConfig.source_type !== "literal"
+                            || defaultConfig.context_path
+                            || defaultConfig.enum_code
+                            || defaultConfig.db_source_code
+                            || (defaultConfig.fallback_value !== "" && defaultConfig.fallback_value !== undefined && defaultConfig.fallback_value !== null)
+                        ) {
+                            payload.default_config = defaultConfig;
+                        }
+                        if (field.component === "textarea" && field.rows) payload.rows = field.rows;
+                        if (field.component === "file") {
+                            if (field.accept) payload.accept = field.accept;
+                            if (field.multiple) payload.multiple = true;
+                        }
+                        if (field.css_text) payload.css_text = field.css_text;
+                        if (field.js_text) payload.js_text = field.js_text;
+                        if (field.component === "number") {
+                            if (field.min !== undefined && field.min !== null) payload.min = field.min;
+                            if (field.max !== undefined && field.max !== null) payload.max = field.max;
+                            if (field.step !== undefined && field.step !== null) payload.step = field.step;
+                        }
+                        if (["select", "radio", "checkbox"].includes(field.component)) {
+                            const optionsConfig = {
+                                source_type: (field?.options_config?.source_type || "manual").toString().toLowerCase(),
+                                context_path: field?.options_config?.context_path || "",
+                                enum_code: field?.options_config?.enum_code || "",
+                                db_source_code: field?.options_config?.db_source_code || "",
+                                label_key: field?.options_config?.label_key || "label",
+                                value_key: field?.options_config?.value_key || "value",
+                                fallback_to_manual: !!field?.options_config?.fallback_to_manual,
+                            };
+                            const options = (field.options || [])
+                                .map((option) => {
+                                    const labelVal = (option.label ?? "").toString().trim();
+                                    const valueVal = option.value;
+                                    if (!labelVal || valueVal === "" || valueVal === undefined || valueVal === null) {
+                                        return null;
+                                    }
+                                    return {
+                                        label: labelVal,
+                                        value: valueVal,
+                                    };
+                                })
+                                .filter(Boolean);
+                            payload.options = options;
+                            if (
+                                optionsConfig.source_type !== "manual"
+                                || optionsConfig.context_path
+                                || optionsConfig.enum_code
+                                || optionsConfig.db_source_code
+                                || optionsConfig.label_key !== "label"
+                                || optionsConfig.value_key !== "value"
+                                || !optionsConfig.fallback_to_manual
+                            ) {
+                                payload.options_config = optionsConfig;
+                            }
+                        }
+                        const contextBinding = {
+                            read_path: field?.context_binding?.read_path || "",
+                            write_path: field?.context_binding?.write_path || "",
+                            write_mode: ["overwrite", "merge_if_absent"].includes(field?.context_binding?.write_mode)
+                                ? field.context_binding.write_mode
+                                : "overwrite",
+                        };
+                        if (contextBinding.read_path || contextBinding.write_path || contextBinding.write_mode !== "overwrite") {
+                            payload.context_binding = contextBinding;
+                        }
+                        payload.order = index;
+                        return payload;
+                    })
+                    .filter(Boolean);
+                return normalizedFields.length ? { fields: normalizedFields } : null;
             };
 
             const ensureNodePosition = (node, index) => {
@@ -707,22 +1423,34 @@
                 flowForm.name = res.name;
                 flowForm.description = res.description;
                 flowForm.is_active = res.is_active;
+                const normalizedLibrary = normalizeFormLibrary(res.form_library || []);
+                formLibrary.splice(0, formLibrary.length, ...normalizedLibrary);
 
                 const mappedNodes = (res.nodes || []).map((n, index) => {
                     const ui = (n.form_schema && n.form_schema.__ui) || {};
                     const cleanedSchema = stripUi(n.form_schema);
+                    const formRefCode = (cleanedSchema && cleanedSchema[FORM_REF_CODE_KEY]) || "";
                     const node = {
                         ...n,
                         x: typeof ui.x === "number" ? ui.x : undefined,
                         y: typeof ui.y === "number" ? ui.y : undefined,
                         form_schema: cleanedSchema,
                         form_schema_text: cleanedSchema ? JSON.stringify(cleanedSchema, null, 2) : "",
+                        form_ref_code: formRefCode,
                     };
                     ensureNodePosition(node, index);
                     return node;
                 });
                 nodes.splice(0, nodes.length, ...mappedNodes);
                 transitions.splice(0, transitions.length, ...(res.transitions || []));
+            };
+
+            const refreshFormLibrary = async () => {
+                if (!flowId.value) return;
+                const res = await request.get("/flow_engine/form_library_detail", { flow_id: flowId.value });
+                const normalized = normalizeFormLibrary(res.forms || []);
+                formLibrary.splice(0, formLibrary.length, ...normalized);
+                ElMessage.success("表单库已刷新");
             };
 
             const nextCode = (prefix) => {
@@ -755,6 +1483,7 @@
                     y: 120 + Math.floor(nodes.length / 4) * 170,
                     form_schema: null,
                     form_schema_text: "",
+                    form_ref_code: "",
                     groups: [],
                 };
                 nodes.push(newNode);
@@ -938,13 +1667,77 @@
                 dragState.nodeIndex = -1;
             };
 
-            const openNodeDialog = (index = -1) => {
-                nodeDialog.editIndex = index;
-                if (index >= 0) {
-                    nodeDialog.form = deepClone(nodes[index]);
+            const applyRefSchemaMeta = (schema, formRefCode) => {
+                if (!schema || typeof schema !== "object") {
+                    schema = {};
+                }
+                if (!formRefCode) {
+                    delete schema[FORM_REF_CODE_KEY];
+                    delete schema[FORM_REF_NAME_KEY];
+                    return schema;
+                }
+                const matched = findLibraryForm(formRefCode);
+                if (!matched) {
+                    delete schema[FORM_REF_CODE_KEY];
+                    delete schema[FORM_REF_NAME_KEY];
+                    return schema;
+                }
+                schema[FORM_REF_CODE_KEY] = matched.code;
+                schema[FORM_REF_NAME_KEY] = matched.name;
+                return schema;
+            };
+
+            const onNodeFormRefChange = (formRefCode) => {
+                if (!formRefCode) {
+                    nodeDialog.form.form_ref_code = "";
+                    const schema = applyRefSchemaMeta(
+                        nodeDialog.form.form_schema ? deepClone(nodeDialog.form.form_schema) : {},
+                        ""
+                    );
+                    nodeDialog.form.form_schema = Object.keys(schema).length ? schema : null;
                     nodeDialog.form.form_schema_text = nodeDialog.form.form_schema
                         ? JSON.stringify(nodeDialog.form.form_schema, null, 2)
                         : "";
+                    return;
+                }
+                const matched = findLibraryForm(formRefCode);
+                if (!matched) {
+                    ElMessage.error(`未找到表单库定义: ${formRefCode}`);
+                    nodeDialog.form.form_ref_code = "";
+                    return;
+                }
+                nodeDialog.form.form_ref_code = formRefCode;
+                nodeDialog.form.legacy_form_schema = null;
+                nodeDialog.form.form_fields = normalizeFormSchemaFields({
+                    fields: deepClone(matched.fields || []),
+                });
+                const schema = applyRefSchemaMeta({
+                    fields: deepClone(matched.fields || []),
+                }, formRefCode);
+                nodeDialog.form.form_schema = schema;
+                nodeDialog.form.form_schema_text = JSON.stringify(schema, null, 2);
+            };
+
+            const openNodeDialog = (index = -1) => {
+                nodeDialog.editIndex = index;
+                nodeDialog.dragIndex = -1;
+                if (index >= 0) {
+                    nodeDialog.form = deepClone(nodes[index]);
+                    const refCode = (nodeDialog.form.form_schema && nodeDialog.form.form_schema[FORM_REF_CODE_KEY])
+                        || nodeDialog.form.form_ref_code
+                        || "";
+                    nodeDialog.form.form_ref_code = refCode;
+                    if (refCode) {
+                        onNodeFormRefChange(refCode);
+                    } else {
+                        nodeDialog.form.form_fields = normalizeFormSchemaFields(nodeDialog.form.form_schema);
+                        nodeDialog.form.legacy_form_schema = nodeDialog.form.form_fields.length
+                            ? null
+                            : (nodeDialog.form.form_schema ? deepClone(nodeDialog.form.form_schema) : null);
+                        nodeDialog.form.form_schema_text = nodeDialog.form.form_schema
+                            ? JSON.stringify(nodeDialog.form.form_schema, null, 2)
+                            : "";
+                    }
                 } else {
                     nodeDialog.form = {
                         code: nextCode("task"),
@@ -957,10 +1750,56 @@
                         y: 100,
                         form_schema_text: "",
                         form_schema: null,
+                        form_ref_code: "",
+                        form_fields: [],
+                        legacy_form_schema: null,
                         groups: [],
                     };
                 }
                 nodeDialog.visible = true;
+            };
+
+            const addFormField = (component = "input") => {
+                if (nodeDialog.form.form_ref_code) return;
+                nodeDialog.form.legacy_form_schema = null;
+                nodeDialog.form.form_fields.push(createEmptyFormField(component));
+            };
+
+            const removeFormField = (index) => {
+                if (nodeDialog.form.form_ref_code) return;
+                nodeDialog.form.form_fields.splice(index, 1);
+            };
+
+            const addFormFieldOption = (field) => {
+                if (nodeDialog.form.form_ref_code) return;
+                if (!Array.isArray(field.options)) {
+                    field.options = [];
+                }
+                field.options.push(createEmptyFieldOption());
+            };
+
+            const removeFormFieldOption = (field, optionIndex) => {
+                if (nodeDialog.form.form_ref_code) return;
+                if (!Array.isArray(field.options)) return;
+                field.options.splice(optionIndex, 1);
+            };
+
+            const onFormFieldDragStart = (index) => {
+                if (nodeDialog.form.form_ref_code) return;
+                nodeDialog.dragIndex = index;
+            };
+
+            const onFormFieldDrop = (index) => {
+                const fromIndex = nodeDialog.dragIndex;
+                nodeDialog.dragIndex = -1;
+                if (fromIndex < 0 || fromIndex === index) return;
+                const moved = nodeDialog.form.form_fields.splice(fromIndex, 1)[0];
+                if (!moved) return;
+                nodeDialog.form.form_fields.splice(index, 0, moved);
+            };
+
+            const onFormFieldDragEnd = () => {
+                nodeDialog.dragIndex = -1;
             };
 
             const addGroup = () => {
@@ -990,18 +1829,56 @@
             };
 
             const confirmNode = () => {
-                let formSchema = null;
-                if (nodeDialog.form.form_schema_text) {
-                    try {
-                        formSchema = JSON.parse(nodeDialog.form.form_schema_text);
-                    } catch (err) {
-                        ElMessage.error("表单配置必须是合法 JSON");
+                let formFields = nodeDialog.form.form_fields || [];
+                if (nodeDialog.form.form_ref_code) {
+                    const matched = findLibraryForm(nodeDialog.form.form_ref_code);
+                    if (!matched) {
+                        ElMessage.error(`引用表单不存在: ${nodeDialog.form.form_ref_code}`);
                         return;
                     }
+                    formFields = normalizeFormSchemaFields({
+                        fields: deepClone(matched.fields || []),
+                    });
+                    nodeDialog.form.form_fields = formFields;
+                }
+                const duplicateKeys = new Set();
+                for (const field of formFields) {
+                    const key = (field.key || "").trim();
+                    const label = (field.label || "").trim();
+                    if (!key && !label) {
+                        continue;
+                    }
+                    if (!key || !label) {
+                        ElMessage.error("节点表单中的字段标识和字段名称都不能为空");
+                        return;
+                    }
+                    if (duplicateKeys.has(key)) {
+                        ElMessage.error(`节点表单字段标识重复: ${key}`);
+                        return;
+                    }
+                    duplicateKeys.add(key);
+                    const optionsSource = (field?.options_config?.source_type || "manual").toString().toLowerCase();
+                    const needsManualOptions = optionsSource === "manual" || !!field?.options_config?.fallback_to_manual;
+                    if (["select", "radio", "checkbox"].includes(field.component) && needsManualOptions && !(field.options || []).length) {
+                        ElMessage.error(`字段[${label}]至少需要一个选项`);
+                        return;
+                    }
+                }
+                let formSchema = nodeDialog.form.form_ref_code
+                    ? { fields: deepClone(findLibraryForm(nodeDialog.form.form_ref_code)?.fields || []) }
+                    : (formFields.length
+                        ? buildFormSchemaFromFields(formFields)
+                        : nodeDialog.form.legacy_form_schema);
+                if (formSchema && typeof formSchema === "object") {
+                    formSchema = applyRefSchemaMeta(
+                        deepClone(formSchema),
+                        nodeDialog.form.form_ref_code || ""
+                    );
                 }
                 const payloadNode = {
                     ...deepClone(nodeDialog.form),
                     form_schema: formSchema,
+                    form_schema_text: formSchema ? JSON.stringify(formSchema, null, 2) : "",
                 };
                 if (nodeDialog.editIndex >= 0) {
                     nodes[nodeDialog.editIndex] = payloadNode;
@@ -1039,11 +1916,18 @@
                 return true;
             };
 
-            const saveFlow = async () => {
-                if (!validateBeforeSave()) return;
-                if (!flowFormRef.value) return;
-                await flowFormRef.value.validate(async (valid) => {
-                    if (!valid) return;
+            const saveFlow = async (options = {}) => {
+                const showMessage = typeof options.showMessage === "boolean" ? options.showMessage : true;
+                const allowWhilePublishing = !!options.allowWhilePublishing;
+                if (pageData.saving || (!allowWhilePublishing && pageData.publishing)) return false;
+                if (!validateBeforeSave()) return false;
+                if (!flowFormRef.value) return false;
+                pageData.saving = true;
+                try {
+                    await nextTick();
+                    const valid = await flowFormRef.value.validate().catch(() => false);
+                    if (!valid) return false;
+
                     const payloadNodes = [];
                     for (let idx = 0; idx < nodes.length; idx += 1) {
                         const node = nodes[idx];
@@ -1053,10 +1937,20 @@
                                 parsedSchema = JSON.parse(node.form_schema_text);
                             } catch (err) {
                                 ElMessage.error(`节点[${node.code}]表单配置不是合法 JSON`);
-                                return;
+                                return false;
                             }
                         } else if (node.form_schema) {
                             parsedSchema = deepClone(node.form_schema);
+                        }
+                        if (node.form_ref_code) {
+                            const matched = findLibraryForm(node.form_ref_code);
+                            if (!matched) {
+                                ElMessage.error(`节点[${node.code}]引用表单不存在: ${node.form_ref_code}`);
+                                return false;
+                            }
+                            parsedSchema = applyRefSchemaMeta({
+                                fields: deepClone(matched.fields || []),
+                            }, node.form_ref_code);
                         }
                         const mergedSchema = parsedSchema || {};
                         mergedSchema.__ui = { x: node.x, y: node.y };
@@ -1095,25 +1989,44 @@
                             condition_expr: t.condition_expr,
                             description: t.description,
                         })),
+                        form_library: normalizeFormLibrary(formLibrary).map((item, index) => ({
+                            code: item.code,
+                            name: item.name,
+                            description: item.description,
+                            order: Number.isFinite(Number(item.order)) ? Number(item.order) : index,
+                            fields: deepClone(item.fields || []),
+                        })),
                     };
 
                     const res = await request.post("/flow_engine/flow_definition_save", payload);
                     if (res && res.flow_id) {
                         flowId.value = String(res.flow_id);
                     }
-                    ElMessage.success("保存成功");
-                });
+                    if (showMessage) {
+                        ElMessage.success("保存成功");
+                    }
+                    return true;
+                } finally {
+                    pageData.saving = false;
+                }
             };
 
             const publishFlow = async () => {
-                if (!flowId.value) {
-                    ElMessage.warning("请先保存流程");
-                    return;
+                if (pageData.saving || pageData.publishing) return;
+                pageData.publishing = true;
+                try {
+                    await nextTick();
+                    const saved = await saveFlow({ showMessage: false, allowWhilePublishing: true });
+                    if (!saved || !flowId.value) {
+                        return;
+                    }
+                    await request.post("/flow_engine/flow_definition_publish", {
+                        flow_id: Number(flowId.value),
+                    });
+                    ElMessage.success("发布成功");
+                } finally {
+                    pageData.publishing = false;
                 }
-                await request.post("/flow_engine/flow_definition_publish", {
-                    flow_id: Number(flowId.value),
-                });
-                ElMessage.success("发布成功");
             };
 
             const exportFlowJson = async () => {
@@ -1202,6 +2115,8 @@
                 flowFormRef,
                 flowForm,
                 flowRules,
+                formLibraryOptions,
+                currentNodeFormRefName,
                 canvasWrapRef,
                 canvasBoardRef,
                 importFileRef,
@@ -1241,11 +2156,21 @@
                 removeTransition,
                 startDragNode,
                 openNodeDialog,
+                addFormField,
+                removeFormField,
+                addFormFieldOption,
+                removeFormFieldOption,
+                onFormFieldDragStart,
+                onFormFieldDrop,
+                onFormFieldDragEnd,
+                onNodeFormRefChange,
                 addGroup,
                 removeGroup,
                 addRule,
                 removeRule,
                 confirmNode,
+                openFlowFormDesigner,
+                refreshFormLibrary,
                 saveFlow,
                 publishFlow,
                 exportFlowJson,

@@ -1,0 +1,1143 @@
+﻿{% extends "vue_base.html" %}
+{% load static %}
+
+{% block title %}
+{{ title }}
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    :root {
+        --wf-ink: #122033;
+        --wf-subtle: #5b6b7f;
+        --wf-line: #d8e1ea;
+        --wf-panel: #ffffff;
+        --wf-bg: linear-gradient(180deg, #f3f7fb 0%, #eef3f8 100%);
+        --wf-brand: #0f766e;
+        --wf-brand-soft: #d7f3ee;
+        --wf-success: #166534;
+        --wf-success-soft: #dcfce7;
+        --wf-danger: #b42318;
+        --wf-danger-soft: #fee4e2;
+        --wf-muted: #475467;
+        --wf-muted-soft: #eaecf0;
+        --wf-shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
+    }
+
+    body {
+        background: var(--wf-bg);
+    }
+
+    .workflow-shell {
+        padding: 20px;
+    }
+
+    .workflow-stack {
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+    }
+
+    .workflow-hero {
+        background:
+            radial-gradient(circle at top right, rgba(15, 118, 110, 0.18), transparent 30%),
+            linear-gradient(135deg, #16324f 0%, #0f766e 100%);
+        color: #fff;
+        border-radius: 22px;
+        padding: 24px;
+        box-shadow: var(--wf-shadow);
+    }
+
+    .workflow-hero-top {
+        display: flex;
+        justify-content: space-between;
+        gap: 16px;
+        flex-wrap: wrap;
+    }
+
+    .workflow-title {
+        font-size: 24px;
+        font-weight: 700;
+        line-height: 1.3;
+    }
+
+    .workflow-subtitle {
+        margin-top: 8px;
+        color: rgba(255, 255, 255, 0.78);
+        font-size: 14px;
+        line-height: 1.7;
+    }
+
+    .workflow-chip-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 14px;
+    }
+
+    .workflow-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 12px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.14);
+        backdrop-filter: blur(8px);
+        font-size: 13px;
+        line-height: 1;
+    }
+
+    .workflow-metrics {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(120px, 1fr));
+        gap: 12px;
+        min-width: 320px;
+        flex: 1;
+    }
+
+    .workflow-metric {
+        background: rgba(255, 255, 255, 0.12);
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        border-radius: 18px;
+        padding: 14px 16px;
+    }
+
+    .workflow-metric-label {
+        font-size: 12px;
+        color: rgba(255, 255, 255, 0.72);
+        letter-spacing: 0.04em;
+    }
+
+    .workflow-metric-value {
+        margin-top: 8px;
+        font-size: 20px;
+        font-weight: 700;
+        line-height: 1.2;
+    }
+
+    .workflow-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1.7fr) minmax(320px, 0.95fr);
+        gap: 18px;
+        align-items: start;
+    }
+
+    .workflow-column {
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+    }
+
+    .workflow-card {
+        background: var(--wf-panel);
+        border-radius: 22px;
+        border: 1px solid rgba(18, 32, 51, 0.06);
+        box-shadow: var(--wf-shadow);
+        overflow: hidden;
+    }
+
+    .workflow-card-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        padding: 18px 20px 0;
+    }
+
+    .workflow-card-title {
+        color: var(--wf-ink);
+        font-size: 18px;
+        font-weight: 700;
+    }
+
+    .workflow-card-subtitle {
+        color: var(--wf-subtle);
+        font-size: 13px;
+        line-height: 1.6;
+        margin-top: 4px;
+    }
+
+    .workflow-card-body {
+        padding: 18px 20px 20px;
+    }
+
+    .workflow-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 7px 12px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 600;
+        line-height: 1;
+    }
+
+    .workflow-badge.brand {
+        color: var(--wf-brand);
+        background: var(--wf-brand-soft);
+    }
+
+    .workflow-badge.success {
+        color: var(--wf-success);
+        background: var(--wf-success-soft);
+    }
+
+    .workflow-badge.danger {
+        color: var(--wf-danger);
+        background: var(--wf-danger-soft);
+    }
+
+    .workflow-badge.muted {
+        color: var(--wf-muted);
+        background: var(--wf-muted-soft);
+    }
+
+    .workflow-kv {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 14px;
+    }
+
+    .workflow-kv-item {
+        padding: 14px 16px;
+        border-radius: 16px;
+        background: #f8fafc;
+        border: 1px solid #edf2f7;
+    }
+
+    .workflow-kv-label {
+        font-size: 12px;
+        color: var(--wf-subtle);
+    }
+
+    .workflow-kv-value {
+        margin-top: 6px;
+        font-size: 15px;
+        font-weight: 600;
+        color: var(--wf-ink);
+        word-break: break-word;
+    }
+
+    .workflow-task-list {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .workflow-task-item {
+        border: 1px solid #dbe5ef;
+        border-radius: 16px;
+        padding: 14px 16px;
+        transition: all 0.2s ease;
+        cursor: pointer;
+        background: #fff;
+    }
+
+    .workflow-task-item.is-active {
+        border-color: #0f766e;
+        box-shadow: 0 0 0 4px rgba(15, 118, 110, 0.08);
+        background: #f2fbf9;
+    }
+
+    .workflow-task-name {
+        font-size: 15px;
+        font-weight: 700;
+        color: var(--wf-ink);
+    }
+
+    .workflow-task-meta {
+        margin-top: 8px;
+        color: var(--wf-subtle);
+        font-size: 13px;
+        line-height: 1.6;
+    }
+
+    .workflow-empty {
+        border-radius: 18px;
+        border: 1px dashed #cbd5e1;
+        padding: 18px;
+        background: #f8fafc;
+        color: var(--wf-subtle);
+        font-size: 14px;
+        line-height: 1.8;
+    }
+
+    .workflow-rework-note {
+        margin-bottom: 16px;
+        border-radius: 18px;
+        border: 1px solid #fecaca;
+        background: linear-gradient(135deg, #fff5f5 0%, #fff1f2 100%);
+        padding: 16px 18px;
+    }
+
+    .workflow-rework-title {
+        font-size: 14px;
+        font-weight: 700;
+        color: var(--wf-danger);
+    }
+
+    .workflow-rework-meta {
+        margin-top: 6px;
+        font-size: 12px;
+        color: #9f1239;
+    }
+
+    .workflow-rework-memo {
+        margin-top: 8px;
+        font-size: 13px;
+        line-height: 1.7;
+        color: var(--wf-ink);
+        white-space: pre-wrap;
+        word-break: break-word;
+    }
+
+    .workflow-step-list {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .workflow-step-item {
+        position: relative;
+        display: grid;
+        grid-template-columns: 44px minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 14px;
+        padding: 14px 16px;
+        border-radius: 18px;
+        background: #f8fafc;
+        border: 1px solid #edf2f7;
+    }
+
+    .workflow-step-index {
+        width: 44px;
+        height: 44px;
+        border-radius: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 14px;
+        color: var(--wf-ink);
+        background: #e2e8f0;
+    }
+
+    .workflow-step-item.done .workflow-step-index {
+        color: var(--wf-success);
+        background: var(--wf-success-soft);
+    }
+
+    .workflow-step-item.current .workflow-step-index {
+        color: var(--wf-brand);
+        background: var(--wf-brand-soft);
+    }
+
+    .workflow-step-item.rejected .workflow-step-index {
+        color: var(--wf-danger);
+        background: var(--wf-danger-soft);
+    }
+
+    .workflow-step-name {
+        font-size: 15px;
+        font-weight: 700;
+        color: var(--wf-ink);
+    }
+
+    .workflow-step-meta {
+        margin-top: 4px;
+        color: var(--wf-subtle);
+        font-size: 13px;
+    }
+
+    .workflow-log-list {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .workflow-log-item {
+        border-left: 4px solid #cbd5e1;
+        background: #f8fafc;
+        border-radius: 14px;
+        padding: 14px 16px;
+    }
+
+    .workflow-log-item.brand {
+        border-left-color: var(--wf-brand);
+    }
+
+    .workflow-log-item.success {
+        border-left-color: var(--wf-success);
+    }
+
+    .workflow-log-item.danger {
+        border-left-color: var(--wf-danger);
+    }
+
+    .workflow-log-title {
+        font-size: 15px;
+        font-weight: 700;
+        color: var(--wf-ink);
+    }
+
+    .workflow-log-meta {
+        margin-top: 6px;
+        color: var(--wf-subtle);
+        font-size: 12px;
+    }
+
+    .workflow-log-memo {
+        margin-top: 8px;
+        color: var(--wf-ink);
+        font-size: 13px;
+        line-height: 1.7;
+        white-space: pre-wrap;
+        word-break: break-word;
+    }
+
+    .workflow-toolbar {
+        display: flex;
+        justify-content: flex-end;
+        margin-top: 12px;
+    }
+
+    .workflow-form-block {
+        margin-top: 18px;
+        padding: 16px;
+        border-radius: 18px;
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+    }
+
+    .workflow-form-title {
+        font-size: 14px;
+        font-weight: 700;
+        color: var(--wf-ink);
+        margin-bottom: 6px;
+    }
+
+    .workflow-form-tip {
+        font-size: 12px;
+        line-height: 1.6;
+        color: var(--wf-subtle);
+        margin-bottom: 14px;
+    }
+
+    .workflow-native-file {
+        width: 100%;
+        min-height: 34px;
+        padding: 4px 0;
+    }
+
+    .workflow-form-container-block {
+        margin-bottom: 14px;
+        border: 1px dashed #cbd5e1;
+        border-radius: 12px;
+        background: #ffffff;
+        padding: 12px;
+    }
+
+    .workflow-form-container-head {
+        margin-bottom: 10px;
+        font-size: 13px;
+        font-weight: 700;
+        color: #334155;
+    }
+
+    .workflow-form-container-canvas {
+        display: grid;
+        gap: 12px;
+        border: 1px dashed #e2e8f0;
+        border-radius: 10px;
+        background: #f8fafc;
+        padding: 10px;
+    }
+
+    .workflow-form-container-item {
+        min-width: 0;
+    }
+
+    .workflow-form-container-empty {
+        border: 1px dashed #d1d5db;
+        border-radius: 8px;
+        padding: 10px;
+        text-align: center;
+        color: #64748b;
+        font-size: 12px;
+    }
+
+    @media (max-width: 1080px) {
+        .workflow-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .workflow-metrics {
+            grid-template-columns: 1fr;
+            min-width: 0;
+        }
+
+        .workflow-kv {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div id="app" class="workflow-shell">
+    <div class="workflow-stack">
+        <section class="workflow-hero">
+            <div class="workflow-hero-top">
+                <div>
+                    <div class="workflow-title">璁㈠崟娴佺▼宸ヤ綔鍙?/div>
+                    <div class="workflow-chip-row">
+                        <span class="workflow-chip">璁㈠崟鍙凤細{{ order_no }}</span>
+                        <span class="workflow-chip">娴佺▼锛歿{ flow_definition_name|default:"鏈粦瀹? }}</span>
+                        <span class="workflow-chip">璁㈠崟鐘舵€侊細{{ order_status_label|default:"--" }}</span>
+                    </div>
+                </div>
+                <div class="workflow-metrics">
+                    <div class="workflow-metric">
+                        <div class="workflow-metric-label">娴佺▼鐘舵€?/div>
+                        <div class="workflow-metric-value">{{ flow_status_label|default:"鏈惎鍔? }}</div>
+                    </div>
+                    <div class="workflow-metric">
+                        <div class="workflow-metric-label">褰撳墠鑺傜偣</div>
+                        <div class="workflow-metric-value">{{ current_node_name|default:"--" }}</div>
+                    </div>
+                    <div class="workflow-metric">
+                        <div class="workflow-metric-label">寰呭鐞嗕换鍔?/div>
+                        <div class="workflow-metric-value">{{ pending_task_total }}</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="workflow-grid">
+            <div class="workflow-column">
+                <div class="workflow-card">
+                    <div class="workflow-card-head">
+                        <div>
+                            <div class="workflow-card-title">澶勭悊闈㈡澘</div>
+                            <div class="workflow-card-subtitle">鍦ㄨ繖閲岀洿鎺ュ畬鎴愬綋鍓嶆祦绋嬭妭鐐癸紱濡傛灉鑺傜偣琚┏鍥烇紝绯荤粺浼氳嚜鍔ㄩ€€鍥炲綋鍓嶈妭鐐瑰苟閲嶆柊鐢熸垚寰呭姙銆?/div>
+                        </div>
+                        {% if workflow_action %}
+                        {% if rework_note %}
+                        <span class="workflow-badge danger">宸查€€鍥炲緟閲嶅仛</span>
+                        {% else %}
+                        <span class="workflow-badge brand">寰呮垜澶勭悊 {{ active_task_count }} 椤?/span>
+                        {% endif %}
+                        {% elif flow_status_label == "宸插畬鎴? %}
+                        <span class="workflow-badge success">娴佺▼宸插畬鎴?/span>
+                        {% elif flow_status_label == "宸查┏鍥? %}
+                        <span class="workflow-badge danger">娴佺▼宸查┏鍥?/span>
+                        {% else %}
+                        <span class="workflow-badge muted">褰撳墠鏃犲彲鎿嶄綔浠诲姟</span>
+                        {% endif %}
+                    </div>
+                    <div class="workflow-card-body">
+                        {% if workflow_action %}
+                        {% if rework_note %}
+                        <div class="workflow-rework-note">
+                            <div class="workflow-rework-title">涓婁竴杞鐞嗗凡琚┏鍥烇紝褰撳墠鑺傜偣宸查噸鏂版墦寮€锛岀瓑寰呴噸鏂板鐞?/div>
+                            <div class="workflow-rework-meta">{{ rework_note.operator_name|default:"绯荤粺" }} 路 {{ rework_note.time|default:"--" }}</div>
+                            {% if rework_note.memo %}
+                            <div class="workflow-rework-memo">{{ rework_note.memo }}</div>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                        <div class="workflow-kv" style="margin-bottom: 16px;">
+                            <div class="workflow-kv-item">
+                                <div class="workflow-kv-label">褰撳墠鑺傜偣</div>
+                                <div class="workflow-kv-value">{{ workflow_action.current_node_name|default:"--" }}</div>
+                            </div>
+                            <div class="workflow-kv-item">
+                                <div class="workflow-kv-label">鍙鐞嗕换鍔℃暟</div>
+                                <div class="workflow-kv-value">{{ active_task_count }}</div>
+                            </div>
+                        </div>
+
+                        <div class="workflow-task-list">
+                            {% for task in workflow_action.tasks %}
+                            <div
+                                class="workflow-task-item"
+                                :class="{ 'is-active': workflowForm.task_id === {{ task.task_id }} }"
+                                @click="workflowForm.task_id = {{ task.task_id }}">
+                                <div class="workflow-task-name">
+                                    {% if task.group_key %}{{ task.group_key }} / {% endif %}{{ task.assignee_name|default:"寰呭垎閰? }}
+                                </div>
+                                <div class="workflow-task-meta">
+                                    鑺傜偣锛歿{ task.node_name|default:workflow_action.current_node_name }}
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+
+                        <el-form label-width="76px" style="margin-top: 18px;">
+                            <div v-if="workflowSchemaFields.length" class="workflow-form-block">
+                                <div class="workflow-form-title">鑺傜偣琛ㄥ崟</div>
+                                <div class="workflow-form-tip">杩欓噷灞曠ず鐨勬槸褰撳墠鑺傜偣楂樼骇閰嶇疆閲岀殑琛ㄥ崟瀛楁锛岀偣鍑烩€滈€氳繃鈥濇椂浼氫竴骞舵彁浜ゃ€?/div>
+                                <template v-for="node in workflowSchemaFields" :key="node.id || node.key || node.label">
+                                    <template v-if="node.component === 'container'">
+                                        <div class="workflow-form-container-block">
+                                            <div class="workflow-form-container-head">[[ node.label || '容器' ]]</div>
+                                            <div class="workflow-form-container-canvas" :style="resolveWorkflowContainerStyle(node)">
+                                                <div v-if="!(node.children || []).length" class="workflow-form-container-empty">该容器暂未配置子组件</div>
+                                                <div
+                                                    v-for="child in (node.children || [])"
+                                                    :key="child.id || child.key || child.label"
+                                                    class="workflow-form-container-item">
+                                                    <el-form-item :label="child.label || child.key" :required="child.required">
+                                                        <el-input
+                                                            v-if="child.component === 'input'"
+                                                            v-model="workflowForm.form_data[child.key]"
+                                                            :placeholder="child.placeholder || '请输入'"
+                                                            :style="resolveWorkflowFieldStyle(child)"
+                                                            @change="onWorkflowFieldChange(child, workflowForm.form_data[child.key])"
+                                                            clearable></el-input>
+                                                        <el-input
+                                                            v-else-if="child.component === 'textarea'"
+                                                            v-model="workflowForm.form_data[child.key]"
+                                                            type="textarea"
+                                                            :autosize="{ minRows: child.rows || 3, maxRows: child.maxRows || 6 }"
+                                                            :placeholder="child.placeholder || '请输入'"
+                                                            :style="resolveWorkflowFieldStyle(child)"
+                                                            @change="onWorkflowFieldChange(child, workflowForm.form_data[child.key])"></el-input>
+                                                        <input
+                                                            v-else-if="child.component === 'file'"
+                                                            type="file"
+                                                            class="workflow-native-file"
+                                                            :accept="child.accept || ''"
+                                                            :multiple="child.multiple"
+                                                            :style="resolveWorkflowFieldStyle(child)"
+                                                            @change="onWorkflowFileChange(child, $event)" />
+                                                        <el-input-number
+                                                            v-else-if="child.component === 'number'"
+                                                            v-model="workflowForm.form_data[child.key]"
+                                                            :min="child.min"
+                                                            :max="child.max"
+                                                            :step="child.step || 1"
+                                                            :style="resolveWorkflowFieldStyle(child)"
+                                                            @change="onWorkflowFieldChange(child, workflowForm.form_data[child.key])"></el-input-number>
+                                                        <el-radio-group
+                                                            v-else-if="child.component === 'radio'"
+                                                            v-model="workflowForm.form_data[child.key]"
+                                                            :style="resolveWorkflowFieldStyle(child)"
+                                                            @change="onWorkflowFieldChange(child, workflowForm.form_data[child.key])">
+                                                            <el-radio
+                                                                v-for="(option, optionIndex) in child.options"
+                                                                :key="String(option.value) + '_' + optionIndex"
+                                                                :label="option.value">
+                                                                [[ option.label ]]
+                                                            </el-radio>
+                                                        </el-radio-group>
+                                                        <el-checkbox-group
+                                                            v-else-if="child.component === 'checkbox'"
+                                                            v-model="workflowForm.form_data[child.key]"
+                                                            :style="resolveWorkflowFieldStyle(child)"
+                                                            @change="onWorkflowFieldChange(child, workflowForm.form_data[child.key])">
+                                                            <el-checkbox
+                                                                v-for="(option, optionIndex) in child.options"
+                                                                :key="String(option.value) + '_' + optionIndex"
+                                                                :label="option.value">
+                                                                [[ option.label ]]
+                                                            </el-checkbox>
+                                                        </el-checkbox-group>
+                                                        <el-select
+                                                            v-else-if="child.component === 'select'"
+                                                            v-model="workflowForm.form_data[child.key]"
+                                                            :placeholder="child.placeholder || '请选择'"
+                                                            clearable
+                                                            :style="resolveWorkflowFieldStyle(child)"
+                                                            @change="onWorkflowFieldChange(child, workflowForm.form_data[child.key])">
+                                                            <el-option
+                                                                v-for="(option, optionIndex) in child.options"
+                                                                :key="String(option.value) + '_' + optionIndex"
+                                                                :label="option.label"
+                                                                :value="option.value"></el-option>
+                                                        </el-select>
+                                                        <el-switch
+                                                            v-else-if="child.component === 'switch'"
+                                                            v-model="workflowForm.form_data[child.key]"
+                                                            :style="resolveWorkflowFieldStyle(child)"
+                                                            @change="onWorkflowFieldChange(child, workflowForm.form_data[child.key])"></el-switch>
+                                                        <el-date-picker
+                                                            v-else-if="child.component === 'date'"
+                                                            v-model="workflowForm.form_data[child.key]"
+                                                            type="date"
+                                                            value-format="YYYY-MM-DD"
+                                                            :placeholder="child.placeholder || '请选择日期'"
+                                                            :style="resolveWorkflowFieldStyle(child)"
+                                                            @change="onWorkflowFieldChange(child, workflowForm.form_data[child.key])"></el-date-picker>
+                                                        <el-date-picker
+                                                            v-else-if="child.component === 'datetime'"
+                                                            v-model="workflowForm.form_data[child.key]"
+                                                            type="datetime"
+                                                            value-format="YYYY-MM-DD HH:mm:ss"
+                                                            :placeholder="child.placeholder || '请选择日期时间'"
+                                                            :style="resolveWorkflowFieldStyle(child)"
+                                                            @change="onWorkflowFieldChange(child, workflowForm.form_data[child.key])"></el-date-picker>
+                                                        <el-input
+                                                            v-else
+                                                            v-model="workflowForm.form_data[child.key]"
+                                                            :placeholder="child.placeholder || '请输入'"
+                                                            :style="resolveWorkflowFieldStyle(child)"
+                                                            @change="onWorkflowFieldChange(child, workflowForm.form_data[child.key])"
+                                                            clearable></el-input>
+                                                    </el-form-item>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </template>
+                                    <el-form-item v-else :label="node.label || node.key" :required="node.required">
+                                        <el-input
+                                            v-if="node.component === 'input'"
+                                            v-model="workflowForm.form_data[node.key]"
+                                            :placeholder="node.placeholder || '请输入'"
+                                            :style="resolveWorkflowFieldStyle(node)"
+                                            @change="onWorkflowFieldChange(node, workflowForm.form_data[node.key])"
+                                            clearable></el-input>
+                                        <el-input
+                                            v-else-if="node.component === 'textarea'"
+                                            v-model="workflowForm.form_data[node.key]"
+                                            type="textarea"
+                                            :autosize="{ minRows: node.rows || 3, maxRows: node.maxRows || 6 }"
+                                            :placeholder="node.placeholder || '请输入'"
+                                            :style="resolveWorkflowFieldStyle(node)"
+                                            @change="onWorkflowFieldChange(node, workflowForm.form_data[node.key])"></el-input>
+                                        <input
+                                            v-else-if="node.component === 'file'"
+                                            type="file"
+                                            class="workflow-native-file"
+                                            :accept="node.accept || ''"
+                                            :multiple="node.multiple"
+                                            :style="resolveWorkflowFieldStyle(node)"
+                                            @change="onWorkflowFileChange(node, $event)" />
+                                        <el-input-number
+                                            v-else-if="node.component === 'number'"
+                                            v-model="workflowForm.form_data[node.key]"
+                                            :min="node.min"
+                                            :max="node.max"
+                                            :step="node.step || 1"
+                                            :style="resolveWorkflowFieldStyle(node)"
+                                            @change="onWorkflowFieldChange(node, workflowForm.form_data[node.key])"></el-input-number>
+                                        <el-radio-group
+                                            v-else-if="node.component === 'radio'"
+                                            v-model="workflowForm.form_data[node.key]"
+                                            :style="resolveWorkflowFieldStyle(node)"
+                                            @change="onWorkflowFieldChange(node, workflowForm.form_data[node.key])">
+                                            <el-radio
+                                                v-for="(option, optionIndex) in node.options"
+                                                :key="String(option.value) + '_' + optionIndex"
+                                                :label="option.value">
+                                                [[ option.label ]]
+                                            </el-radio>
+                                        </el-radio-group>
+                                        <el-checkbox-group
+                                            v-else-if="node.component === 'checkbox'"
+                                            v-model="workflowForm.form_data[node.key]"
+                                            :style="resolveWorkflowFieldStyle(node)"
+                                            @change="onWorkflowFieldChange(node, workflowForm.form_data[node.key])">
+                                            <el-checkbox
+                                                v-for="(option, optionIndex) in node.options"
+                                                :key="String(option.value) + '_' + optionIndex"
+                                                :label="option.value">
+                                                [[ option.label ]]
+                                            </el-checkbox>
+                                        </el-checkbox-group>
+                                        <el-select
+                                            v-else-if="node.component === 'select'"
+                                            v-model="workflowForm.form_data[node.key]"
+                                            :placeholder="node.placeholder || '请选择'"
+                                            clearable
+                                            :style="resolveWorkflowFieldStyle(node)"
+                                            @change="onWorkflowFieldChange(node, workflowForm.form_data[node.key])">
+                                            <el-option
+                                                v-for="(option, optionIndex) in node.options"
+                                                :key="String(option.value) + '_' + optionIndex"
+                                                :label="option.label"
+                                                :value="option.value"></el-option>
+                                        </el-select>
+                                        <el-switch
+                                            v-else-if="node.component === 'switch'"
+                                            v-model="workflowForm.form_data[node.key]"
+                                            :style="resolveWorkflowFieldStyle(node)"
+                                            @change="onWorkflowFieldChange(node, workflowForm.form_data[node.key])"></el-switch>
+                                        <el-date-picker
+                                            v-else-if="node.component === 'date'"
+                                            v-model="workflowForm.form_data[node.key]"
+                                            type="date"
+                                            value-format="YYYY-MM-DD"
+                                            :placeholder="node.placeholder || '请选择日期'"
+                                            :style="resolveWorkflowFieldStyle(node)"
+                                            @change="onWorkflowFieldChange(node, workflowForm.form_data[node.key])"></el-date-picker>
+                                        <el-date-picker
+                                            v-else-if="node.component === 'datetime'"
+                                            v-model="workflowForm.form_data[node.key]"
+                                            type="datetime"
+                                            value-format="YYYY-MM-DD HH:mm:ss"
+                                            :placeholder="node.placeholder || '请选择日期时间'"
+                                            :style="resolveWorkflowFieldStyle(node)"
+                                            @change="onWorkflowFieldChange(node, workflowForm.form_data[node.key])"></el-date-picker>
+                                        <el-input
+                                            v-else
+                                            v-model="workflowForm.form_data[node.key]"
+                                            :placeholder="node.placeholder || '请输入'"
+                                            :style="resolveWorkflowFieldStyle(node)"
+                                            @change="onWorkflowFieldChange(node, workflowForm.form_data[node.key])"
+                                            clearable></el-input>
+                                    </el-form-item>
+                                </template>
+                            </div>
+                            <el-form-item label="澶勭悊澶囨敞">
+                                <el-input
+                                    v-model="workflowForm.operator_memo"
+                                    type="textarea"
+                                    :autosize="{ minRows: 4, maxRows: 7 }"
+                                    placeholder="鍙互濉啓鎵ц鎯呭喌銆佸紓甯歌鏄庢垨琛ュ厖淇℃伅"></el-input>
+                            </el-form-item>
+                            <el-form-item label="鎿嶄綔">
+                                <el-button type="primary" :loading="workflowForm.submitting" @click="submitWorkflowAction('approve')">閫氳繃骞惰繘鍏ヤ笅涓€姝?/el-button>
+                                <el-button type="danger" plain :loading="workflowForm.submitting" @click="submitWorkflowAction('reject')">椹冲洖骞堕€€鍥炲綋鍓嶈妭鐐?/el-button>
+                            </el-form-item>
+                        </el-form>
+                        {% else %}
+                        <div class="workflow-empty">
+                            褰撳墠娴佺▼娌℃湁鍒嗛厤缁欎綘鐨勫緟澶勭悊浠诲姟銆備綘鍙互鍏堟煡鐪嬪彸渚ф渶杩戝姩浣滐紝纭娴佺▼鐩墠鏄瓑寰呬粬浜哄鐞嗭紝杩樻槸宸茬粡椤哄埄缁撴潫銆?                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="workflow-card">
+                    <div class="workflow-card-head">
+                        <div>
+                            <div class="workflow-card-title">娴佺▼璺緞</div>
+                            <div class="workflow-card-subtitle">浠庡紑濮嬪埌缁撴潫鐨勫畬鏁磋妭鐐硅矾寰勶紝涓€鐪煎氨鑳界湅娓呮鐜板湪鍗″湪鍝竴姝ャ€?/div>
+                        </div>
+                    </div>
+                    <div class="workflow-card-body">
+                        {% if workflow_steps %}
+                        <div class="workflow-step-list">
+                            {% for step in workflow_steps %}
+                            <div class="workflow-step-item {{ step.state }}">
+                                <div class="workflow-step-index">{{ forloop.counter }}</div>
+                                <div>
+                                    <div class="workflow-step-name">{{ step.node_name }}</div>
+                                    <div class="workflow-step-meta">
+                                        {{ step.node_type_label }}{% if step.is_auto %} / 鑷姩鑺傜偣{% endif %}
+                                    </div>
+                                </div>
+                                {% if step.state == "done" %}
+                                <span class="workflow-badge success">{{ step.state_label }}</span>
+                                {% elif step.state == "current" %}
+                                <span class="workflow-badge brand">{{ step.state_label }}</span>
+                                {% elif step.state == "rejected" %}
+                                <span class="workflow-badge danger">{{ step.state_label }}</span>
+                                {% else %}
+                                <span class="workflow-badge muted">{{ step.state_label }}</span>
+                                {% endif %}
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <div class="workflow-empty">褰撳墠璁㈠崟杩樻病鏈夊彲灞曠ず鐨勬祦绋嬭妭鐐广€?/div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="workflow-column">
+                <div class="workflow-card">
+                    <div class="workflow-card-head">
+                        <div>
+                            <div class="workflow-card-title">璁㈠崟鎽樿</div>
+                            <div class="workflow-card-subtitle">鏂逛究澶勭悊娴佺▼鏃堕『鎵嬬‘璁よ鍗曟槸璋佺殑銆佷粈涔堟椂鍊欏缓鐨勩€?/div>
+                        </div>
+                    </div>
+                    <div class="workflow-card-body">
+                        <div class="workflow-kv">
+                            <div class="workflow-kv-item">
+                                <div class="workflow-kv-label">璁㈠崟鍙?/div>
+                                <div class="workflow-kv-value">{{ order_no }}</div>
+                            </div>
+                            <div class="workflow-kv-item">
+                                <div class="workflow-kv-label">瀹㈡埛</div>
+                                <div class="workflow-kv-value">{{ receiver_name|default:"--" }}</div>
+                            </div>
+                            <div class="workflow-kv-item">
+                                <div class="workflow-kv-label">瀹㈡埛鍏徃</div>
+                                <div class="workflow-kv-value">{{ receiver_company|default:"--" }}</div>
+                            </div>
+                            <div class="workflow-kv-item">
+                                <div class="workflow-kv-label">鍒涘缓鏃堕棿</div>
+                                <div class="workflow-kv-value">{{ create_time_str|default:"--" }}</div>
+                            </div>
+                        </div>
+                        <div class="workflow-toolbar">
+                            <el-button plain @click="openLogPage">鏌ョ湅鎿嶄綔鏃ュ織</el-button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="workflow-card">
+                    <div class="workflow-card-head">
+                        <div>
+                            <div class="workflow-card-title">鏈€杩戝姩浣?/div>
+                            <div class="workflow-card-subtitle">鍙睍绀哄拰娴佺▼鐩存帴鐩稿叧鐨勫姩浣滆褰曪紝涓嶅啀鎶婃暣涓鍗曟祦姘存贩鍦ㄤ竴璧枫€?/div>
+                        </div>
+                    </div>
+                    <div class="workflow-card-body">
+                        {% if recent_logs %}
+                        <div class="workflow-log-list">
+                            {% for item in recent_logs %}
+                            <div class="workflow-log-item {{ item.tone }}">
+                                <div class="workflow-log-title">{{ item.title }}</div>
+                                <div class="workflow-log-meta">{{ item.operator_name|default:"绯荤粺" }} 路 {{ item.time|default:"--" }}</div>
+                                {% if item.memo %}
+                                <div class="workflow-log-memo">{{ item.memo }}</div>
+                                {% endif %}
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <div class="workflow-empty">褰撳墠杩樻病鏈夋祦绋嬪姩浣滆褰曘€?/div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script type="module">
+    window.initVueApp({
+        data() {
+            return {
+                workflowForm: {
+                    order_id: {{ order_id|default:"0" }},
+                    task_id: {% if workflow_action and workflow_action.tasks %}{{ workflow_action.tasks.0.task_id }}{% else %}null{% endif %},
+                    operator_memo: "",
+                    form_data: {},
+                    submitting: false,
+                },
+                workflowSchemaFields: [],
+                workflowRawSchema: JSON.parse('{{ workflow_form_schema_json|escapejs }}'),
+                workflowInitialFormData: JSON.parse('{{ workflow_form_data_json|escapejs }}'),
+                logPageUrl: "{{ log_page_url|escapejs }}",
+            }
+        },
+        created() {
+            this.workflowSchemaFields = this.normalizeWorkflowSchema(this.workflowRawSchema);
+            this.workflowForm.form_data = this.buildWorkflowFormData(
+                this.workflowSchemaFields,
+                this.workflowInitialFormData
+            );
+        },
+        methods: {
+            normalizeWorkflowSchema(schema) {
+                const rawFields = Array.isArray(schema)
+                    ? schema
+                    : Array.isArray(schema?.fields)
+                        ? schema.fields
+                        : [];
+                return rawFields
+                    .map((field, index) => this.normalizeWorkflowField(field, index))
+                    .filter(Boolean);
+            },
+            normalizeWorkflowField(field, index) {
+                if (!field || typeof field !== "object") return null;
+                const key = field.key || field.name || field.prop || field.field;
+                if (!key) return null;
+                const fieldType = String(field.component || field.widget || field.type || "input").toLowerCase();
+                const componentMap = {
+                    input: "input",
+                    text: "input",
+                    string: "input",
+                    textarea: "textarea",
+                    file: "file",
+                    upload: "file",
+                    radio: "radio",
+                    checkbox: "checkbox",
+                    number: "number",
+                    int: "number",
+                    integer: "number",
+                    float: "number",
+                    decimal: "number",
+                    select: "select",
+                    choice: "select",
+                    enum: "select",
+                    switch: "switch",
+                    boolean: "switch",
+                    bool: "switch",
+                    date: "date",
+                    datetime: "datetime",
+                };
+                return {
+                    key,
+                    label: field.label || field.title || field.name || key,
+                    component: componentMap[fieldType] || "input",
+                    required: !!field.required,
+                    placeholder: field.placeholder || "",
+                    options: this.normalizeWorkflowOptions(field.options || field.choices || field.enum || []),
+                    defaultValue: Object.prototype.hasOwnProperty.call(field, "default")
+                        ? field.default
+                        : field.default_value,
+                    rows: field.rows,
+                    maxRows: field.maxRows || field.max_rows,
+                    min: field.min,
+                    max: field.max,
+                    step: field.step,
+                    accept: field.accept || "",
+                    multiple: !!field.multiple,
+                    cssText: field.css_text || field.css || field.style || "",
+                    jsText: field.js_text || field.js || field.script || "",
+                    order: field.order ?? index,
+                };
+            },
+            normalizeWorkflowOptions(options) {
+                if (!Array.isArray(options)) return [];
+                return options.map((option) => {
+                    if (option && typeof option === "object") {
+                        return {
+                            label: option.label ?? option.name ?? String(option.value ?? option.id ?? ""),
+                            value: option.value ?? option.id ?? option.label ?? option.name ?? "",
+                        };
+                    }
+                    return {
+                        label: String(option ?? ""),
+                        value: option,
+                    };
+                });
+            },
+            buildWorkflowFormData(fields, existingData) {
+                const source = existingData && typeof existingData === "object" ? existingData : {};
+                const formData = {};
+                fields
+                    .slice()
+                    .sort((a, b) => (a.order || 0) - (b.order || 0))
+                    .forEach((field) => {
+                        const hasValue = Object.prototype.hasOwnProperty.call(source, field.key);
+                        if (hasValue) {
+                            formData[field.key] = source[field.key];
+                            return;
+                        }
+                        if (field.defaultValue !== undefined) {
+                            formData[field.key] = field.defaultValue;
+                            return;
+                        }
+                        if (field.component === "switch") {
+                            formData[field.key] = false;
+                            return;
+                        }
+                        if (field.component === "checkbox") {
+                            formData[field.key] = [];
+                            return;
+                        }
+                        if (field.component === "file" && field.multiple) {
+                            formData[field.key] = [];
+                            return;
+                        }
+                        formData[field.key] = "";
+                    });
+                return formData;
+            },
+            resolveWorkflowFieldStyle(field) {
+                if (field?.cssText) return field.cssText;
+                if (["number", "select", "date", "datetime"].includes(field?.component)) {
+                    return "width: 100%;";
+                }
+                return "";
+            },
+            runWorkflowFieldScript(field, value) {
+                const script = (field?.jsText || "").trim();
+                if (!script) return;
+                try {
+                    const helpers = {
+                        setValue: (key, val) => {
+                            this.workflowForm.form_data[key] = val;
+                        },
+                        getValue: (key) => this.workflowForm.form_data[key],
+                        message: (msg, type = "info") => {
+                            this.$ElMessage({
+                                message: String(msg || ""),
+                                type,
+                            });
+                        },
+                    };
+                    const fn = new Function("value", "formData", "field", "helpers", script);
+                    const result = fn(value, this.workflowForm.form_data, field, helpers);
+                    if (result !== undefined && field?.key) {
+                        this.workflowForm.form_data[field.key] = result;
+                    }
+                } catch (err) {
+                    console.error(err);
+                    this.$ElMessage.error(`${field?.label || field?.key || "字段"} 脚本执行失败`);
+                }
+            },
+            onWorkflowFieldChange(field, value) {
+                if (!field?.key) return;
+                this.workflowForm.form_data[field.key] = value;
+                this.runWorkflowFieldScript(field, value);
+            },
+            onWorkflowFileChange(field, evt) {
+                const files = Array.from(evt?.target?.files || []);
+                const values = files.map((file) => file.name);
+                const value = field?.multiple ? values : (values[0] || "");
+                this.workflowForm.form_data[field.key] = value;
+                this.runWorkflowFieldScript(field, value);
+            },
+            validateWorkflowForm(action) {
+                if (action !== "approve") return true;
+                for (const field of this.workflowSchemaFields) {
+                    if (!field.required) continue;
+                    const value = this.workflowForm.form_data[field.key];
+                    const empty =
+                        value === null ||
+                        value === undefined ||
+                        value === "" ||
+                        (Array.isArray(value) && !value.length);
+                    if (empty) {
+                        this.$ElMessage.warning(`${field.label || field.key} 涓嶈兘涓虹┖`);
+                        return false;
+                    }
+                }
+                return true;
+            },
+            async submitWorkflowAction(action) {
+                if (this.workflowForm.submitting) return;
+                if (!this.validateWorkflowForm(action)) return;
+                this.workflowForm.submitting = true;
+                try {
+                    await request.post("/order/workflow_action", {
+                        order_id: this.workflowForm.order_id,
+                        action,
+                        task_id: this.workflowForm.task_id,
+                        operator_memo: this.workflowForm.operator_memo,
+                        form_data: action === "approve" ? this.workflowForm.form_data : {},
+                    });
+                    this.$ElMessage.success(action === "approve" ? "娴佺▼澶勭悊鎴愬姛" : "宸查┏鍥炲苟閫€鍥炲綋鍓嶈妭鐐?);
+                    if (window.parent && window.parent !== window) {
+                        try {
+                            window.parent.location.reload();
+                        } catch (e) {
+                            console.warn("鐖堕〉闈㈠埛鏂板け璐?, e);
+                        }
+                    }
+                    window.location.reload();
+                } catch (err) {
+                    this.$ElMessage.error(err.message || "娴佺▼鎿嶄綔澶辫触");
+                } finally {
+                    this.workflowForm.submitting = false;
+                }
+            },
+            openLogPage() {
+                if (!this.logPageUrl) return;
+                window.location.href = this.logPageUrl;
+            }
+        }
+    });
+</script>
+{% endblock %}
+

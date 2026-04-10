@@ -21,6 +21,10 @@ from core.utils import signal_util
 from ..models import Order, OrderPayCa
 from .signals import order_created_signal, order_canceled_signal, order_ship_singal, order_pay_signal, order_complete_signal
 from client_mgmt.models import Client
+from flow_engine.models import FlowInstance
+from flow_engine.signals import flow_instance_finished_signal
+from order.enums import OrderStatusChoices
+from order.machine import OrderStateMachine
 
 
 logger = logging.getLogger("project")
@@ -128,3 +132,29 @@ def order_complete_signal_hendler(
     client = client_manager.first()
     client.total_end_order_count += 1
     client.save()
+
+
+@receiver(flow_instance_finished_signal, sender=FlowInstance)
+@signal_util.safe_signal_handler
+def flow_instance_finished_signal_handler(
+    sender, instance: FlowInstance, **kwargs
+):
+    """
+    Flow finishes -> auto move bound order from PRODUCING to FINISHED.
+    """
+    order = Order.objects.filter(flow_instance_id=instance.id, is_delete=False).first()
+    if not order:
+        return
+    if order.order_status != OrderStatusChoices.PRODUCING:
+        return
+
+    sm = OrderStateMachine(
+        model_obj=order,
+        operator_user=getattr(instance, "creator", None),
+        operator_memo="流程完成自动推进订单到已完工",
+    )
+    allowed, _ = sm.can_finish_production()
+    if not allowed:
+        return
+    sm.finish_production()
+    sm.save_state()

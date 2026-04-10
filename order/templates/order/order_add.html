@@ -101,6 +101,7 @@
         <span v-else style="font-size:16px;font-weight:600;color:#303133;">{{title}}</span>
 
         <div class="header-right">
+            <el-button v-if="showWorkflowEntry" type="warning" plain @click="openWorkflowEntry">进入流程</el-button>
             <el-button type="primary" @click="onSubmit" :disabled="isDisabledMode">提交</el-button>
         </div>
     </div>
@@ -400,7 +401,7 @@
             const isDisabledMode = "{{is_disabled_mode}}" == "1"
             const hideBack = new URLSearchParams(window.location.search).get('hide_back') === '1'
             const goBack = () => {
-                window.location.href = "{% get_previous_url %}"
+                window.location.href = "{{ prev_url|default:'/admin/order/order/'|escapejs }}"
             };
             const ElMessage = inject("ElMessage");
             const itemsRef = ref(null);
@@ -454,9 +455,12 @@
                 ],
                 loading: false,
                 fromData: {
+                    order_status: null,
                     site_id: "",
                     order_type: "",
                     flow_definition_id: null,
+                    flow_instance_id: null,
+                    flow_definition_name: "",
                     shipping_party: "",
                     shipping_party_company: "",
                     shipping_party_phone: "",
@@ -489,6 +493,18 @@
                 await getOrderById()
                 pageData.pageLoading = false
             })
+            const ensureFlowOptionForCurrent = () => {
+                const flowId = pageData.fromData.flow_definition_id
+                if (!flowId) return
+                const existed = pageData.flowDefinitionOptions.some((item) => String(item.value) === String(flowId))
+                if (existed) return
+                const flowName = pageData.fromData.flow_definition_name || `Flow #${flowId}`
+                pageData.flowDefinitionOptions.push({
+                    label: flowName,
+                    name: flowName,
+                    value: flowId,
+                })
+            }
             const isInitializing = ref(false)  // 添加初始化标志
             const getOrderById = async () => {
                 if (!orderId) return
@@ -500,6 +516,7 @@
                         item.subtotal = decimalSub(item.total, item.discount_price).toFixed(2)
                     }
                     pageData.fromData = res
+                    ensureFlowOptionForCurrent()
                     await nextTick()
                 } finally {
                     isInitializing.value = false  // 初始化完成
@@ -512,12 +529,29 @@
             const deliveryMethodLabel = computed(() => {
                 return pageData.deliveryMethodOptions.find((item) => item.value == pageData.fromData.delivery_method)?.label
             })
+            const showWorkflowEntry = computed(() => {
+                return Boolean(
+                    isEditMode &&
+                    pageData.fromData.flow_definition_id &&
+                    Number(pageData.fromData.order_status) === 40
+                )
+            })
 
             const initPage = async () => {
                 pageData.deliveryMethodOptions = await request.get("/order/order_delivery_all_list")
                 pageData.orderTpyeOptions = await request.get("/order/order_type_all_list")
                 pageData.siteOptions = await request.get("/site_mgmt/cur_site_options")
                 pageData.flowDefinitionOptions = await request.get("/flow_engine/flow_definition_list")
+                ensureFlowOptionForCurrent()
+            }
+
+            const openWorkflowEntry = () => {
+                if (!orderId) return
+                showModal({
+                    url: `/admin/order/order/${orderId}/workflow/?hide_back=1`,
+                    width: '70vw',
+                    height: '85vh',
+                })
             }
 
             // ------------------------------- 发货方/收货方 --------------------------------
@@ -855,6 +889,8 @@
                 orderTypeLabel,
                 deliveryMethodLabel,
                 submitHandle,
+                showWorkflowEntry,
+                openWorkflowEntry,
                 isEditMode,
                 isDisabledMode,
             };

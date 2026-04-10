@@ -24,6 +24,8 @@ from order.models import Order, OrderItem
 from pattern_library.models import Pattern
 from client_mgmt.models import Client
 from site_mgmt.utils import site_util
+from flow_engine.enums import FlowStatusChoices, TaskStatusChoices
+from flow_engine.models import FlowTask
 
 from . import schemas
 
@@ -68,6 +70,11 @@ class View(BaseApi):
             "order_no",
             "order_type",
             "order_status",
+            "flow_definition_id",
+            "flow_definition__name",
+            "flow_instance_id",
+            "flow_instance__status",
+            "flow_instance__current_node__name",
             "pay_status",
             "ship_status",
             "total_amount",
@@ -90,6 +97,66 @@ class View(BaseApi):
             "create_time",
             order_id=F("pk"),
         ).afirst()
+
+        flow_summary = schemas.OrderFlowSummarySchema(
+            has_workflow=bool(order_obj.get("flow_definition_id")),
+            flow_definition_id=order_obj.get("flow_definition_id"),
+            flow_definition_name=order_obj.get("flow_definition__name"),
+            flow_instance_id=order_obj.get("flow_instance_id"),
+            flow_status=order_obj.get("flow_instance__status"),
+            current_node_name=order_obj.get("flow_instance__current_node__name"),
+            auto_finish_on_done=bool(order_obj.get("flow_definition_id")),
+        )
+        if flow_summary.flow_status == FlowStatusChoices.RUNNING:
+            flow_summary.flow_status_label = "进行中"
+        elif flow_summary.flow_status == FlowStatusChoices.FINISHED:
+            flow_summary.flow_status_label = "已完成"
+        elif flow_summary.flow_status == FlowStatusChoices.REJECTED:
+            flow_summary.flow_status_label = "已驳回"
+        elif flow_summary.flow_status == FlowStatusChoices.CANCELED:
+            flow_summary.flow_status_label = "已取消"
+
+        if flow_summary.flow_instance_id:
+            flow_summary.pending_task_count = await sync_to_async(
+                lambda: FlowTask.objects.filter(
+                    instance_id=flow_summary.flow_instance_id,
+                    status=TaskStatusChoices.PENDING,
+                ).count()
+            )()
+
+        production_action = schemas.OrderProductionActionSchema()
+        if order_obj.get("order_status") == OrderStatusChoices.SCHEDULED:
+            production_action.action = "start_production"
+            production_action.enabled = True
+            if flow_summary.has_workflow:
+                production_action.label = "开始生产并进入流程"
+                production_action.mode = "workflow"
+                production_action.tips = "点击后订单会进入生产中，并自动发起生产流程。"
+            else:
+                production_action.label = "开始生产"
+                production_action.mode = "manual"
+                production_action.tips = "点击后订单进入生产中。"
+        elif order_obj.get("order_status") == OrderStatusChoices.PRODUCING:
+            if flow_summary.has_workflow:
+                production_action.action = None
+                production_action.label = "流程处理中"
+                production_action.enabled = False
+                production_action.mode = "workflow"
+                production_action.tips = "流程结束后，系统会自动完成生产。"
+            else:
+                production_action.action = "finish_production"
+                production_action.label = "生产完成"
+                production_action.enabled = True
+                production_action.mode = "manual"
+                production_action.tips = "点击后订单进入已完工。"
+
+        if flow_summary.has_workflow:
+            if order_obj.get("order_status") == OrderStatusChoices.SCHEDULED:
+                flow_summary.message = "开始生产后会自动进入流程，流程结束后自动完成生产。"
+            elif order_obj.get("order_status") == OrderStatusChoices.PRODUCING:
+                flow_summary.message = "当前订单正在走生产流程，流程结束后会自动完成生产。"
+            elif flow_summary.flow_status == FlowStatusChoices.FINISHED:
+                flow_summary.message = "生产流程已完成。"
 
         order_obj["order_status_str"] = (
             OrderStatusChoices(order_obj["order_status"]).label
@@ -181,6 +248,8 @@ class View(BaseApi):
             order_obj["receiver_address"] = None
 
         order_obj["items"] = items
+        order_obj["flow_summary"] = flow_summary
+        order_obj["production_action"] = production_action
 
         # 查询关联客户ID
         receiver_phone = order_obj.get("receiver_phone")

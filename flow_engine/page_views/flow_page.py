@@ -24,3 +24,19 @@ def flow_definition_list(request):
         "title": "流程列表",
     }
     return render(request, "flow_engine/flow_list.html", context)
+
+
+def flow_form_designer(request, fid: int):
+    context = {
+        "title": "表单设计器",
+        "flow_id": fid,
+    }
+    return render(request, "flow_engine/form_designer.html", context)
+
+
+def flow_form_list(request):
+    context = {
+        "title": "表单列表",
+    }
+    return render(request, "flow_engine/form_list.html", context)
+

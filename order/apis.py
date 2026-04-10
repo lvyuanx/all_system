@@ -4,6 +4,7 @@ from .views import (
     order_create_view,
     order_info_view,
     order_ship_view,
+    order_workflow_action_view,
     order_list_by_pattern_view,
 )
 from .views.dashboard import (
@@ -61,6 +62,12 @@ apis = {
             "list_by_pattern",
             order_list_by_pattern_view.View,
             "按版号查询关联订单",
+        ),
+        (
+            "A6",
+            "workflow_action",
+            order_workflow_action_view.View,
+            "订单流程操作",
         ),
     ],
 

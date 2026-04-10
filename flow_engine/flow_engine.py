@@ -32,6 +32,8 @@ from flow_engine.models import (
     FlowMigrationJob,
 )
 from flow_engine.utils.flow_engine_util import SafeEvaluator
+from flow_engine.utils.form_runtime_util import deep_merge_dict
+from flow_engine.signals import flow_instance_finished_signal
 
 logger = logging.getLogger(__name__)
 User = get_user_model()
@@ -216,7 +218,7 @@ class FlowEngine:
         self.instance.current_node = start_node
         self.instance.status = FlowStatusChoices.RUNNING
         if context:
-            self.instance.context = {**(self.instance.context or {}), **context}
+            self.instance.context = deep_merge_dict(self.instance.context or {}, context)
         self.instance.save()
 
         FlowLog.objects.create(
@@ -224,7 +226,7 @@ class FlowEngine:
             node=start_node,
             user=user,
             action="start",
-            message="flow started",
+            message="流程已启动",
         )
 
         self._enter_node(start_node, context or {})
@@ -285,6 +287,10 @@ class FlowEngine:
         if not node:
             raise FlowEngineError("No current node.")
 
+        # 检查当前节点是否是开始节点，开始节点无法驳回
+        if node.node_type == NodeTypeChoices.START:
+            raise FlowEngineError("开始节点无法驳回。")
+
         self._check_node_permission(node, user)
 
         task_qs = FlowTask.objects.filter(
@@ -317,16 +323,120 @@ class FlowEngine:
         task.finish_time = timezone.now()
         task.save(update_fields=["status", "comment", "finish_time"])
 
+        # 取消当前节点的其他待处理任务
+        FlowTask.objects.filter(
+            instance=self.instance,
+            node=node,
+            status=TaskStatusChoices.PENDING,
+        ).exclude(id=task.id).update(
+            status=TaskStatusChoices.CANCELED,
+            finish_time=timezone.now(),
+        )
+
+        if self.instance.status != FlowStatusChoices.RUNNING:
+            self.instance.status = FlowStatusChoices.RUNNING
+            self.instance.save(update_fields=["status"])
+
+        # 找到驳回的目标节点
+        target_node = self._find_reject_target_node(node)
+        if not target_node:
+            raise FlowEngineError("无法找到可驳回的目标节点。")
+
+        # 退出当前节点
+        self._exit_node(node)
+
+        # 进入目标节点
+        self.instance.current_node = target_node
+        self.instance.save(update_fields=["current_node"])
+
+        # 记录驳回日志
+        reject_msg = f"驳回至 {target_node.name}"
+        if comment:
+            reject_msg += f"：{comment}"
         FlowLog.objects.create(
             instance=self.instance,
             node=node,
             user=user,
             action="reject",
-            message=comment,
+            message=reject_msg,
         )
 
-        self.instance.status = FlowStatusChoices.REJECTED
-        self.instance.save(update_fields=["status"])
+        self._enter_node(target_node, self.instance.context or {})
+
+    def _get_node_history(self) -> list[FlowNodeVersion]:
+        """
+        从流程日志中获取节点访问历史，按时间顺序排列（最早的在前）
+        """
+        logs = FlowLog.objects.filter(
+            instance=self.instance,
+            action="enter"
+        ).order_by("create_time")
+
+        history = []
+        seen_node_ids = set()
+        for log in logs:
+            if log.node_id and log.node_id not in seen_node_ids:
+                history.append(log.node)
+                seen_node_ids.add(log.node_id)
+        return history
+
+    def _find_reject_target_node(self, current_node: FlowNodeVersion) -> FlowNodeVersion | None:
+        """
+        找到驳回的目标节点：
+        1. 返回上一个节点
+        2. 如果上一个节点是自动节点，继续找上上节点，直到找到开始节点或非自动节点
+        3. 如果开始节点也是自动节点，则找第一个任务节点
+        """
+        history = self._get_node_history()
+
+        # 找到当前节点在历史中的位置
+        try:
+            current_idx = history.index(current_node)
+        except ValueError:
+            # 如果当前节点不在历史中，使用最后一个位置
+            current_idx = len(history)
+
+        # 从当前节点的前一个节点开始往前找
+        for i in range(current_idx - 1, -1, -1):
+            node = history[i]
+
+            # 如果是开始节点，检查是否可以驳回
+            if node.node_type == NodeTypeChoices.START:
+                # 如果开始节点不是自动节点，可以驳回到此
+                if not node.is_auto:
+                    return node
+                # 如果开始节点是自动节点，继续找第一个任务节点
+                continue
+
+            # 如果是非自动的任务节点，可以驳回到此
+            if not node.is_auto and node.node_type == NodeTypeChoices.TASK:
+                return node
+
+        # 如果历史中没有找到合适的节点，直接在流程图中找第一个任务节点
+        return self._find_first_task_node()
+
+    def _find_first_task_node(self) -> FlowNodeVersion | None:
+        """
+        找到流程中第一个非自动的任务节点
+        """
+        # 先按顺序查找非自动的任务节点
+        nodes = FlowNodeVersion.objects.filter(
+            flow_version=self.version,
+            node_type=NodeTypeChoices.TASK,
+            is_auto=False
+        ).order_by("order", "id")
+
+        first_task = nodes.first()
+        if first_task:
+            return first_task
+
+        # 如果没有非自动的任务节点，找任意任务节点
+        nodes = FlowNodeVersion.objects.filter(
+            flow_version=self.version,
+            node_type=NodeTypeChoices.TASK
+        ).order_by("order", "id")
+
+        return nodes.first()
 
     def next(self, user=None, context: dict | None = None):
         node = self.instance.current_node
@@ -444,23 +554,30 @@ class FlowEngine:
     # -------------------------------------------------------------
     # Internal helpers
     # -------------------------------------------------------------
+    def _mark_instance_finished(self, node: FlowNodeVersion | None):
+        self.instance.status = FlowStatusChoices.FINISHED
+        self.instance.save(update_fields=["status"])
+        FlowLog.objects.create(
+            instance=self.instance,
+            node=node,
+            action="finish",
+            message="流程已完成",
+        )
+        flow_instance_finished_signal.send(
+            sender=FlowInstance,
+            instance=self.instance,
+        )
+
     def _go_next(self, context: dict):
         if context:
-            self.instance.context = {**(self.instance.context or {}), **context}
+            self.instance.context = deep_merge_dict(self.instance.context or {}, context)
             self.instance.save(update_fields=["context"])
         merged_context = self.instance.context or {}
         current = self.instance.current_node
         next_node = self._get_next_node(current, merged_context)
 
         if not next_node:
-            self.instance.status = FlowStatusChoices.FINISHED
-            self.instance.save(update_fields=["status"])
-            FlowLog.objects.create(
-                instance=self.instance,
-                node=current,
-                action="finish",
-                message="flow finished",
-            )
+            self._mark_instance_finished(current)
             return
 
         self.instance.current_node = next_node
@@ -469,7 +586,7 @@ class FlowEngine:
             instance=self.instance,
             node=next_node,
             action="enter",
-            message=f"enter node: {next_node.name}",
+            message=f"进入节点：{next_node.name}",
         )
         self._enter_node(next_node, merged_context)
 
@@ -488,10 +605,14 @@ class FlowEngine:
                 except Exception as exc:
                     logger.exception("condition eval error: %s", exc)
 
-            default_t = transitions.filter(condition_expr__isnull=True).first()
+            default_t = transitions.filter(
+                Q(condition_expr__isnull=True) | Q(condition_expr="")
+            ).first()
             return default_t.target if default_t else None
 
-        default_t = transitions.filter(condition_expr__isnull=True).first()
+        default_t = transitions.filter(
+            Q(condition_expr__isnull=True) | Q(condition_expr="")
+        ).first()
         return default_t.target if default_t else None
 
     def _enter_node(self, node: FlowNodeVersion, context: dict):
@@ -499,8 +620,7 @@ class FlowEngine:
             self._go_next(context)
             return
         if node.node_type == NodeTypeChoices.END:
-            self.instance.status = FlowStatusChoices.FINISHED
-            self.instance.save(update_fields=["status"])
+            self._mark_instance_finished(node)
             return
 
         if node.is_auto:
@@ -532,15 +652,22 @@ class FlowEngine:
                         group.min_approve_count,
                     )
                 for uid in candidate_ids:
-                    _, was_created = FlowTask.objects.get_or_create(
+                    if FlowTask.objects.filter(
                         instance=self.instance,
                         node=node,
                         assignee_id=uid,
                         group_key=group.key,
-                        defaults={"status": TaskStatusChoices.PENDING},
+                        status=TaskStatusChoices.PENDING,
+                    ).exists():
+                        continue
+                    FlowTask.objects.create(
+                        instance=self.instance,
+                        node=node,
+                        assignee_id=uid,
+                        group_key=group.key,
+                        status=TaskStatusChoices.PENDING,
                     )
-                    if was_created:
-                        created += 1
+                    created += 1
         else:
             candidate_ids = self._get_permission_candidates(node)
             if not candidate_ids:
@@ -548,14 +675,20 @@ class FlowEngine:
                 if super_user:
                     candidate_ids = [super_user.id]
             for uid in candidate_ids:
-                _, was_created = FlowTask.objects.get_or_create(
+                if FlowTask.objects.filter(
                     instance=self.instance,
                     node=node,
                     assignee_id=uid,
-                    defaults={"status": TaskStatusChoices.PENDING},
+                    status=TaskStatusChoices.PENDING,
+                ).exists():
+                    continue
+                FlowTask.objects.create(
+                    instance=self.instance,
+                    node=node,
+                    assignee_id=uid,
+                    status=TaskStatusChoices.PENDING,
                 )
-                if was_created:
-                    created += 1
+                created += 1
 
         if created == 0:
             logger.warning("no tasks created for node=%s", node.id)

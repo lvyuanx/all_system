@@ -138,7 +138,7 @@ USE_I18N = True  # 是否启用国际化
 USE_TZ = True  # 是否使用时区
 
 # 静态文件设置（CSS, JavaScript, Images）
-STATIC_URL = "static/"  # 静态文件的 URL 前缀
+STATIC_URL = "/static/"  # 静态文件的 URL 前缀（必须使用绝对路径，避免嵌套路由下静态资源 404）
 STATIC_ROOT = BASE_DIR / "oss/static"  # 生产部署时收集所有静态文件
 # STATICFILES_DIRS  = [
 #     BASE_DIR / "static",

@@ -36,6 +36,14 @@ class FlowTransitionSchema(BaseModel):
     description: str | None = Field(None, description="description")
 
 
+class FlowFormDefinitionSchema(BaseModel):
+    code: str = Field(..., description="form code")
+    name: str = Field(..., description="form name")
+    description: str | None = Field(None, description="form description")
+    fields: list[dict[str, Any]] = Field(default_factory=list, description="form fields")
+    order: int = Field(0, description="form order")
+
+
 class FlowDefinitionSaveSchema(BaseModel):
     flow_id: int | None = Field(None, description="flow id")
     code: str = Field(..., description="flow code")
@@ -44,6 +52,7 @@ class FlowDefinitionSaveSchema(BaseModel):
     is_active: bool = Field(True, description="active")
     nodes: list[FlowNodeSchema] = Field(default_factory=list, description="nodes")
     transitions: list[FlowTransitionSchema] = Field(default_factory=list, description="transitions")
+    form_library: list[FlowFormDefinitionSchema] = Field(default_factory=list, description="form library")
 
 
 class FlowDefinitionDetailSchema(BaseModel):
@@ -54,6 +63,7 @@ class FlowDefinitionDetailSchema(BaseModel):
     is_active: bool = Field(True, description="active")
     nodes: list[FlowNodeSchema] = Field(default_factory=list, description="nodes")
     transitions: list[FlowTransitionSchema] = Field(default_factory=list, description="transitions")
+    form_library: list[FlowFormDefinitionSchema] = Field(default_factory=list, description="form library")
 
 
 class FlowPermPackItemSchema(BaseModel):
@@ -95,3 +105,29 @@ class FlowDefinitionActionRespSchema(BaseModel):
 
 class FlowDefinitionDeleteSchema(BaseModel):
     flow_id: int = Field(..., description="flow id")
+
+
+class FlowFormLibraryDetailSchema(BaseModel):
+    flow_id: int = Field(..., description="flow id")
+    code: str = Field(..., description="flow code")
+    name: str = Field(..., description="flow name")
+    forms: list[FlowFormDefinitionSchema] = Field(default_factory=list, description="form definitions")
+
+
+class FlowFormLibrarySaveSchema(BaseModel):
+    flow_id: int = Field(..., description="flow id")
+    forms: list[FlowFormDefinitionSchema] = Field(default_factory=list, description="form definitions")
+
+
+class FlowFormRuntimeResolveSchema(BaseModel):
+    instance_id: int = Field(..., description="flow instance id")
+    task_id: int | None = Field(None, description="task id")
+
+
+class FlowFormRuntimeResolveRespSchema(BaseModel):
+    instance_id: int = Field(..., description="flow instance id")
+    node_code: str = Field("", description="node code")
+    node_name: str = Field("", description="node name")
+    resolved_form_schema: Any = Field(default_factory=dict, description="resolved form schema")
+    resolved_form_data: dict[str, Any] = Field(default_factory=dict, description="resolved form data")
+    context_snapshot: dict[str, Any] = Field(default_factory=dict, description="current context")

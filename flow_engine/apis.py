@@ -12,6 +12,9 @@ from .views import (
     flow_definition_delete_view,
     flow_perm_pack_list_view,
     flow_user_list_view,
+    flow_form_library_detail_view,
+    flow_form_library_save_view,
+    flow_form_runtime_resolve_view,
 )
 
 apis = {
@@ -27,5 +30,8 @@ apis = {
         ("A8", "flow_definition_delete", flow_definition_delete_view.View, "delete flow definition"),
         ("A9", "perm_pack_list", flow_perm_pack_list_view.View, "permission packs"),
         ("A10", "user_list", flow_user_list_view.View, "users"),
+        ("A11", "form_library_detail", flow_form_library_detail_view.View, "flow form library detail"),
+        ("A12", "form_library_save", flow_form_library_save_view.View, "save flow form library"),
+        ("A13", "form_runtime_resolve", flow_form_runtime_resolve_view.View, "resolve runtime form data"),
     ],
 }

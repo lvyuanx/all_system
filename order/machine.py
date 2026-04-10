@@ -16,6 +16,7 @@ from django.utils import timezone
 
 from  order.models import Order, OrderCa
 from flow_engine.flow_engine import FlowEngine
+from flow_engine.enums import FlowStatusChoices
 from .enums import OrderStatusChoices
 from core.utils import time_util
 
@@ -116,6 +117,12 @@ class OrderStateMachine:
         """
         When order enters production and flow is configured, start flow instance.
         """
+        self.ensure_production_flow_started()
+
+    def ensure_production_flow_started(self):
+        """
+        Ensure flow instance exists when order is in production and flow is configured.
+        """
         if self.model_obj.order_status != OrderStatusChoices.PRODUCING:
             return
         if not self.model_obj.flow_definition_id:
@@ -132,6 +139,37 @@ class OrderStateMachine:
         )
         self.model_obj.flow_instance = instance
         self.model_obj.save(update_fields=["flow_instance"])
+        instance.refresh_from_db(fields=["status"])
+
+        # Some flows can auto-complete immediately during start (for example
+        # when every transition is automatic). In that case the finish signal
+        # may fire before the order.flow_instance relation is saved, so we
+        # reconcile the order state once the binding is persisted.
+        if instance.status == FlowStatusChoices.FINISHED:
+            allowed, _ = self.can_finish_production()
+            if allowed:
+                self.finish_production()
+                self.save_state()
+
+    def can_finish_production(self):
+        """
+        Return (is_allowed, reason). When flow is configured, flow must be finished first.
+        """
+        if self.model_obj.order_status != OrderStatusChoices.PRODUCING:
+            return False, "当前订单不是生产中状态"
+
+        if not self.model_obj.flow_definition_id:
+            return True, None
+
+        self.ensure_production_flow_started()
+        self.model_obj.refresh_from_db(fields=["flow_instance"])
+        if not self.model_obj.flow_instance_id:
+            return False, "当前订单已绑定流程，流程尚未发起完成"
+
+        self.model_obj.flow_instance.refresh_from_db(fields=["status"])
+        if self.model_obj.flow_instance.status != FlowStatusChoices.FINISHED:
+            return False, "当前订单已绑定流程，请先完成流程后再生产完成"
+        return True, None
 
     def log_transition(self):
         """

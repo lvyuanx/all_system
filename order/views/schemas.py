@@ -37,6 +37,9 @@ class OrderInfoSchema(OrderCreateSchema):
     """订单信息"""
 
     order_id: int = Field(..., description="订单ID")
+    order_status: int | None = Field(None, description="订单状态")
+    flow_instance_id: int | None = Field(None, description="流程实例ID")
+    flow_definition_name: str | None = Field(None, description="流程模板名称")
 
 
 class OrderShipSchema(BaseModel):
@@ -95,6 +98,27 @@ class MobileOrderListItemSchema(BaseModel):
     receiver_client_id: int | None = Field(None, description="关联客户ID")
 
 
+class OrderFlowSummarySchema(BaseModel):
+    has_workflow: bool = Field(False, description="是否绑定流程")
+    flow_definition_id: int | None = Field(None, description="流程模板ID")
+    flow_definition_name: str | None = Field(None, description="流程模板名称")
+    flow_instance_id: int | None = Field(None, description="流程实例ID")
+    flow_status: str | None = Field(None, description="流程状态")
+    flow_status_label: str | None = Field(None, description="流程状态文本")
+    current_node_name: str | None = Field(None, description="当前流程节点名称")
+    pending_task_count: int = Field(0, description="待处理任务数")
+    auto_finish_on_done: bool = Field(False, description="流程结束后是否自动完成生产")
+    message: str | None = Field(None, description="流程提示语")
+
+
+class OrderProductionActionSchema(BaseModel):
+    action: str | None = Field(None, description="生产相关动作")
+    label: str | None = Field(None, description="动作名称")
+    enabled: bool = Field(False, description="是否可点击")
+    mode: str | None = Field(None, description="manual/workflow")
+    tips: str | None = Field(None, description="动作提示")
+
+
 class OrderItemInfoSchema(BaseModel):
     """订单项明细"""
 
@@ -145,6 +169,8 @@ class MobileOrderInfoSchema(BaseModel):
     receiver_client_id: int | None = Field(None, description="关联客户ID")
     memo: str | None = Field(None, description="备注")
     create_time_str: str | None = Field(None, description="创建时间")
+    flow_summary: OrderFlowSummarySchema = Field(default_factory=OrderFlowSummarySchema, description="流程摘要")
+    production_action: OrderProductionActionSchema = Field(default_factory=OrderProductionActionSchema, description="生产动作配置")
     items: list[OrderItemInfoSchema] = Field(..., description="订单项")
 
 
@@ -171,6 +197,16 @@ class OrderActionSchema(BaseModel):
 
     order_id: int = Field(..., description="订单ID")
     operator_memo: str | None = Field(None, description="操作备注")
+
+
+class OrderWorkflowActionSchema(BaseModel):
+    """订单流程操作"""
+
+    order_id: int = Field(..., description="订单ID")
+    action: str = Field(..., description="approve/reject")
+    task_id: int | None = Field(None, description="流程任务ID")
+    operator_memo: str | None = Field(None, description="操作备注")
+    form_data: dict | None = Field(None, description="节点表单数据")
 
 
 class OrderStatusFlowItemSchema(BaseModel):
