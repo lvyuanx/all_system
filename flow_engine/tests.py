@@ -15,6 +15,7 @@ from flow_engine.utils.form_designer_data_source_examples import (
 )
 from flow_engine.utils.form_runtime_util import (
     BaseFieldDataSource,
+    RuntimeFieldDataSourceRegistry,
     get_registered_field_data_source_metadata,
     register_default_value_source,
     register_field_options_source,
@@ -55,6 +56,34 @@ class RuntimeEchoDataSource(BaseFieldDataSource):
             {"label": f"{self.node_code}-{params.get('suffix', 'A')}", "value": self.ctx.get("tenant", "")},
             {"label": getattr(request, "trace_token", "missing-request"), "value": getattr(self.instance, "id", "")},
         ]
+
+
+class BlankDefaultDataSource(BaseFieldDataSource):
+    key = "blank-default"
+    label = "Blank Default"
+    data_type = "text"
+    support_components = ["input"]
+    support_default = True
+
+    def get_default(self, request):
+        return ""
+
+
+class SchemaAwareDefaultDataSource(BaseFieldDataSource):
+    key = "schema-aware-default"
+    label = "Schema Aware Default"
+    data_type = "text"
+    support_components = ["input"]
+    support_default = True
+
+    def get_default(self, request):
+        return (
+            f"{self.field_schema.get('key')}|"
+            f"{self.get_source_params('default').get('token')}|"
+            f"{self.node_code}|"
+            f"{self.ctx.get('tenant')}|"
+            f"{self.runtime_env.get('business_id')}"
+        )
 
 
 class FormRuntimeDataSourceRegistryTests(SimpleTestCase):
@@ -311,6 +340,62 @@ class FormRuntimeDataSourceRegistryTests(SimpleTestCase):
             [{"label": "legacy", "value": "legacy", "default": False}],
         )
 
+    @override_settings(
+        FLOW_ENGINE_FIELD_DATA_SOURCES=[
+            "flow_engine.tests.BlankDefaultDataSource",
+        ]
+    )
+    def test_new_default_source_config_uses_fallback_value_when_data_source_returns_blank(self):
+        _, resolved_form_data = resolve_form_runtime(
+            form_schema={
+                "fields": [
+                    {
+                        "key": "code",
+                        "default_source_config": {
+                            "mode": "data_source",
+                            "source_key": "blank-default",
+                            "fallback_value": "fallback-code",
+                        },
+                        "default_config": {
+                            "source_type": "context",
+                            "context_path": "legacy.code",
+                        },
+                    }
+                ]
+            },
+            context={"legacy": {"code": "legacy-value"}},
+            node_code="NODE_A",
+        )
+
+        self.assertEqual(resolved_form_data["code"], "fallback-code")
+
+    @override_settings(
+        FLOW_ENGINE_FIELD_DATA_SOURCES=[
+            "flow_engine.tests.SchemaAwareDefaultDataSource",
+        ]
+    )
+    def test_new_default_source_config_receives_field_schema_and_source_params(self):
+        _, resolved_form_data = resolve_form_runtime(
+            form_schema={
+                "fields": [
+                    {
+                        "key": "site_address",
+                        "component": "input",
+                        "default_source_config": {
+                            "mode": "data_source",
+                            "source_key": "schema-aware-default",
+                            "source_params": {"token": "cfg-token"},
+                        },
+                    }
+                ]
+            },
+            context={"tenant": "acme"},
+            node_code="NODE_CTX",
+            runtime_env={"business_id": "ORD-10"},
+        )
+
+        self.assertEqual(resolved_form_data["site_address"], "site_address|cfg-token|NODE_CTX|acme|ORD-10")
+
 
 class BuiltinDataSourceExamplesTests(SimpleTestCase):
     def setUp(self):
@@ -326,6 +411,14 @@ class BuiltinDataSourceExamplesTests(SimpleTestCase):
         for item in examples:
             self.assertIn(item["source_type"], {"context", "enum", "db"})
             self.assertEqual(item["config"]["source_type"], item["source_type"])
+
+    def test_builtin_examples_return_deep_copied_configs(self):
+        examples = get_builtin_form_data_source_examples()
+        examples[0]["config"]["context_path"] = "mutated.path"
+
+        latest = get_builtin_form_data_source_examples()
+
+        self.assertEqual(latest[0]["config"]["context_path"], "form.NODE_A.amount")
 
     def test_flow_designer_page_includes_builtin_examples_context(self):
         request = self.factory.get("/admin/flow_engine/definition/add/")
@@ -408,3 +501,44 @@ class FieldDataSourceMetadataApiTests(SimpleTestCase):
                 {"name": "suffix", "label": "Suffix", "target": "options", "component": "input"},
             ],
         )
+
+
+class RuntimeFieldDataSourceRegistryTests(SimpleTestCase):
+    def test_register_builtin_requires_non_empty_key(self):
+        registry = RuntimeFieldDataSourceRegistry()
+
+        class MissingKeyDataSource(BaseFieldDataSource):
+            pass
+
+        with self.assertRaisesMessage(ValueError, "field data source key is required"):
+            registry.register_builtin(MissingKeyDataSource)
+
+    def test_metadata_returns_sorted_items_and_defensive_copies(self):
+        registry = RuntimeFieldDataSourceRegistry()
+
+        class ZSource(BaseFieldDataSource):
+            key = "z_source"
+            label = "Z Source"
+            data_type = "text"
+            support_components = [" input ", "", None]
+            support_default = True
+            params_schema = [{"name": "code", "label": "Code", "target": "default", "component": "input"}]
+
+        class ASource(BaseFieldDataSource):
+            key = "a_source"
+            label = "A Source"
+            data_type = "select"
+            support_components = ["select"]
+            support_options = True
+            params_schema = [{"name": "tenant", "label": "Tenant", "target": "options", "component": "input"}]
+
+        registry.register_builtin(ZSource)
+        registry.register_builtin(ASource)
+
+        items = registry.metadata()
+        self.assertEqual([item["key"] for item in items], ["a_source", "z_source"])
+        self.assertEqual(items[1]["support_components"], ["input"])
+
+        items[0]["params_schema"][0]["label"] = "Mutated"
+        latest = registry.metadata()
+        self.assertEqual(latest[0]["params_schema"][0]["label"], "Tenant")

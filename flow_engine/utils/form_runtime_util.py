@@ -122,7 +122,7 @@ class RuntimeFieldDataSourceRegistry:
             support_components = [
                 str(item).strip()
                 for item in (getattr(source_cls, "support_components", None) or [])
-                if str(item).strip()
+                if item is not None and str(item).strip()
             ]
             params_schema = [
                 deepcopy(item)
