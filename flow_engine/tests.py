@@ -1,19 +1,47 @@
 from unittest.mock import patch
+from types import SimpleNamespace
 
 from django.contrib.auth.models import AnonymousUser
-from django.test import RequestFactory, SimpleTestCase
+from django.test import RequestFactory, SimpleTestCase, override_settings
 
 from flow_engine.page_views.flow_page import flow_definition_add, flow_form_designer
 from flow_engine.utils.form_designer_data_source_examples import (
     get_builtin_form_data_source_examples,
 )
 from flow_engine.utils.form_runtime_util import (
+    BaseFieldDataSource,
     register_default_value_source,
     register_field_options_source,
     resolve_form_runtime,
     unregister_default_value_source,
     unregister_field_options_source,
 )
+
+
+class RuntimeEchoDataSource(BaseFieldDataSource):
+    key = "runtime-echo"
+    support_default = True
+    support_options = True
+
+    def get_default(self, request):
+        params = self.get_source_params("default")
+        request_token = getattr(request, "trace_token", "missing-request")
+        instance_id = getattr(self.instance, "id", "missing-instance")
+        return (
+            f"{params.get('prefix', 'pfx')}-"
+            f"{self.node_code}-"
+            f"{self.ctx.get('tenant', '')}-"
+            f"{request_token}-"
+            f"{instance_id}-"
+            f"{self.runtime_env.get('business_id', '')}"
+        )
+
+    def get_options(self, request):
+        params = self.get_source_params("options")
+        return [
+            {"label": f"{self.node_code}-{params.get('suffix', 'A')}", "value": self.ctx.get("tenant", "")},
+            {"label": getattr(request, "trace_token", "missing-request"), "value": getattr(self.instance, "id", "")},
+        ]
 
 
 class FormRuntimeDataSourceRegistryTests(SimpleTestCase):
@@ -138,6 +166,136 @@ class FormRuntimeDataSourceRegistryTests(SimpleTestCase):
                 {"label": "acme-A", "value": "a"},
                 {"label": "acme-B", "value": "b"},
             ],
+        )
+
+    @override_settings(
+        FLOW_ENGINE_FIELD_DATA_SOURCES=[
+            "flow_engine.tests.RuntimeEchoDataSource",
+        ]
+    )
+    def test_new_default_source_config_has_priority_and_receives_runtime_context(self):
+        request = SimpleNamespace(trace_token="req-1")
+        instance = SimpleNamespace(id=42)
+
+        _, resolved_form_data = resolve_form_runtime(
+            form_schema={
+                "fields": [
+                    {
+                        "key": "code",
+                        "default_config": {
+                            "source_type": "context",
+                            "context_path": "legacy.code",
+                        },
+                        "default_source_config": {
+                            "mode": "data_source",
+                            "source_key": "runtime-echo",
+                            "source_params": {"prefix": "new"},
+                        },
+                    }
+                ]
+            },
+            context={"tenant": "acme", "legacy": {"code": "legacy-value"}},
+            node_code="NODE_DS",
+            runtime_env={"business_id": "ORD-9"},
+            request=request,
+            instance=instance,
+        )
+
+        self.assertEqual(
+            resolved_form_data["code"],
+            "new-NODE_DS-acme-req-1-42-ORD-9",
+        )
+
+    @override_settings(
+        FLOW_ENGINE_FIELD_DATA_SOURCES=[
+            "flow_engine.tests.RuntimeEchoDataSource",
+        ]
+    )
+    def test_new_options_source_config_has_priority_over_legacy_options_config(self):
+        request = SimpleNamespace(trace_token="req-2")
+        instance = SimpleNamespace(id=7)
+
+        resolved_schema, _ = resolve_form_runtime(
+            form_schema={
+                "fields": [
+                    {
+                        "key": "tenant_option",
+                        "component": "select",
+                        "options": [{"label": "manual", "value": "manual"}],
+                        "options_config": {
+                            "source_type": "context",
+                            "context_path": "legacy.options",
+                        },
+                        "options_source_config": {
+                            "mode": "data_source",
+                            "source_key": "runtime-echo",
+                            "source_params": {"suffix": "tail"},
+                        },
+                    }
+                ]
+            },
+            context={
+                "tenant": "acme",
+                "legacy": {"options": [{"label": "legacy", "value": "legacy"}]},
+            },
+            node_code="NODE_OP",
+            request=request,
+            instance=instance,
+        )
+
+        self.assertEqual(
+            resolved_schema["fields"][0]["options"],
+            [
+                {"label": "NODE_OP-tail", "value": "acme", "default": False},
+                {"label": "req-2", "value": 7, "default": False},
+            ],
+        )
+
+    @override_settings(
+        FLOW_ENGINE_FIELD_DATA_SOURCES=[
+            "flow_engine.tests.RuntimeEchoDataSource",
+        ]
+    )
+    def test_missing_new_source_config_falls_back_to_legacy_configs(self):
+        resolved_schema, resolved_form_data = resolve_form_runtime(
+            form_schema={
+                "fields": [
+                    {
+                        "key": "status",
+                        "component": "select",
+                        "options": [{"label": "manual", "value": "manual"}],
+                        "default_config": {
+                            "source_type": "context",
+                            "context_path": "legacy.status",
+                        },
+                        "default_source_config": {
+                            "mode": "data_source",
+                            "source_key": "missing-source",
+                        },
+                        "options_config": {
+                            "source_type": "context",
+                            "context_path": "legacy.options",
+                        },
+                        "options_source_config": {
+                            "mode": "data_source",
+                            "source_key": "missing-source",
+                        },
+                    }
+                ]
+            },
+            context={
+                "legacy": {
+                    "status": "published",
+                    "options": [{"label": "legacy", "value": "legacy"}],
+                }
+            },
+            node_code="NODE_A",
+        )
+
+        self.assertEqual(resolved_form_data["status"], "published")
+        self.assertEqual(
+            resolved_schema["fields"][0]["options"],
+            [{"label": "legacy", "value": "legacy", "default": False}],
         )
 
 

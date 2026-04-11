@@ -98,6 +98,8 @@ class View(BaseApi):
                     "business_type": instance.business_type,
                     "business_id": instance.business_id,
                 },
+                request=request,
+                instance=instance,
             ),
             thread_sensitive=True,
         )()

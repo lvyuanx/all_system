@@ -299,6 +299,8 @@ def _build_workflow_action_payload(request, order: Order):
                     "business_id": str(order.pk),
                     "order_id": order.pk,
                 },
+                request=request,
+                instance=order.flow_instance,
             )
             workflow_action = {
                 "instance_id": order.flow_instance_id,
