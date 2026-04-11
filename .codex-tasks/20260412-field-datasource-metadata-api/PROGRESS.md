@@ -13,10 +13,19 @@
 
 ## Context Recovery Block
 
-- **Current milestone**: `#4 Run verification commands and commit the changes`
-- **Current status**: `IN_PROGRESS`
-- **Last completed**: `#3 Add focused tests for metadata export and API response`
+- **Current milestone**: `Completed`
+- **Current status**: `DONE`
+- **Last completed**: `#4 Run verification commands and commit the changes`
 - **Current artifact**: `.codex-tasks/20260412-field-datasource-metadata-api/TODO.csv`
-- **Key context**: Implementation and tests are complete inside `flow_engine`; only final git review and commit remain.
+- **Key context**: Implementation, verification, and commit are complete inside `flow_engine`.
 - **Known issues**: No dedicated Python lint tool is installed in the current virtual environment, so only compile/test/Django check validation could be executed locally.
-- **Next action**: Review the final diff, commit only the intended files, and report the lint-tool limitation clearly.
+- **Next action**: No further action required unless a lint tool is later added and the project wants this task re-verified.
+
+## Final Summary
+
+- Added metadata enumeration on the runtime field data source registry.
+- Added `flow_engine/field_data_sources/metadata/` as a read-only JSON endpoint for designer consumption.
+- Added tests covering builtin metadata export and custom source metadata payloads.
+- Validation passed with compile, targeted Django tests, `git diff --check`, and `manage.py check`.
+- Dedicated Python lint tools are not installed in `.venv`, so a true linter run could not be executed locally.
+- Created commit `af6d85e` with the feature implementation.
