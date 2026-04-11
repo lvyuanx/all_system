@@ -738,36 +738,112 @@
                                         <el-form-item label="默认值" v-if="showDefaultField(selectedNode)">
                                             <el-input v-model="selectedNode.default" placeholder="请输入默认值" />
                                         </el-form-item>
-                                        <el-form-item label="默认值来源">
-                                            <el-select v-model="selectedNode.default_config.source_type">
-                                                <el-option label="固定值" value="literal" />
-                                                <el-option label="流程上下文" value="context" />
-                                                <el-option label="枚举" value="enum" />
-                                                <el-option label="数据库" value="db" />
+                                        <el-form-item label="默认值方式">
+                                            <el-select v-model="selectedNode.default_source_ui.mode">
+                                                <el-option label="固定值" value="fixed" />
+                                                <el-option label="数据源类" value="data_source" />
+                                                <el-option
+                                                    v-if="showLegacyDefaultConfigMode(selectedNode)"
+                                                    label="兼容旧配置"
+                                                    value="legacy" />
                                             </el-select>
                                         </el-form-item>
-                                        <div v-if="selectedNode.default_config.source_type !== 'literal' && defaultSourceExamples.length" class="fd-source-examples">
+                                        <template v-if="selectedNode.default_source_ui.mode === 'data_source'">
+                                            <el-form-item label="数据源类">
+                                                <el-select
+                                                    v-model="selectedNode.default_source_ui.source_key"
+                                                    placeholder="请选择默认值数据源"
+                                                    @change="onFieldDataSourceChange(selectedNode, 'default')">
+                                                    <el-option
+                                                        v-for="item in getDefaultFieldDataSources(selectedNode)"
+                                                        :key="item.key"
+                                                        :label="`${item.label} (${item.key})`"
+                                                        :value="item.key" />
+                                                </el-select>
+                                            </el-form-item>
+                                            <el-form-item
+                                                v-for="param in getSourceParamsSchema(selectedNode, 'default')"
+                                                :key="`default-${param.name}`"
+                                                :label="param.label">
+                                                <el-switch
+                                                    v-if="param.component === 'switch'"
+                                                    v-model="selectedNode.default_source_ui.source_params[param.name]" />
+                                                <el-input-number
+                                                    v-else-if="param.component === 'number'"
+                                                    v-model="selectedNode.default_source_ui.source_params[param.name]"
+                                                    style="width:100%" />
+                                                <el-select
+                                                    v-else-if="param.component === 'select'"
+                                                    v-model="selectedNode.default_source_ui.source_params[param.name]"
+                                                    :placeholder="param.placeholder || '请选择'">
+                                                    <el-option
+                                                        v-for="option in (param.options || [])"
+                                                        :key="`${param.name}-${option.value}`"
+                                                        :label="option.label"
+                                                        :value="option.value" />
+                                                </el-select>
+                                                <el-input
+                                                    v-else-if="param.component === 'textarea'"
+                                                    v-model="selectedNode.default_source_ui.source_params[param.name]"
+                                                    type="textarea"
+                                                    :autosize="{ minRows: 2, maxRows: 4 }"
+                                                    :placeholder="param.placeholder || ''" />
+                                                <el-input
+                                                    v-else
+                                                    v-model="selectedNode.default_source_ui.source_params[param.name]"
+                                                    :placeholder="param.placeholder || ''" />
+                                            </el-form-item>
+                                            <el-form-item label="失败回退值">
+                                                <el-input v-model="selectedNode.default_source_ui.fallback_value" placeholder="可选" />
+                                            </el-form-item>
+                                        </template>
+                                        <template v-else-if="selectedNode.default_source_ui.mode === 'legacy'">
+                                            <div v-if="defaultSourceExamples.length" class="fd-source-examples">
+                                                <div class="fd-source-examples-head">
+                                                    <span>内置数据源示例</span>
+                                                    <span class="fd-head-sub">兼容 default_config</span>
+                                                </div>
+                                                <div class="fd-source-examples-tip">以下示例均可直接作为旧版 `default_config` 参考。</div>
+                                                <div v-for="example in defaultSourceExamples" :key="example.code" class="fd-source-example">
+                                                    <div class="fd-source-example-title">[[ example.title ]]</div>
+                                                    <div class="fd-source-example-desc">[[ example.description ]]</div>
+                                                    <div class="fd-source-example-code">[[ example.code ]]</div>
+                                                    <div class="fd-source-example-json">[[ formatDataSourceExample(example.config) ]]</div>
+                                                </div>
+                                            </div>
+                                            <el-form-item label="旧来源类型">
+                                                <el-select v-model="selectedNode.default_source_ui.legacy_config.source_type">
+                                                    <el-option label="固定值" value="literal" />
+                                                    <el-option label="流程上下文" value="context" />
+                                                    <el-option label="枚举" value="enum" />
+                                                    <el-option label="数据库" value="db" />
+                                                </el-select>
+                                            </el-form-item>
+                                            <el-form-item label="上下文路径" v-if="selectedNode.default_source_ui.legacy_config.source_type === 'context'">
+                                                <el-input v-model="selectedNode.default_source_ui.legacy_config.context_path" placeholder="如: form.NODE_A.amount" />
+                                            </el-form-item>
+                                            <el-form-item label="枚举编码" v-if="selectedNode.default_source_ui.legacy_config.source_type === 'enum'">
+                                                <el-input v-model="selectedNode.default_source_ui.legacy_config.enum_code" placeholder="如: order.status" />
+                                            </el-form-item>
+                                            <el-form-item label="数据源编码" v-if="selectedNode.default_source_ui.legacy_config.source_type === 'db'">
+                                                <el-input v-model="selectedNode.default_source_ui.legacy_config.db_source_code" placeholder="如: order.field" />
+                                            </el-form-item>
+                                            <el-form-item label="回退值">
+                                                <el-input v-model="selectedNode.default_source_ui.legacy_config.fallback_value" placeholder="可选" />
+                                            </el-form-item>
+                                        </template>
+                                        <div v-if="selectedNode.default_source_ui.mode === 'data_source' && getDefaultFieldDataSources(selectedNode).length" class="fd-source-examples">
                                             <div class="fd-source-examples-head">
-                                                <span>内置数据源示例</span>
+                                                <span>可用数据源类</span>
                                                 <span class="fd-head-sub">默认值</span>
                                             </div>
-                                            <div class="fd-source-examples-tip">以下示例均可直接作为 `default_config` 参考。</div>
-                                            <div v-for="example in defaultSourceExamples" :key="example.code" class="fd-source-example">
-                                                <div class="fd-source-example-title">[[ example.title ]]</div>
-                                                <div class="fd-source-example-desc">[[ example.description ]]</div>
-                                                <div class="fd-source-example-code">[[ example.code ]]</div>
-                                                <div class="fd-source-example-json">[[ formatDataSourceExample(example.config) ]]</div>
+                                            <div class="fd-source-examples-tip">仅展示当前字段类型可用的数据源类。</div>
+                                            <div v-for="item in getDefaultFieldDataSources(selectedNode)" :key="`default-source-${item.key}`" class="fd-source-example">
+                                                <div class="fd-source-example-title">[[ item.label ]]</div>
+                                                <div class="fd-source-example-code">[[ item.key ]]</div>
+                                                <div class="fd-source-example-desc">支持组件：[[ (item.support_components || []).join('、') || '全部' ]]</div>
                                             </div>
                                         </div>
-                                        <el-form-item label="上下文路径" v-if="selectedNode.default_config.source_type === 'context'">
-                                            <el-input v-model="selectedNode.default_config.context_path" placeholder="如: form.NODE_A.amount" />
-                                        </el-form-item>
-                                        <el-form-item label="枚举编码" v-if="selectedNode.default_config.source_type === 'enum'">
-                                            <el-input v-model="selectedNode.default_config.enum_code" placeholder="如: order.status" />
-                                        </el-form-item>
-                                        <el-form-item label="数据源编码" v-if="selectedNode.default_config.source_type === 'db'">
-                                            <el-input v-model="selectedNode.default_config.db_source_code" placeholder="如: order.field" />
-                                        </el-form-item>
                                         <el-form-item label="读取路径">
                                             <el-input v-model="selectedNode.context_binding.read_path" placeholder="为空时走默认路径" />
                                         </el-form-item>
@@ -816,46 +892,119 @@
                                         </template>
 
                                         <template v-if="['select', 'radio', 'checkbox'].includes(selectedNode.component)">
-                                            <el-form-item label="选项来源">
-                                                <el-select v-model="selectedNode.options_config.source_type">
+                                            <el-form-item label="选项方式">
+                                                <el-select v-model="selectedNode.options_source_ui.mode">
                                                     <el-option label="手工维护" value="manual" />
-                                                    <el-option label="枚举" value="enum" />
-                                                    <el-option label="流程上下文" value="context" />
-                                                    <el-option label="数据库" value="db" />
+                                                    <el-option label="数据源类" value="data_source" />
+                                                    <el-option
+                                                        v-if="showLegacyOptionsConfigMode(selectedNode)"
+                                                        label="兼容旧配置"
+                                                        value="legacy" />
                                                 </el-select>
                                             </el-form-item>
-                                            <div v-if="selectedNode.options_config.source_type !== 'manual' && optionSourceExamples.length" class="fd-source-examples">
+                                            <template v-if="selectedNode.options_source_ui.mode === 'data_source'">
+                                                <el-form-item label="数据源类">
+                                                    <el-select
+                                                        v-model="selectedNode.options_source_ui.source_key"
+                                                        placeholder="请选择选项数据源"
+                                                        @change="onFieldDataSourceChange(selectedNode, 'options')">
+                                                        <el-option
+                                                            v-for="item in getOptionsFieldDataSources(selectedNode)"
+                                                            :key="item.key"
+                                                            :label="`${item.label} (${item.key})`"
+                                                            :value="item.key" />
+                                                    </el-select>
+                                                </el-form-item>
+                                                <el-form-item
+                                                    v-for="param in getSourceParamsSchema(selectedNode, 'options')"
+                                                    :key="`options-${param.name}`"
+                                                    :label="param.label">
+                                                    <el-switch
+                                                        v-if="param.component === 'switch'"
+                                                        v-model="selectedNode.options_source_ui.source_params[param.name]" />
+                                                    <el-input-number
+                                                        v-else-if="param.component === 'number'"
+                                                        v-model="selectedNode.options_source_ui.source_params[param.name]"
+                                                        style="width:100%" />
+                                                    <el-select
+                                                        v-else-if="param.component === 'select'"
+                                                        v-model="selectedNode.options_source_ui.source_params[param.name]"
+                                                        :placeholder="param.placeholder || '请选择'">
+                                                        <el-option
+                                                            v-for="option in (param.options || [])"
+                                                            :key="`${param.name}-${option.value}`"
+                                                            :label="option.label"
+                                                            :value="option.value" />
+                                                    </el-select>
+                                                    <el-input
+                                                        v-else-if="param.component === 'textarea'"
+                                                        v-model="selectedNode.options_source_ui.source_params[param.name]"
+                                                        type="textarea"
+                                                        :autosize="{ minRows: 2, maxRows: 4 }"
+                                                        :placeholder="param.placeholder || ''" />
+                                                    <el-input
+                                                        v-else
+                                                        v-model="selectedNode.options_source_ui.source_params[param.name]"
+                                                        :placeholder="param.placeholder || ''" />
+                                                </el-form-item>
+                                                <el-form-item label="失败回退手工选项">
+                                                    <el-switch v-model="selectedNode.options_source_ui.fallback_to_manual" />
+                                                </el-form-item>
+                                            </template>
+                                            <template v-else-if="selectedNode.options_source_ui.mode === 'legacy'">
+                                                <div v-if="optionSourceExamples.length" class="fd-source-examples">
+                                                    <div class="fd-source-examples-head">
+                                                        <span>内置数据源示例</span>
+                                                        <span class="fd-head-sub">兼容 options_config</span>
+                                                    </div>
+                                                    <div class="fd-source-examples-tip">以下示例均可直接作为旧版 `options_config` 参考。</div>
+                                                    <div v-for="example in optionSourceExamples" :key="example.code" class="fd-source-example">
+                                                        <div class="fd-source-example-title">[[ example.title ]]</div>
+                                                        <div class="fd-source-example-desc">[[ example.description ]]</div>
+                                                        <div class="fd-source-example-code">[[ example.code ]]</div>
+                                                        <div class="fd-source-example-json">[[ formatDataSourceExample(example.config) ]]</div>
+                                                    </div>
+                                                </div>
+                                                <el-form-item label="旧来源类型">
+                                                    <el-select v-model="selectedNode.options_source_ui.legacy_config.source_type">
+                                                        <el-option label="手工维护" value="manual" />
+                                                        <el-option label="枚举" value="enum" />
+                                                        <el-option label="流程上下文" value="context" />
+                                                        <el-option label="数据库" value="db" />
+                                                    </el-select>
+                                                </el-form-item>
+                                                <el-form-item label="枚举编码" v-if="selectedNode.options_source_ui.legacy_config.source_type === 'enum'">
+                                                    <el-input v-model="selectedNode.options_source_ui.legacy_config.enum_code" placeholder="如: order.status" />
+                                                </el-form-item>
+                                                <el-form-item label="上下文路径" v-if="selectedNode.options_source_ui.legacy_config.source_type === 'context'">
+                                                    <el-input v-model="selectedNode.options_source_ui.legacy_config.context_path" placeholder="如: options.audit_status" />
+                                                </el-form-item>
+                                                <el-form-item label="数据源编码" v-if="selectedNode.options_source_ui.legacy_config.source_type === 'db'">
+                                                    <el-input v-model="selectedNode.options_source_ui.legacy_config.db_source_code" placeholder="如: site.address_options_by_order" />
+                                                </el-form-item>
+                                                <el-form-item label="回退手工选项" v-if="selectedNode.options_source_ui.legacy_config.source_type !== 'manual'">
+                                                    <el-switch v-model="selectedNode.options_source_ui.legacy_config.fallback_to_manual" />
+                                                </el-form-item>
+                                            </template>
+                                            <div v-if="selectedNode.options_source_ui.mode === 'data_source' && getOptionsFieldDataSources(selectedNode).length" class="fd-source-examples">
                                                 <div class="fd-source-examples-head">
-                                                    <span>内置数据源示例</span>
+                                                    <span>可用数据源类</span>
                                                     <span class="fd-head-sub">选项</span>
                                                 </div>
-                                                <div class="fd-source-examples-tip">以下示例均可直接作为 `options_config` 参考。</div>
-                                                <div v-for="example in optionSourceExamples" :key="example.code" class="fd-source-example">
-                                                    <div class="fd-source-example-title">[[ example.title ]]</div>
-                                                    <div class="fd-source-example-desc">[[ example.description ]]</div>
-                                                    <div class="fd-source-example-code">[[ example.code ]]</div>
-                                                    <div class="fd-source-example-json">[[ formatDataSourceExample(example.config) ]]</div>
+                                                <div class="fd-source-examples-tip">仅展示当前字段类型可用的数据源类。</div>
+                                                <div v-for="item in getOptionsFieldDataSources(selectedNode)" :key="`options-source-${item.key}`" class="fd-source-example">
+                                                    <div class="fd-source-example-title">[[ item.label ]]</div>
+                                                    <div class="fd-source-example-code">[[ item.key ]]</div>
+                                                    <div class="fd-source-example-desc">支持组件：[[ (item.support_components || []).join('、') || '全部' ]]</div>
                                                 </div>
                                             </div>
-                                            <el-form-item label="枚举编码" v-if="selectedNode.options_config.source_type === 'enum'">
-                                                <el-input v-model="selectedNode.options_config.enum_code" placeholder="如: order.status" />
-                                            </el-form-item>
-                                            <el-form-item label="上下文路径" v-if="selectedNode.options_config.source_type === 'context'">
-                                                <el-input v-model="selectedNode.options_config.context_path" placeholder="如: options.audit_status" />
-                                            </el-form-item>
-                                            <el-form-item label="数据源编码" v-if="selectedNode.options_config.source_type === 'db'">
-                                                <el-input v-model="selectedNode.options_config.db_source_code" placeholder="如: site.address_options_by_order" />
-                                            </el-form-item>
-                                            <el-form-item label="回退手工选项" v-if="selectedNode.options_config.source_type !== 'manual'">
-                                                <el-switch v-model="selectedNode.options_config.fallback_to_manual" />
-                                            </el-form-item>
                                             <el-form-item label="选项">
                                                 <div style="width:100%">
                                                     <div
                                                         class="fd-option-row"
                                                         v-for="(option, index) in selectedNode.options"
                                                         :key="option.id || index"
-                                                        v-show="selectedNode.options_config.source_type === 'manual' || selectedNode.options_config.fallback_to_manual">
+                                                        v-show="usesManualOptions(selectedNode)">
                                                         <el-input v-model="option.label" placeholder="显示名称" />
                                                         <el-input v-model="option.value" placeholder="提交值" />
                                                         <div class="fd-option-actions">
@@ -869,7 +1018,7 @@
                                                         type="primary"
                                                         plain
                                                         @click="addOption(selectedNode)"
-                                                        v-if="selectedNode.options_config.source_type === 'manual' || selectedNode.options_config.fallback_to_manual">新增选项</el-button>
+                                                        v-if="usesManualOptions(selectedNode)">新增选项</el-button>
                                                 </div>
                                             </el-form-item>
                                         </template>
@@ -980,8 +1129,10 @@
 
 {% block extra_js %}
 {{ builtin_data_source_examples|json_script:"builtin-data-source-examples" }}
+{{ field_data_source_metadata|json_script:"field-data-source-metadata" }}
 <script type="module">
     import { mountFlowFormDesigner } from "{% static 'flow_engine/js/form_designer.js' %}?v=20260410-25";
+    import * as fieldSourceHelper from "{% static 'flow_engine/js/field_source_designer.js' %}?v=20260412-01";
 
     mountFlowFormDesigner({
         flowId: Number("{{ flow_id }}"),
@@ -989,6 +1140,10 @@
         builtinDataSourceExamples: JSON.parse(
             document.getElementById("builtin-data-source-examples")?.textContent || "[]"
         ),
+        fieldDataSourceMetadata: JSON.parse(
+            document.getElementById("field-data-source-metadata")?.textContent || "[]"
+        ),
+        fieldSourceHelper,
         currentUser: {
             username: "{{ request.user.username|default:''|escapejs }}",
             phone: "{{ request.user.phone|default:''|escapejs }}",

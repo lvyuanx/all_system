@@ -4,9 +4,23 @@
     const flowId = Number(options.flowId || 0);
     const previousUrl = options.previousUrl || "";
     const currentUser = options.currentUser || {};
+    const {
+        buildDefaultSourcePayload,
+        buildOptionsSourcePayload,
+        getAvailableFieldDataSources,
+        getFieldSourceParamSchema,
+        normalizeDefaultSourceUi,
+        normalizeFieldDataSourceMetadata,
+        normalizeOptionsSourceUi,
+        shouldShowLegacyDefaultMode,
+        shouldShowLegacyOptionsMode,
+        shouldUseManualOptions,
+        syncFieldSourceParamsBySchema,
+    } = options.fieldSourceHelper || {};
     const builtinDataSourceExamples = Array.isArray(options.builtinDataSourceExamples)
         ? options.builtinDataSourceExamples
         : [];
+    const fieldDataSourceMetadata = normalizeFieldDataSourceMetadata(options.fieldDataSourceMetadata || []);
     const HISTORY_LIMIT = 80;
     const DRAFT_STORAGE_PREFIX = "flow_form_designer_draft";
     const PLACEHOLDER_COMPONENTS = new Set(["placeholder"]);
@@ -594,6 +608,7 @@
             const pageData = reactive({
                 pageLoading: true,
                 saving: false,
+                sourceLoading: false,
             });
 
             const previewDialog = reactive({
@@ -912,6 +927,38 @@
                 };
             };
 
+            const getDefaultFieldDataSources = (node) => getAvailableFieldDataSources(
+                fieldDataSourceMetadata,
+                "default",
+                node?.component,
+            );
+
+            const getOptionsFieldDataSources = (node) => getAvailableFieldDataSources(
+                fieldDataSourceMetadata,
+                "options",
+                node?.component,
+            );
+
+            const getSourceParamsSchema = (node, target) => {
+                const ui = target === "default" ? node?.default_source_ui : node?.options_source_ui;
+                return getFieldSourceParamSchema(fieldDataSourceMetadata, ui?.source_key, target);
+            };
+
+            const onFieldDataSourceChange = (node, target) => {
+                const ui = target === "default" ? node?.default_source_ui : node?.options_source_ui;
+                if (!ui) return;
+                ui.source_params = syncFieldSourceParamsBySchema(
+                    fieldDataSourceMetadata,
+                    ui.source_key,
+                    target,
+                    ui.source_params,
+                );
+            };
+
+            const showLegacyDefaultConfigMode = (node) => shouldShowLegacyDefaultMode(node);
+            const showLegacyOptionsConfigMode = (node) => shouldShowLegacyOptionsMode(node);
+            const usesManualOptions = (node) => shouldUseManualOptions(node);
+
             const createNode = (component = "input") => {
                 if (component === "container") {
                     return {
@@ -991,6 +1038,13 @@
                         db_source_code: "",
                         fallback_value: "",
                     },
+                    default_source_ui: {
+                        mode: "fixed",
+                        source_key: "",
+                        source_params: {},
+                        fallback_value: "",
+                        legacy_config: null,
+                    },
                     context_binding: {
                         read_path: "",
                         write_path: "",
@@ -1005,6 +1059,13 @@
                         value_key: "value",
                         fallback_to_manual: true,
                     },
+                    options_source_ui: {
+                        mode: "manual",
+                        source_key: "",
+                        source_params: {},
+                        fallback_to_manual: true,
+                        legacy_config: null,
+                    },
                     options: ["select", "radio", "checkbox"].includes(component) ? [createOption(), createOption()] : [],
                 };
 
@@ -1014,6 +1075,8 @@
                     node.default = [];
                 }
                 node.default_config.value = node.default;
+                node.default_source_ui = normalizeDefaultSourceUi(node, node.default);
+                node.options_source_ui = normalizeOptionsSourceUi(node);
                 return node;
             };
 
@@ -1133,8 +1196,13 @@
                         rawNode,
                         normalizeDefaultValue(component, rawNode)
                     ),
+                    default_source_ui: normalizeDefaultSourceUi(
+                        rawNode,
+                        normalizeDefaultValue(component, rawNode),
+                    ),
                     context_binding: normalizeContextBinding(rawNode),
                     options_config: normalizeOptionsConfig(rawNode),
+                    options_source_ui: normalizeOptionsSourceUi(rawNode),
                     options: [],
                 };
 
@@ -1587,7 +1655,9 @@
                 const variableKey = String(node.variable_key || variableMeta.key || "").trim();
                 const value = resolveVariableValueByKey(variableKey);
                 return value === undefined || value === null || value === "" ? "-" : String(value);
-            };            const validateNodes = (nodes, formName, existedKeys) => {
+            };
+
+            const validateNodes = (nodes, formName, existedKeys) => {
                 for (const node of nodes || []) {
                     if (!node || typeof node !== "object") continue;
 
@@ -1620,8 +1690,7 @@
                     existedKeys.add(key);
 
                     if (["select", "radio", "checkbox"].includes(node.component)) {
-                        const optionsSource = String(node?.options_config?.source_type || "manual").toLowerCase();
-                        const requiresManualOptions = optionsSource === "manual" || !!node?.options_config?.fallback_to_manual;
+                        const requiresManualOptions = usesManualOptions(node);
                         if (requiresManualOptions && (!Array.isArray(node.options) || !node.options.length)) {
                             ElMessage.error(`Form [${formName}] field [${label}] requires at least one option`);
                             return false;
@@ -1738,6 +1807,7 @@
                 ) {
                     payload.default_config = defaultConfig;
                 }
+                Object.assign(payload, buildDefaultSourcePayload(node));
 
                 const contextBinding = {
                     read_path: node?.context_binding?.read_path || "",
@@ -1763,10 +1833,12 @@
                     if (node.multiple) payload.multiple = true;
                 }
                 if (["select", "radio", "checkbox"].includes(node.component)) {
-                    payload.options = (node.options || []).map((option) => ({
-                        label: String(option.label || "").trim(),
-                        value: option.value,
-                    }));
+                    if (usesManualOptions(node)) {
+                        payload.options = (node.options || []).map((option) => ({
+                            label: String(option.label || "").trim(),
+                            value: option.value,
+                        }));
+                    }
                     const optionsConfig = {
                         source_type: String(node?.options_config?.source_type || "manual").toLowerCase(),
                         context_path: node?.options_config?.context_path || "",
@@ -1787,6 +1859,7 @@
                     ) {
                         payload.options_config = optionsConfig;
                     }
+                    Object.assign(payload, buildOptionsSourcePayload(node));
                 }
                 return payload;
             };
@@ -2211,6 +2284,14 @@
                 defaultSourceExamples,
                 optionSourceExamples,
                 formatDataSourceExample,
+                fieldDataSourceMetadata,
+                getDefaultFieldDataSources,
+                getOptionsFieldDataSources,
+                getSourceParamsSchema,
+                onFieldDataSourceChange,
+                showLegacyDefaultConfigMode,
+                showLegacyOptionsConfigMode,
+                usesManualOptions,
                 containerStyle,
                 showPlaceholder,
                 showDefaultField,
@@ -2234,4 +2315,3 @@
         },
     });
 }
-

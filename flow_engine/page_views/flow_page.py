@@ -12,6 +12,7 @@ from flow_engine.utils.form_runtime_util import get_registered_field_data_source
 def _build_designer_context(**extra):
     context = {
         "builtin_data_source_examples": get_builtin_form_data_source_examples(),
+        "field_data_source_metadata": get_registered_field_data_source_metadata(),
     }
     context.update(extra)
     return context

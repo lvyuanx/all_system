@@ -337,9 +337,13 @@ class BuiltinDataSourceExamplesTests(SimpleTestCase):
         context = args[2]
         self.assertEqual(args[1], "flow_engine/flow_designer.html")
         self.assertIn("builtin_data_source_examples", context)
+        self.assertIn("field_data_source_metadata", context)
         codes = {item["code"] for item in context["builtin_data_source_examples"]}
         self.assertIn("default.db.order_receiver_name", codes)
         self.assertIn("options.db.site_address_by_order", codes)
+        source_keys = {item["key"] for item in context["field_data_source_metadata"]}
+        self.assertIn("ctx_text", source_keys)
+        self.assertIn("site_address_select", source_keys)
 
     def test_form_designer_page_includes_builtin_examples_context(self):
         request = self.factory.get("/admin/flow_engine/definition/1/form_designer/")
@@ -351,9 +355,13 @@ class BuiltinDataSourceExamplesTests(SimpleTestCase):
         context = args[2]
         self.assertEqual(args[1], "flow_engine/form_designer.html")
         self.assertIn("builtin_data_source_examples", context)
+        self.assertIn("field_data_source_metadata", context)
         codes = {item["code"] for item in context["builtin_data_source_examples"]}
         self.assertIn("default.context.current_node_amount", codes)
         self.assertIn("options.enum.order_status", codes)
+        source_keys = {item["key"] for item in context["field_data_source_metadata"]}
+        self.assertIn("ctx_text", source_keys)
+        self.assertIn("site_address_select", source_keys)
 
 
 class FieldDataSourceMetadataApiTests(SimpleTestCase):
