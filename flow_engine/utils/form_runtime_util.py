@@ -111,6 +111,37 @@ class RuntimeFieldDataSourceRegistry:
             return None
         return self._load_setting_classes().get(source_key) or self._builtin_classes.get(source_key)
 
+    def all(self) -> dict[str, type[BaseFieldDataSource]]:
+        combined = dict(self._builtin_classes)
+        combined.update(self._load_setting_classes())
+        return combined
+
+    def metadata(self) -> list[dict[str, Any]]:
+        items: list[dict[str, Any]] = []
+        for key, source_cls in sorted(self.all().items()):
+            support_components = [
+                str(item).strip()
+                for item in (getattr(source_cls, "support_components", None) or [])
+                if str(item).strip()
+            ]
+            params_schema = [
+                deepcopy(item)
+                for item in (getattr(source_cls, "params_schema", None) or [])
+                if isinstance(item, dict)
+            ]
+            items.append(
+                {
+                    "key": key,
+                    "label": str(getattr(source_cls, "label", "") or key),
+                    "data_type": str(getattr(source_cls, "data_type", "") or ""),
+                    "support_components": support_components,
+                    "support_default": bool(getattr(source_cls, "support_default", False)),
+                    "support_options": bool(getattr(source_cls, "support_options", False)),
+                    "params_schema": params_schema,
+                }
+            )
+        return items
+
     def build(self, key: str | None, **kwargs):
         source_cls = self.get(key)
         if source_cls is None:
@@ -426,6 +457,10 @@ RUNTIME_FIELD_DATA_SOURCE_REGISTRY = RuntimeFieldDataSourceRegistry()
 RUNTIME_FIELD_DATA_SOURCE_REGISTRY.register_builtin(ContextTextDataSource)
 RUNTIME_FIELD_DATA_SOURCE_REGISTRY.register_builtin(OrderFieldTextDataSource)
 RUNTIME_FIELD_DATA_SOURCE_REGISTRY.register_builtin(SiteAddressSelectDataSource)
+
+
+def get_registered_field_data_source_metadata() -> list[dict[str, Any]]:
+    return RUNTIME_FIELD_DATA_SOURCE_REGISTRY.metadata()
 
 
 def register_default_value_source(source_type: str, resolver):

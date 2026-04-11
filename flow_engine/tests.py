@@ -1,15 +1,21 @@
-from unittest.mock import patch
+import json
 from types import SimpleNamespace
+from unittest.mock import patch
 
 from django.contrib.auth.models import AnonymousUser
 from django.test import RequestFactory, SimpleTestCase, override_settings
 
-from flow_engine.page_views.flow_page import flow_definition_add, flow_form_designer
+from flow_engine.page_views.flow_page import (
+    field_data_source_metadata,
+    flow_definition_add,
+    flow_form_designer,
+)
 from flow_engine.utils.form_designer_data_source_examples import (
     get_builtin_form_data_source_examples,
 )
 from flow_engine.utils.form_runtime_util import (
     BaseFieldDataSource,
+    get_registered_field_data_source_metadata,
     register_default_value_source,
     register_field_options_source,
     resolve_form_runtime,
@@ -20,8 +26,15 @@ from flow_engine.utils.form_runtime_util import (
 
 class RuntimeEchoDataSource(BaseFieldDataSource):
     key = "runtime-echo"
+    label = "Runtime Echo"
+    data_type = "text"
+    support_components = ["input", "textarea"]
     support_default = True
     support_options = True
+    params_schema = [
+        {"name": "prefix", "label": "Prefix", "target": "default", "component": "input"},
+        {"name": "suffix", "label": "Suffix", "target": "options", "component": "input"},
+    ]
 
     def get_default(self, request):
         params = self.get_source_params("default")
@@ -52,8 +65,8 @@ class FormRuntimeDataSourceRegistryTests(SimpleTestCase):
                     "key": "status",
                     "component": "select",
                     "options": [
-                        {"label": "草稿", "value": "draft"},
-                        {"label": "已发布", "value": "published"},
+                        {"label": "draft", "value": "draft"},
+                        {"label": "published", "value": "published"},
                     ],
                     "options_config": {"source_type": "manual"},
                     "default_config": {
@@ -74,8 +87,8 @@ class FormRuntimeDataSourceRegistryTests(SimpleTestCase):
         self.assertEqual(
             resolved_schema["fields"][0]["options"],
             [
-                {"label": "草稿", "value": "draft", "default": False},
-                {"label": "已发布", "value": "published", "default": False},
+                {"label": "draft", "value": "draft", "default": False},
+                {"label": "published", "value": "published", "default": False},
             ],
         )
 
@@ -86,7 +99,7 @@ class FormRuntimeDataSourceRegistryTests(SimpleTestCase):
                     "key": "address",
                     "component": "select",
                     "options": [
-                        {"label": "默认地址", "value": 1},
+                        {"label": "default-address", "value": 1},
                     ],
                     "options_config": {
                         "source_type": "context",
@@ -105,7 +118,7 @@ class FormRuntimeDataSourceRegistryTests(SimpleTestCase):
 
         self.assertEqual(
             resolved_schema["fields"][0]["options"],
-            [{"label": "默认地址", "value": 1, "default": False}],
+            [{"label": "default-address", "value": 1, "default": False}],
         )
         self.assertEqual(resolved_form_data["address"], "")
 
@@ -341,3 +354,49 @@ class BuiltinDataSourceExamplesTests(SimpleTestCase):
         codes = {item["code"] for item in context["builtin_data_source_examples"]}
         self.assertIn("default.context.current_node_amount", codes)
         self.assertIn("options.enum.order_status", codes)
+
+
+class FieldDataSourceMetadataApiTests(SimpleTestCase):
+    def setUp(self):
+        self.factory = RequestFactory()
+
+    def test_registered_field_data_source_metadata_includes_builtin_sources(self):
+        items = get_registered_field_data_source_metadata()
+
+        by_key = {item["key"]: item for item in items}
+        self.assertIn("ctx_text", by_key)
+        self.assertIn("order_field_text", by_key)
+        self.assertIn("site_address_select", by_key)
+        self.assertTrue(by_key["ctx_text"]["label"])
+        self.assertEqual(by_key["site_address_select"]["data_type"], "select")
+        self.assertEqual(by_key["site_address_select"]["support_components"], ["select", "radio", "checkbox"])
+        self.assertTrue(by_key["ctx_text"]["support_default"])
+        self.assertFalse(by_key["ctx_text"]["support_options"])
+        self.assertTrue(by_key["site_address_select"]["support_options"])
+        self.assertEqual(by_key["ctx_text"]["params_schema"], [])
+
+    @override_settings(
+        FLOW_ENGINE_FIELD_DATA_SOURCES=[
+            "flow_engine.tests.RuntimeEchoDataSource",
+        ]
+    )
+    def test_metadata_api_returns_registered_custom_source(self):
+        request = self.factory.get("/admin/flow_engine/field_data_sources/metadata/")
+        response = field_data_source_metadata(request)
+
+        self.assertEqual(response.status_code, 200)
+        payload = json.loads(response.content)
+        by_key = {item["key"]: item for item in payload["items"]}
+        self.assertIn("runtime-echo", by_key)
+        self.assertEqual(by_key["runtime-echo"]["label"], "Runtime Echo")
+        self.assertEqual(by_key["runtime-echo"]["data_type"], "text")
+        self.assertEqual(by_key["runtime-echo"]["support_components"], ["input", "textarea"])
+        self.assertTrue(by_key["runtime-echo"]["support_default"])
+        self.assertTrue(by_key["runtime-echo"]["support_options"])
+        self.assertEqual(
+            by_key["runtime-echo"]["params_schema"],
+            [
+                {"name": "prefix", "label": "Prefix", "target": "default", "component": "input"},
+                {"name": "suffix", "label": "Suffix", "target": "options", "component": "input"},
+            ],
+        )

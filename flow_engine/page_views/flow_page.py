@@ -1,10 +1,12 @@
 # -*-coding:utf-8 -*-
 
+from django.http import JsonResponse
 from django.shortcuts import render
 
 from flow_engine.utils.form_designer_data_source_examples import (
     get_builtin_form_data_source_examples,
 )
+from flow_engine.utils.form_runtime_util import get_registered_field_data_source_metadata
 
 
 def _build_designer_context(**extra):
@@ -51,3 +53,11 @@ def flow_form_list(request):
         "title": "表单列表",
     }
     return render(request, "flow_engine/form_list.html", context)
+
+
+def field_data_source_metadata(request):
+    return JsonResponse(
+        {
+            "items": get_registered_field_data_source_metadata(),
+        }
+    )
