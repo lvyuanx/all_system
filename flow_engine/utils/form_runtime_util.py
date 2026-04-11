@@ -7,6 +7,7 @@ from decimal import Decimal
 from typing import Any
 
 from core.utils.common_util import import_func_or_class
+from flow_engine.utils.field_data_source_registry import FieldDataSourceRegistry
 
 ENUM_CLASS_PATH_MAP: dict[str, str] = {
     "order.type": "order.enums.OrderTypeChoices",
@@ -20,6 +21,9 @@ ENUM_CLASS_PATH_MAP: dict[str, str] = {
 }
 
 _MISSING = object()
+
+DEFAULT_VALUE_SOURCE_REGISTRY = FieldDataSourceRegistry()
+FIELD_OPTIONS_SOURCE_REGISTRY = FieldDataSourceRegistry()
 
 
 def get_path(data: Any, path: str, default: Any = _MISSING) -> Any:
@@ -269,30 +273,165 @@ def _resolve_db_options(config: dict[str, Any], context: dict[str, Any], runtime
     return []
 
 
+def register_default_value_source(source_type: str, resolver):
+    DEFAULT_VALUE_SOURCE_REGISTRY.register(source_type, resolver)
+
+
+def unregister_default_value_source(source_type: str):
+    DEFAULT_VALUE_SOURCE_REGISTRY.unregister(source_type)
+
+
+def register_field_options_source(source_type: str, resolver):
+    FIELD_OPTIONS_SOURCE_REGISTRY.register(source_type, resolver)
+
+
+def unregister_field_options_source(source_type: str):
+    FIELD_OPTIONS_SOURCE_REGISTRY.unregister(source_type)
+
+
+def _default_value_source_literal(
+    *,
+    field: dict[str, Any],
+    config: dict[str, Any],
+    context: dict[str, Any],
+    runtime_env: dict[str, Any] | None,
+    options: list[dict[str, Any]],
+):
+    if "value" in config:
+        return _json_safe(config.get("value"))
+    if "default" in field:
+        return _json_safe(field.get("default"))
+    return _json_safe(field.get("default_value"))
+
+
+def _default_value_source_context(
+    *,
+    field: dict[str, Any],
+    config: dict[str, Any],
+    context: dict[str, Any],
+    runtime_env: dict[str, Any] | None,
+    options: list[dict[str, Any]],
+):
+    result = get_path(context, str(config.get("context_path") or ""), _MISSING)
+    if result is _MISSING:
+        return _MISSING
+    return _json_safe(result)
+
+
+def _default_value_source_enum(
+    *,
+    field: dict[str, Any],
+    config: dict[str, Any],
+    context: dict[str, Any],
+    runtime_env: dict[str, Any] | None,
+    options: list[dict[str, Any]],
+):
+    enum_options = resolve_enum_options(config)
+    for item in enum_options:
+        if item.get("default"):
+            return _json_safe(item.get("value"))
+    if options:
+        return _json_safe(options[0].get("value"))
+    return _MISSING
+
+
+def _default_value_source_db(
+    *,
+    field: dict[str, Any],
+    config: dict[str, Any],
+    context: dict[str, Any],
+    runtime_env: dict[str, Any] | None,
+    options: list[dict[str, Any]],
+):
+    value = _resolve_db_value(config, context, runtime_env)
+    if value in (None, ""):
+        return _MISSING
+    return _json_safe(value)
+
+
+def _field_options_source_manual(
+    *,
+    field: dict[str, Any],
+    config: dict[str, Any],
+    context: dict[str, Any],
+    runtime_env: dict[str, Any] | None,
+) -> list[dict[str, Any]]:
+    return _normalize_options(field.get("options") or field.get("choices") or field.get("enum") or [])
+
+
+def _field_options_source_enum(
+    *,
+    field: dict[str, Any],
+    config: dict[str, Any],
+    context: dict[str, Any],
+    runtime_env: dict[str, Any] | None,
+) -> list[dict[str, Any]]:
+    return _normalize_options(resolve_enum_options(config), label_key="label", value_key="value")
+
+
+def _field_options_source_context(
+    *,
+    field: dict[str, Any],
+    config: dict[str, Any],
+    context: dict[str, Any],
+    runtime_env: dict[str, Any] | None,
+) -> list[dict[str, Any]]:
+    raw = get_path(context, str(config.get("context_path") or ""), _MISSING)
+    if raw is _MISSING:
+        return []
+    label_key = str(config.get("label_key") or "label")
+    value_key = str(config.get("value_key") or "value")
+    return _normalize_options(raw, label_key=label_key, value_key=value_key)
+
+
+def _field_options_source_db(
+    *,
+    field: dict[str, Any],
+    config: dict[str, Any],
+    context: dict[str, Any],
+    runtime_env: dict[str, Any] | None,
+) -> list[dict[str, Any]]:
+    return _resolve_db_options(config, context, runtime_env)
+
+
+register_default_value_source("literal", _default_value_source_literal)
+register_default_value_source("context", _default_value_source_context)
+register_default_value_source("enum", _default_value_source_enum)
+register_default_value_source("db", _default_value_source_db)
+
+register_field_options_source("manual", _field_options_source_manual)
+register_field_options_source("literal", _field_options_source_manual)
+register_field_options_source("enum", _field_options_source_enum)
+register_field_options_source("context", _field_options_source_context)
+register_field_options_source("db", _field_options_source_db)
+
+
 def _resolve_field_options(
     field: dict[str, Any],
     context: dict[str, Any],
     runtime_env: dict[str, Any] | None,
 ) -> list[dict[str, Any]]:
-    manual = _normalize_options(field.get("options") or field.get("choices") or field.get("enum") or [])
+    manual = FIELD_OPTIONS_SOURCE_REGISTRY.resolve(
+        "manual",
+        field=field,
+        config={},
+        context=context,
+        runtime_env=runtime_env,
+    ) or []
     cfg = field.get("options_config") if isinstance(field.get("options_config"), dict) else {}
     source_type = str(cfg.get("source_type") or "manual").strip().lower()
 
     if source_type in ("", "manual", "literal"):
         return manual
 
-    label_key = str(cfg.get("label_key") or "label")
-    value_key = str(cfg.get("value_key") or "value")
-    dynamic: list[dict[str, Any]] = []
-
-    if source_type == "enum":
-        dynamic = _normalize_options(resolve_enum_options(cfg), label_key="label", value_key="value")
-    elif source_type == "context":
-        raw = get_path(context, str(cfg.get("context_path") or ""), _MISSING)
-        if raw is not _MISSING:
-            dynamic = _normalize_options(raw, label_key=label_key, value_key=value_key)
-    elif source_type == "db":
-        dynamic = _resolve_db_options(cfg, context, runtime_env)
+    dynamic = FIELD_OPTIONS_SOURCE_REGISTRY.resolve(
+        source_type,
+        default=[],
+        field=field,
+        config=cfg,
+        context=context,
+        runtime_env=runtime_env,
+    ) or []
 
     fallback_to_manual = bool(cfg.get("fallback_to_manual", True))
     if dynamic:
@@ -321,32 +460,17 @@ def _resolve_default_from_config(
 ):
     cfg = field.get("default_config") if isinstance(field.get("default_config"), dict) else {}
     source_type = str(cfg.get("source_type") or "literal").strip().lower()
-
-    if source_type in ("", "literal"):
-        if "value" in cfg:
-            return _json_safe(cfg.get("value"))
-        if "default" in field:
-            return _json_safe(field.get("default"))
-        return _json_safe(field.get("default_value"))
-
-    if source_type == "context":
-        path = str(cfg.get("context_path") or "")
-        result = get_path(context, path, _MISSING)
-        if result is not _MISSING:
-            return _json_safe(result)
-
-    if source_type == "enum":
-        enum_options = resolve_enum_options(cfg)
-        for item in enum_options:
-            if item.get("default"):
-                return _json_safe(item.get("value"))
-        if options:
-            return _json_safe(options[0].get("value"))
-
-    if source_type == "db":
-        value = _resolve_db_value(cfg, context, runtime_env)
-        if value not in (None, ""):
-            return _json_safe(value)
+    resolved = DEFAULT_VALUE_SOURCE_REGISTRY.resolve(
+        source_type,
+        default=_MISSING,
+        field=field,
+        config=cfg,
+        context=context,
+        runtime_env=runtime_env,
+        options=options,
+    )
+    if resolved is not _MISSING:
+        return resolved
 
     if "fallback_value" in cfg:
         return _json_safe(cfg.get("fallback_value"))
