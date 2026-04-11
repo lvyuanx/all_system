@@ -4,6 +4,9 @@
     const flowId = Number(options.flowId || 0);
     const previousUrl = options.previousUrl || "";
     const currentUser = options.currentUser || {};
+    const builtinDataSourceExamples = Array.isArray(options.builtinDataSourceExamples)
+        ? options.builtinDataSourceExamples
+        : [];
     const HISTORY_LIMIT = 80;
     const DRAFT_STORAGE_PREFIX = "flow_form_designer_draft";
     const PLACEHOLDER_COMPONENTS = new Set(["placeholder"]);
@@ -864,6 +867,10 @@
                 label: "",
                 value: "",
             });
+
+            const defaultSourceExamples = builtinDataSourceExamples.filter((item) => item?.target === "default");
+            const optionSourceExamples = builtinDataSourceExamples.filter((item) => item?.target === "options");
+            const formatDataSourceExample = (config) => JSON.stringify(config || {}, null, 2);
 
             const normalizeDefaultConfig = (rawNode, defaultValue) => {
                 const raw = rawNode?.default_config;
@@ -2201,6 +2208,9 @@
                 addOption,
                 moveOption,
                 removeOption,
+                defaultSourceExamples,
+                optionSourceExamples,
+                formatDataSourceExample,
                 containerStyle,
                 showPlaceholder,
                 showDefaultField,
@@ -2224,5 +2234,4 @@
         },
     });
 }
-
 

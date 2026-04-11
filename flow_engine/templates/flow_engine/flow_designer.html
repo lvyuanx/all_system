@@ -290,6 +290,75 @@
         color: #64748b;
         background: #f8fafc;
     }
+
+    .data-source-examples {
+        margin-bottom: 10px;
+        padding: 12px;
+        border: 1px solid #dbe5ef;
+        border-radius: 12px;
+        background: #f8fafc;
+    }
+
+    .data-source-examples-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        margin-bottom: 8px;
+        color: #0f172a;
+        font-size: 13px;
+        font-weight: 600;
+    }
+
+    .data-source-examples-tip {
+        margin-bottom: 8px;
+        color: #64748b;
+        font-size: 12px;
+        line-height: 1.7;
+    }
+
+    .data-source-example + .data-source-example {
+        margin-top: 10px;
+        padding-top: 10px;
+        border-top: 1px dashed #dbe5ef;
+    }
+
+    .data-source-example-title {
+        color: #1e293b;
+        font-size: 13px;
+        font-weight: 600;
+    }
+
+    .data-source-example-desc {
+        margin-top: 4px;
+        color: #64748b;
+        font-size: 12px;
+        line-height: 1.7;
+    }
+
+    .data-source-example-code {
+        margin-top: 6px;
+        display: inline-flex;
+        padding: 2px 8px;
+        border-radius: 999px;
+        background: #dbeafe;
+        color: #1d4ed8;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    .data-source-example-json {
+        margin-top: 8px;
+        padding: 8px 10px;
+        border-radius: 10px;
+        border: 1px solid #dbe5ef;
+        background: #fff;
+        color: #334155;
+        font-size: 12px;
+        line-height: 1.6;
+        white-space: pre-wrap;
+        word-break: break-all;
+    }
 </style>
 {% endblock %}
 
@@ -698,6 +767,19 @@
                                     </el-form-item>
                                 </el-col>
                             </el-row>
+                            <div v-if="field.default_config.source_type !== 'literal' && defaultSourceExamples.length" class="data-source-examples">
+                                <div class="data-source-examples-head">
+                                    <span>内置数据源示例</span>
+                                    <span class="status-hint">默认值</span>
+                                </div>
+                                <div class="data-source-examples-tip">以下示例均可直接作为 `default_config` 参考。</div>
+                                <div v-for="example in defaultSourceExamples" :key="example.code" class="data-source-example">
+                                    <div class="data-source-example-title">[[ example.title ]]</div>
+                                    <div class="data-source-example-desc">[[ example.description ]]</div>
+                                    <div class="data-source-example-code">[[ example.code ]]</div>
+                                    <div class="data-source-example-json">[[ formatDataSourceExample(example.config) ]]</div>
+                                </div>
+                            </div>
                             <el-row :gutter="12">
                                 <el-col :span="8">
                                     <el-form-item label="读取路径">
@@ -769,6 +851,21 @@
                                             </el-select>
                                         </el-form-item>
                                     </el-col>
+                                </el-row>
+                                <div v-if="field.options_config.source_type !== 'manual' && optionSourceExamples.length" class="data-source-examples">
+                                    <div class="data-source-examples-head">
+                                        <span>内置数据源示例</span>
+                                        <span class="status-hint">选项</span>
+                                    </div>
+                                    <div class="data-source-examples-tip">以下示例均可直接作为 `options_config` 参考。</div>
+                                    <div v-for="example in optionSourceExamples" :key="example.code" class="data-source-example">
+                                        <div class="data-source-example-title">[[ example.title ]]</div>
+                                        <div class="data-source-example-desc">[[ example.description ]]</div>
+                                        <div class="data-source-example-code">[[ example.code ]]</div>
+                                        <div class="data-source-example-json">[[ formatDataSourceExample(example.config) ]]</div>
+                                    </div>
+                                </div>
+                                <el-row :gutter="12" style="margin-bottom: 8px;">
                                     <el-col :span="8" v-if="field.options_config.source_type === 'enum'">
                                         <el-form-item label="枚举编码">
                                             <el-input v-model="field.options_config.enum_code" :disabled="!!nodeDialog.form.form_ref_code" placeholder="如: order.status" />
@@ -883,11 +980,15 @@
 {% endblock %}
 
 {% block extra_js %}
+{{ builtin_data_source_examples|json_script:"builtin-data-source-examples" }}
 <script type="module">
     const { reactive, ref, computed, onMounted, onBeforeUnmount, inject, nextTick } = Vue;
 
     window.createApp({
         setup() {
+            const builtinDataSourceExamples = JSON.parse(
+                document.getElementById("builtin-data-source-examples")?.textContent || "[]"
+            );
             const ElMessage = inject("ElMessage");
             const goBack = () => {
                 window.location.href = "{% get_previous_url %}";
@@ -1183,6 +1284,10 @@
                 label: "",
                 value: "",
             });
+
+            const defaultSourceExamples = builtinDataSourceExamples.filter((item) => item?.target === "default");
+            const optionSourceExamples = builtinDataSourceExamples.filter((item) => item?.target === "options");
+            const formatDataSourceExample = (config) => JSON.stringify(config || {}, null, 2);
 
             const normalizeDefaultConfig = (field, defaultValue) => {
                 const raw = field?.default_config;
@@ -2160,6 +2265,9 @@
                 removeFormField,
                 addFormFieldOption,
                 removeFormFieldOption,
+                defaultSourceExamples,
+                optionSourceExamples,
+                formatDataSourceExample,
                 onFormFieldDragStart,
                 onFormFieldDrop,
                 onFormFieldDragEnd,

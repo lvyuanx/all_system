@@ -378,6 +378,75 @@
         font-size: 13px;
     }
 
+    .fd-source-examples {
+        margin-bottom: 14px;
+        padding: 12px;
+        border: 1px solid var(--fd-border);
+        border-radius: 12px;
+        background: #f8faff;
+    }
+
+    .fd-source-examples-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        margin-bottom: 8px;
+        color: var(--fd-text);
+        font-size: 13px;
+        font-weight: 700;
+    }
+
+    .fd-source-examples-tip {
+        margin-bottom: 8px;
+        color: var(--fd-text-soft);
+        font-size: 12px;
+        line-height: 1.7;
+    }
+
+    .fd-source-example + .fd-source-example {
+        margin-top: 10px;
+        padding-top: 10px;
+        border-top: 1px dashed var(--fd-border);
+    }
+
+    .fd-source-example-title {
+        color: var(--fd-text);
+        font-size: 13px;
+        font-weight: 600;
+    }
+
+    .fd-source-example-desc {
+        margin-top: 4px;
+        color: var(--fd-text-soft);
+        font-size: 12px;
+        line-height: 1.7;
+    }
+
+    .fd-source-example-code {
+        margin-top: 6px;
+        display: inline-flex;
+        padding: 2px 8px;
+        border-radius: 999px;
+        background: var(--fd-primary-soft);
+        color: var(--fd-primary);
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    .fd-source-example-json {
+        margin-top: 8px;
+        padding: 8px 10px;
+        border-radius: 10px;
+        background: #fff;
+        border: 1px solid var(--fd-border);
+        color: var(--fd-text);
+        font-size: 12px;
+        line-height: 1.6;
+        white-space: pre-wrap;
+        word-break: break-all;
+    }
+
     .fd-option-row {
         display: grid;
         grid-template-columns: 1fr 1fr;
@@ -677,6 +746,19 @@
                                                 <el-option label="数据库" value="db" />
                                             </el-select>
                                         </el-form-item>
+                                        <div v-if="selectedNode.default_config.source_type !== 'literal' && defaultSourceExamples.length" class="fd-source-examples">
+                                            <div class="fd-source-examples-head">
+                                                <span>内置数据源示例</span>
+                                                <span class="fd-head-sub">默认值</span>
+                                            </div>
+                                            <div class="fd-source-examples-tip">以下示例均可直接作为 `default_config` 参考。</div>
+                                            <div v-for="example in defaultSourceExamples" :key="example.code" class="fd-source-example">
+                                                <div class="fd-source-example-title">[[ example.title ]]</div>
+                                                <div class="fd-source-example-desc">[[ example.description ]]</div>
+                                                <div class="fd-source-example-code">[[ example.code ]]</div>
+                                                <div class="fd-source-example-json">[[ formatDataSourceExample(example.config) ]]</div>
+                                            </div>
+                                        </div>
                                         <el-form-item label="上下文路径" v-if="selectedNode.default_config.source_type === 'context'">
                                             <el-input v-model="selectedNode.default_config.context_path" placeholder="如: form.NODE_A.amount" />
                                         </el-form-item>
@@ -742,6 +824,19 @@
                                                     <el-option label="数据库" value="db" />
                                                 </el-select>
                                             </el-form-item>
+                                            <div v-if="selectedNode.options_config.source_type !== 'manual' && optionSourceExamples.length" class="fd-source-examples">
+                                                <div class="fd-source-examples-head">
+                                                    <span>内置数据源示例</span>
+                                                    <span class="fd-head-sub">选项</span>
+                                                </div>
+                                                <div class="fd-source-examples-tip">以下示例均可直接作为 `options_config` 参考。</div>
+                                                <div v-for="example in optionSourceExamples" :key="example.code" class="fd-source-example">
+                                                    <div class="fd-source-example-title">[[ example.title ]]</div>
+                                                    <div class="fd-source-example-desc">[[ example.description ]]</div>
+                                                    <div class="fd-source-example-code">[[ example.code ]]</div>
+                                                    <div class="fd-source-example-json">[[ formatDataSourceExample(example.config) ]]</div>
+                                                </div>
+                                            </div>
                                             <el-form-item label="枚举编码" v-if="selectedNode.options_config.source_type === 'enum'">
                                                 <el-input v-model="selectedNode.options_config.enum_code" placeholder="如: order.status" />
                                             </el-form-item>
@@ -884,12 +979,16 @@
 {% endblock %}
 
 {% block extra_js %}
+{{ builtin_data_source_examples|json_script:"builtin-data-source-examples" }}
 <script type="module">
     import { mountFlowFormDesigner } from "{% static 'flow_engine/js/form_designer.js' %}?v=20260410-25";
 
     mountFlowFormDesigner({
         flowId: Number("{{ flow_id }}"),
         previousUrl: "/admin/flow_engine/definition/list/",
+        builtinDataSourceExamples: JSON.parse(
+            document.getElementById("builtin-data-source-examples")?.textContent || "[]"
+        ),
         currentUser: {
             username: "{{ request.user.username|default:''|escapejs }}",
             phone: "{{ request.user.phone|default:''|escapejs }}",

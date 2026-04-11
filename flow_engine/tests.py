@@ -1,5 +1,12 @@
-from django.test import SimpleTestCase
+from unittest.mock import patch
 
+from django.contrib.auth.models import AnonymousUser
+from django.test import RequestFactory, SimpleTestCase
+
+from flow_engine.page_views.flow_page import flow_definition_add, flow_form_designer
+from flow_engine.utils.form_designer_data_source_examples import (
+    get_builtin_form_data_source_examples,
+)
 from flow_engine.utils.form_runtime_util import (
     register_default_value_source,
     register_field_options_source,
@@ -132,3 +139,47 @@ class FormRuntimeDataSourceRegistryTests(SimpleTestCase):
                 {"label": "acme-B", "value": "b"},
             ],
         )
+
+
+class BuiltinDataSourceExamplesTests(SimpleTestCase):
+    def setUp(self):
+        self.factory = RequestFactory()
+
+    def test_builtin_examples_include_at_least_three_designer_ready_examples(self):
+        examples = get_builtin_form_data_source_examples()
+
+        self.assertGreaterEqual(len(examples), 3)
+        self.assertGreaterEqual(len({item["code"] for item in examples}), 3)
+        self.assertTrue(any(item["target"] == "default" for item in examples))
+        self.assertTrue(any(item["target"] == "options" for item in examples))
+        for item in examples:
+            self.assertIn(item["source_type"], {"context", "enum", "db"})
+            self.assertEqual(item["config"]["source_type"], item["source_type"])
+
+    def test_flow_designer_page_includes_builtin_examples_context(self):
+        request = self.factory.get("/admin/flow_engine/definition/add/")
+        request.user = AnonymousUser()
+        with patch("flow_engine.page_views.flow_page.render") as mocked_render:
+            flow_definition_add(request)
+
+        args, _ = mocked_render.call_args
+        context = args[2]
+        self.assertEqual(args[1], "flow_engine/flow_designer.html")
+        self.assertIn("builtin_data_source_examples", context)
+        codes = {item["code"] for item in context["builtin_data_source_examples"]}
+        self.assertIn("default.db.order_receiver_name", codes)
+        self.assertIn("options.db.site_address_by_order", codes)
+
+    def test_form_designer_page_includes_builtin_examples_context(self):
+        request = self.factory.get("/admin/flow_engine/definition/1/form_designer/")
+        request.user = AnonymousUser()
+        with patch("flow_engine.page_views.flow_page.render") as mocked_render:
+            flow_form_designer(request, fid=1)
+
+        args, _ = mocked_render.call_args
+        context = args[2]
+        self.assertEqual(args[1], "flow_engine/form_designer.html")
+        self.assertIn("builtin_data_source_examples", context)
+        codes = {item["code"] for item in context["builtin_data_source_examples"]}
+        self.assertIn("default.context.current_node_amount", codes)
+        self.assertIn("options.enum.order_status", codes)
