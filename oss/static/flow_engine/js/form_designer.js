@@ -634,6 +634,8 @@
                 formData: {},
                 rules: {},
                 submittedJson: "",
+                sourceNodes: [],
+                contextText: "",
             });
             const previewFormRef = ref(null);
 
@@ -1186,7 +1188,7 @@
                         legacy_config: null,
                     },
                 context_binding: {
-                    write_target: "node",
+                    write_target: "flow",
                     write_mode: "overwrite",
                 },
                     options_source_ui: {
@@ -2015,6 +2017,9 @@
                             travel(node.children || []);
                             continue;
                         }
+                        if (DISPLAY_COMPONENTS.has(node.component)) {
+                            continue;
+                        }
                         const key = String(node.key || "").trim();
                         if (!key || !node.required) continue;
                         const message = `${node.label || key} 为必填项`;
@@ -2056,6 +2061,79 @@
                 }
             };
 
+            const buildRuntimePreviewSchema = (nodes) => ({
+                fields: (nodes || []).map((node, index) => buildPayloadNode(node, index)),
+            });
+
+            const extractPreviewNodesFromSchema = (schema) => {
+                if (Array.isArray(schema)) return schema;
+                if (Array.isArray(schema?.fields)) return schema.fields;
+                if (Array.isArray(schema?.form?.fields)) return schema.form.fields;
+                if (Array.isArray(schema?.schema?.fields)) return schema.schema.fields;
+                return [];
+            };
+
+            const ensurePreviewNodeIds = (nodes) => {
+                let counter = 0;
+                const walk = (list, prefix = "preview") => {
+                    (list || []).forEach((node) => {
+                        if (!node || typeof node !== "object") return;
+                        if (!node.id) {
+                            node.id = `${prefix}_${counter += 1}`;
+                        }
+                        if (node.component === "container" && Array.isArray(node.children)) {
+                            walk(node.children, node.id);
+                        }
+                    });
+                };
+                walk(nodes);
+                return nodes;
+            };
+
+            const parsePreviewContext = () => {
+                const raw = String(previewDialog.contextText || "").trim();
+                if (!raw) return {};
+                try {
+                    const parsed = JSON.parse(raw);
+                    return parsed && typeof parsed === "object" ? parsed : {};
+                } catch (err) {
+                    console.error(err);
+                    ElMessage.error("预览上下文 JSON 解析失败");
+                    return null;
+                }
+            };
+
+            const resolveRuntimePreview = async (nodes, contextOverride) => {
+                const context = contextOverride !== undefined ? contextOverride : parsePreviewContext();
+                if (context === null) {
+                    throw new Error("preview_context_invalid");
+                }
+                const payload = {
+                    form_schema: buildRuntimePreviewSchema(nodes),
+                    context,
+                    node_code: String(activeForm.value?.code || ""),
+                    runtime_env: {
+                        preview: true,
+                    },
+                };
+                const res = await request.post("/flow_engine/form_runtime_preview_resolve", payload);
+                const data = res?.data ?? res ?? {};
+                const resolvedSchema = data.resolved_form_schema || {};
+                const resolvedFormData = data.resolved_form_data || {};
+                const resolvedNodes = extractPreviewNodesFromSchema(resolvedSchema);
+                return {
+                    resolvedNodes,
+                    resolvedFormData,
+                };
+            };
+
+            const applyPreviewState = (nodes, formData) => {
+                previewDialog.nodes = nodes;
+                previewDialog.formData = formData;
+                previewDialog.rules = buildPreviewRules(nodes);
+                previewDialog.submittedJson = "";
+            };
+
             const loadFormLibrary = async () => {
                 const res = await request.get("/flow_engine/form_global_detail");
                 const rawForms = Array.isArray(res?.forms) ? res.forms : [];
@@ -2090,19 +2168,36 @@
                 }
             };
 
-            const openPreviewDialog = () => {
+            const openPreviewDialog = async () => {
                 if (!activeForm.value) return;
+                let sourceNodes = [];
                 try {
-                    previewDialog.nodes = deepClone(activeForm.value.nodes || []);
+                    sourceNodes = deepClone(activeForm.value.nodes || []);
                 } catch {
-                    previewDialog.nodes = Array.isArray(activeForm.value.nodes) ? [...activeForm.value.nodes] : [];
+                    sourceNodes = Array.isArray(activeForm.value.nodes) ? [...activeForm.value.nodes] : [];
                 }
-                if (!previewDialog.nodes.length && Array.isArray(activeForm.value.nodes) && activeForm.value.nodes.length) {
-                    previewDialog.nodes = activeForm.value.nodes;
+                if (!sourceNodes.length && Array.isArray(activeForm.value.nodes) && activeForm.value.nodes.length) {
+                    sourceNodes = activeForm.value.nodes;
                 }
-                previewDialog.formData = buildPreviewFormData(previewDialog.nodes);
-                previewDialog.rules = buildPreviewRules(previewDialog.nodes);
-                previewDialog.submittedJson = "";
+                previewDialog.sourceNodes = sourceNodes;
+                if (!String(previewDialog.contextText || "").trim()) {
+                    previewDialog.contextText = "{}";
+                }
+                try {
+                    const { resolvedNodes, resolvedFormData } = await resolveRuntimePreview(sourceNodes);
+                    if (Array.isArray(resolvedNodes) && resolvedNodes.length) {
+                        const nodes = ensurePreviewNodeIds(resolvedNodes);
+                        const data = (resolvedFormData && typeof resolvedFormData === "object")
+                            ? resolvedFormData
+                            : buildPreviewFormData(nodes);
+                        applyPreviewState(nodes, data);
+                        previewDialog.visible = true;
+                        return;
+                    }
+                } catch (err) {
+                    console.error(err);
+                }
+                applyPreviewState(sourceNodes, buildPreviewFormData(sourceNodes));
                 previewDialog.visible = true;
             };
 
@@ -2117,13 +2212,50 @@
                 }
             };
 
-            const resetPreviewForm = () => {
-                const sourceNodes = Array.isArray(previewDialog.nodes) && previewDialog.nodes.length
-                    ? previewDialog.nodes
+            const resetPreviewForm = async () => {
+                const sourceNodes = Array.isArray(previewDialog.sourceNodes) && previewDialog.sourceNodes.length
+                    ? previewDialog.sourceNodes
                     : (Array.isArray(activeForm.value?.nodes) ? activeForm.value.nodes : []);
-                previewDialog.formData = buildPreviewFormData(sourceNodes);
-                previewDialog.rules = buildPreviewRules(sourceNodes);
-                previewDialog.submittedJson = "";
+                try {
+                    const { resolvedNodes, resolvedFormData } = await resolveRuntimePreview(sourceNodes);
+                    if (Array.isArray(resolvedNodes) && resolvedNodes.length) {
+                        const nodes = ensurePreviewNodeIds(resolvedNodes);
+                        const data = (resolvedFormData && typeof resolvedFormData === "object")
+                            ? resolvedFormData
+                            : buildPreviewFormData(nodes);
+                        applyPreviewState(nodes, data);
+                    } else {
+                        applyPreviewState(sourceNodes, buildPreviewFormData(sourceNodes));
+                    }
+                } catch (err) {
+                    console.error(err);
+                    applyPreviewState(sourceNodes, buildPreviewFormData(sourceNodes));
+                }
+                if (previewFormRef.value?.clearValidate) {
+                    previewFormRef.value.clearValidate();
+                }
+            };
+
+            const applyPreviewContext = async () => {
+                const sourceNodes = Array.isArray(previewDialog.sourceNodes) && previewDialog.sourceNodes.length
+                    ? previewDialog.sourceNodes
+                    : (Array.isArray(activeForm.value?.nodes) ? activeForm.value.nodes : []);
+                try {
+                    const { resolvedNodes, resolvedFormData } = await resolveRuntimePreview(sourceNodes);
+                    if (Array.isArray(resolvedNodes) && resolvedNodes.length) {
+                        const nodes = ensurePreviewNodeIds(resolvedNodes);
+                        const data = (resolvedFormData && typeof resolvedFormData === "object")
+                            ? resolvedFormData
+                            : buildPreviewFormData(nodes);
+                        applyPreviewState(nodes, data);
+                    } else {
+                        applyPreviewState(sourceNodes, buildPreviewFormData(sourceNodes));
+                    }
+                } catch (err) {
+                    if (err?.message !== "preview_context_invalid") {
+                        console.error(err);
+                    }
+                }
                 if (previewFormRef.value?.clearValidate) {
                     previewFormRef.value.clearValidate();
                 }
@@ -2288,6 +2420,16 @@
                 window.location.href = previousUrl || "/admin/flow_engine/form/list/";
             };
 
+            const consumeCreateQuery = () => {
+                if (!shouldCreateFormFromQuery) return;
+                const nextParams = new URLSearchParams(window.location.search || "");
+                nextParams.delete("new_form");
+                nextParams.delete("group_name");
+                const nextQuery = nextParams.toString();
+                const nextUrl = `${window.location.pathname}${nextQuery ? `?${nextQuery}` : ""}`;
+                window.history.replaceState({}, "", nextUrl);
+            };
+
             const gotoFlowDesigner = () => {
                 if (!flowId) {
                     window.location.href = "/admin/flow_engine/definition/list/";
@@ -2323,12 +2465,15 @@
                 paletteState.keyword = "";
                 try {
                     await loadFormLibrary();
-                    if (shouldCreateFormFromQuery && !forms.length) {
+                    if (shouldCreateFormFromQuery) {
                         addForm();
+                        consumeCreateQuery();
                     }
                     pushHistorySnapshot();
                     pageData.pageLoading = false;
-                    await restoreLocalDraft();
+                    if (!shouldCreateFormFromQuery) {
+                        await restoreLocalDraft();
+                    }
                 } finally {
                     pageData.pageLoading = false;
                 }
@@ -2417,6 +2562,7 @@
                 openPreviewDialog,
                 submitPreviewForm,
                 resetPreviewForm,
+                applyPreviewContext,
                 onPreviewFileChange,
                 runFieldScript,
                 openJsonDialog,

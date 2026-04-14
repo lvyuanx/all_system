@@ -18,6 +18,7 @@ from .views import (
     flow_form_global_detail_view,
     flow_form_global_save_view,
     flow_form_runtime_resolve_view,
+    flow_form_runtime_preview_resolve_view,
     field_data_source_metadata_view,
 )
 
@@ -41,5 +42,6 @@ apis = {
         ("A15", "form_library_global_list", flow_form_library_global_list_view.View, "global form library list"),
         ("A16", "form_global_detail", flow_form_global_detail_view.View, "global form detail"),
         ("A17", "form_global_save", flow_form_global_save_view.View, "global form save"),
+        ("A18", "form_runtime_preview_resolve", flow_form_runtime_preview_resolve_view.View, "resolve runtime form preview"),
     ],
 }

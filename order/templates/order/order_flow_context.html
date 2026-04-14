@@ -1,0 +1,185 @@
+{% extends "vue_base.html" %}
+
+{% block title %}
+{{ title }}
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .flow-context-shell {
+        padding: 16px;
+        box-sizing: border-box;
+    }
+
+    .flow-context-meta {
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        background: #ffffff;
+        padding: 14px;
+        margin-bottom: 14px;
+    }
+
+    .flow-context-title {
+        font-size: 16px;
+        font-weight: 600;
+        margin-bottom: 10px;
+        color: #111827;
+    }
+
+    .flow-context-table-wrap {
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        background: #ffffff;
+        padding: 14px;
+    }
+
+    .flow-context-table {
+        width: 100%;
+        border-collapse: collapse;
+        table-layout: fixed;
+        font-size: 13px;
+        color: #334155;
+    }
+
+    .flow-context-table th,
+    .flow-context-table td {
+        border: 1px solid #e2e8f0;
+        padding: 8px 10px;
+        vertical-align: top;
+        text-align: left;
+        line-height: 1.6;
+        word-break: break-all;
+    }
+
+    .flow-context-table th {
+        width: 130px;
+        background: #f8fafc;
+        color: #475569;
+        font-weight: 600;
+    }
+
+    .flow-context-context-table th:first-child {
+        width: 120px;
+    }
+
+    .flow-context-context-table th:nth-child(2) {
+        width: 140px;
+    }
+
+    .flow-context-context-table td:first-child,
+    .flow-context-context-table td:nth-child(2) {
+        width: 120px;
+    }
+
+    .flow-context-context-table td:nth-child(2) {
+        width: 140px;
+    }
+
+    .flow-context-context-table td:nth-child(3),
+    .flow-context-context-table th:nth-child(3) {
+        width: auto;
+    }
+
+    .flow-context-pre {
+        margin: 0;
+        white-space: pre-wrap;
+        word-break: break-word;
+        font-size: 12px;
+        color: #0f172a;
+        background: #f8fafc;
+        border-radius: 6px;
+        padding: 8px;
+    }
+
+    .flow-context-empty {
+        border: 1px dashed #cbd5e1;
+        border-radius: 10px;
+        background: #f8fafc;
+        padding: 16px;
+        color: #475569;
+        font-size: 14px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div id="app" class="flow-context-shell">
+    <div class="flow-context-meta">
+        <div class="flow-context-title">流程实例信息</div>
+        <table class="flow-context-table">
+            <tbody>
+                <tr>
+                    <th>订单号</th>
+                    <td>{{ order_no }}</td>
+                    <th>流程</th>
+                    <td>{{ flow_definition_name }}</td>
+                </tr>
+                <tr>
+                    <th>实例ID</th>
+                    <td>{{ flow_instance_id|default:"--" }}</td>
+                    <th>流程状态</th>
+                    <td>{{ flow_status_label|default:"--" }}</td>
+                </tr>
+                <tr>
+                    <th>流程版本</th>
+                    <td>{{ flow_version_label|default:"--" }}</td>
+                    <th>当前节点</th>
+                    <td>{{ current_node_name|default:"--" }}</td>
+                </tr>
+                <tr>
+                    <th>业务类型</th>
+                    <td>{{ business_type|default:"--" }}</td>
+                    <th>业务ID</th>
+                    <td>{{ business_id|default:"--" }}</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    {% if has_flow_instance %}
+    <div class="flow-context-table-wrap">
+        <div class="flow-context-title">流程上下文（Context）</div>
+        <table class="flow-context-table flow-context-context-table">
+            <thead>
+                <tr>
+                    <th>字段编码</th>
+                    <th>字段名称</th>
+                    <th>值</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in flow_context_rows %}
+                <tr>
+                    <td>{{ row.key }}</td>
+                    <td>{{ row.name|default:"--" }}</td>
+                    <td>
+                        {% if row.is_complex %}
+                        <pre class="flow-context-pre">{{ row.value }}</pre>
+                        {% else %}
+                        {{ row.value|default:"--" }}
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="3">当前流程上下文为空。</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="flow-context-empty">当前订单还没有启动流程实例，暂无可展示的流程上下文数据。</div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script type="module">
+    window.initVueApp({
+        data() {
+            return {};
+        }
+    });
+</script>
+{% endblock %}

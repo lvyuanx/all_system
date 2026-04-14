@@ -1,6 +1,7 @@
 from django.contrib import admin, messages
 from django.http import HttpRequest
-from django.urls import reverse
+from django.shortcuts import redirect
+from django.urls import path, reverse
 
 from core.admin_extra.base_admin import AdminBaseMixin
 from core.admin_extra.mixins.filter_change_list_mixin import FilterChangeListMixin
@@ -113,6 +114,29 @@ class OrderAdmin(
                 "url": lambda obj: reverse("order_timeline", kwargs={"pk": obj.pk}),
             }
         ]
+        if obj.order_status >= OrderStatusChoices.PRODUCING:
+            operate_buttons_config = [
+                {
+                    "name": "流程数据",
+                    "type": "text",
+                    "mode": "modal",
+                    "icon": "el-icon-data-analysis",
+                    "modal_width": "62vw",
+                    "modal_height": "82vh",
+                    "url": lambda obj: reverse("order_flow_context", kwargs={"pk": obj.pk}),
+                }
+            ] + operate_buttons_config
+        if obj.order_status == OrderStatusChoices.PRODUCING and not obj.flow_definition_id:
+            operate_buttons_config = [
+                {
+                    "name": "生产完成",
+                    "type": "text",
+                    "mode": "link",
+                    "icon": "el-icon-check",
+                    "confirm": "确定将该订单标记为生产完成吗？",
+                    "url": lambda obj: reverse("admin:order_order_finish_production", args=[obj.pk]),
+                }
+            ] + operate_buttons_config
         if obj.order_status == OrderStatusChoices.PRODUCING and obj.flow_definition_id:
             operate_buttons_config = [
                 {
@@ -140,18 +164,53 @@ class OrderAdmin(
         
         return operate_buttons_config
 
+    def get_urls(self):
+        urls = super().get_urls()
+        custom_urls = [
+            path(
+                "<path:object_id>/finish-production/",
+                self.admin_site.admin_view(self.finish_production_view),
+                name="order_order_finish_production",
+            ),
+        ]
+        return custom_urls + urls
+
+    def finish_production_view(self, request: HttpRequest, object_id: str):
+        obj = self.get_object(request, object_id)
+        if not obj:
+            messages.error(request, "订单不存在")
+            return redirect(reverse("admin:order_order_changelist"))
+
+        if obj.order_status != OrderStatusChoices.PRODUCING:
+            messages.warning(request, "只有生产中状态的订单才能生产完成")
+        elif obj.flow_definition_id:
+            messages.warning(request, "流程订单请在流程中完成审批后自动完工")
+        else:
+            sm = OrderStateMachine(obj, request.user)
+            allowed, reason = sm.can_finish_production()
+            if not allowed:
+                messages.warning(request, reason or "当前订单暂不可生产完成")
+            else:
+                sm.finish_production()
+                sm.save_state()
+                admin_util.log_custom_actions(request, [obj], "订单生产完成", 2)
+                messages.success(request, f"订单 {obj.order_no} 已生产完成")
+
+        next_url = request.GET.get("next") or request.META.get("HTTP_REFERER") or reverse("admin:order_order_changelist")
+        return redirect(next_url)
+
     # ------------------------------ 批量操作按钮配置 ------------------------------
     actions = [
         "batch_cancel",
         "batch_confirm",
         "batch_scheduled",
         "batch_producing",
-        "batch_finished",
         "batch_complete",
     ]
 
     def get_actions(self, request):
         actions = super().get_actions(request)
+        actions.pop("batch_finished", None)
 
         status = self.get_status_by_request(request)
 
@@ -170,9 +229,6 @@ class OrderAdmin(
         if OrderStatusChoices.SCHEDULED not in status:
             del actions["batch_producing"]
 
-        if OrderStatusChoices.PRODUCING not in status:
-            del actions["batch_finished"]
-        
         if OrderStatusChoices.SHIPPED not in status:
             del actions["batch_complete"]
 

@@ -5,6 +5,7 @@ from .page_views.order_page import (
     order_shipping,
     order_timeline,
     order_workflow,
+    order_flow_context,
     order_ship,
     order_pay,
 )
@@ -16,6 +17,7 @@ urls = [
     path("order/order/shipping/", order_shipping, name="order_shipping"),
     path("order/order/<int:pk>/timeline/", order_timeline, name="order_timeline"),
     path("order/order/<int:pk>/workflow/", order_workflow, name="order_workflow"),
+    path("order/order/<int:pk>/flow_context/", order_flow_context, name="order_flow_context"),
     path("order/order/<int:pk>/ship/", order_ship, name="order_ship"),
     path("order/order/<int:pk>/pay/", order_pay, name="order_pay"),
 ]

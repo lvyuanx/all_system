@@ -8,358 +8,514 @@
 {% block extra_css %}
 <style>
     :root {
-        --wf-ink: #122033;
-        --wf-subtle: #5b6b7f;
-        --wf-line: #d8e1ea;
+        --wf-bg: #f8fafc;
         --wf-panel: #ffffff;
-        --wf-bg: linear-gradient(180deg, #f3f7fb 0%, #eef3f8 100%);
+        --wf-border: #e2e8f0;
+        --wf-border-light: #f1f5f9;
+        --wf-ink: #1e293b;
+        --wf-subtle: #64748b;
         --wf-brand: #0f766e;
-        --wf-brand-soft: #d7f3ee;
-        --wf-success: #166534;
-        --wf-success-soft: #dcfce7;
-        --wf-danger: #b42318;
-        --wf-danger-soft: #fee4e2;
-        --wf-muted: #475467;
-        --wf-muted-soft: #eaecf0;
-        --wf-shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
+        --wf-brand-light: #ecfdf5;
+        --wf-success: #059669;
+        --wf-success-light: #f0fdf4;
+        --wf-danger: #dc2626;
+        --wf-danger-light: #fef2f2;
+        --wf-muted: #94a3b8;
+        --wf-muted-light: #f8fafc;
+        --wf-shadow: 0 1px 3px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.1);
+        --wf-shadow-hover: 0 4px 6px rgba(0, 0, 0, 0.05), 0 2px 4px rgba(0, 0, 0, 0.1);
+        --wf-radius: 12px;
+        --wf-radius-sm: 8px;
+        --wf-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     }
 
     body {
         background: var(--wf-bg);
+        font-family: var(--wf-font);
+        color: var(--wf-ink);
+        margin: 0;
+        padding: 0;
+        line-height: 1.5;
+    }
+
+    /* 确保在iframe中能正常显示 */
+    html, body, #app {
+        height: 100%;
+        width: 100%;
+        margin: 0;
+        padding: 0;
+        /* 允许页面内容滚动，避免被遮挡 */
+        overflow: auto;
     }
 
     .workflow-shell {
-        padding: 20px;
+        padding: 24px 24px 32px;
+        box-sizing: border-box;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        overflow: auto; /* 允许整个内容区域滚动 */
+        max-width: 1400px; /* 外层留白，避免紧贴容器 */
+        margin: 0 auto;
     }
 
     .workflow-stack {
         display: flex;
         flex-direction: column;
-        gap: 18px;
+        gap: 20px;
+        flex: 1;
+        min-height: 0;
+        overflow: visible; /* 允许内容扩展 */
     }
 
-    .workflow-hero {
-        background:
-            radial-gradient(circle at top right, rgba(15, 118, 110, 0.18), transparent 30%),
-            linear-gradient(135deg, #16324f 0%, #0f766e 100%);
-        color: #fff;
-        border-radius: 22px;
-        padding: 24px;
+    .workflow-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+        gap: 20px;
+        flex: 1;
+        min-height: 0;
+        align-items: start;
+        overflow: visible; /* 允许内容扩展 */
+    }
+
+    .workflow-column-left,
+    .workflow-column-right {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        min-height: 0;
+    }
+
+    /* 防止Element UI组件在iframe中产生滚动问题 */
+    .el-form, .el-form-item, .el-input, .el-select, .el-date-editor {
+        max-width: 100%;
+    }
+
+    .workflow-stack {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+        flex: 1;
+        min-height: 0;
+    }
+
+    /* 头部区域 */
+    .workflow-header {
+        background: var(--wf-panel);
+        border-radius: var(--wf-radius);
+        border: 1px solid var(--wf-border);
+        padding: 20px;
         box-shadow: var(--wf-shadow);
     }
 
-    .workflow-hero-top {
+    .workflow-header-top {
         display: flex;
         justify-content: space-between;
-        gap: 16px;
+        align-items: flex-start;
+        gap: 20px;
         flex-wrap: wrap;
+        margin-bottom: 16px;
     }
 
     .workflow-title {
         font-size: 24px;
         font-weight: 700;
-        line-height: 1.3;
+        color: var(--wf-ink);
+        margin: 0 0 8px 0;
     }
 
     .workflow-subtitle {
-        margin-top: 8px;
-        color: rgba(255, 255, 255, 0.78);
+        color: var(--wf-subtle);
         font-size: 14px;
-        line-height: 1.7;
+        margin: 0;
+        max-width: 600px;
     }
 
-    .workflow-chip-row {
+    .workflow-tags {
         display: flex;
         flex-wrap: wrap;
-        gap: 10px;
-        margin-top: 14px;
+        gap: 8px;
+        margin-top: 16px;
     }
 
-    .workflow-chip {
+    .workflow-tag {
         display: inline-flex;
         align-items: center;
-        gap: 8px;
-        padding: 8px 12px;
-        border-radius: 999px;
-        background: rgba(255, 255, 255, 0.14);
-        backdrop-filter: blur(8px);
+        padding: 6px 12px;
+        background: var(--wf-muted-light);
+        border: 1px solid var(--wf-border);
+        border-radius: 20px;
         font-size: 13px;
-        line-height: 1;
+        color: var(--wf-subtle);
     }
 
     .workflow-metrics {
         display: grid;
-        grid-template-columns: repeat(3, minmax(120px, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
         gap: 12px;
-        min-width: 320px;
-        flex: 1;
+        min-width: 0;
+        flex: 1 1 300px;
     }
 
     .workflow-metric {
-        background: rgba(255, 255, 255, 0.12);
-        border: 1px solid rgba(255, 255, 255, 0.18);
-        border-radius: 18px;
-        padding: 14px 16px;
+        background: var(--wf-panel);
+        border: 1px solid var(--wf-border);
+        border-radius: var(--wf-radius-sm);
+        padding: 16px;
     }
 
     .workflow-metric-label {
         font-size: 12px;
-        color: rgba(255, 255, 255, 0.72);
-        letter-spacing: 0.04em;
+        color: var(--wf-subtle);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 4px;
     }
 
     .workflow-metric-value {
-        margin-top: 8px;
         font-size: 20px;
         font-weight: 700;
-        line-height: 1.2;
+        color: var(--wf-ink);
     }
 
+    /* 主内容区域 */
     .workflow-grid {
         display: grid;
-        grid-template-columns: minmax(0, 1.7fr) minmax(320px, 0.95fr);
-        gap: 18px;
+        grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+        gap: 20px;
+        flex: 1;
+        min-height: 0;
         align-items: start;
+    }
+
+    @media (max-width: 1024px) {
+        .workflow-grid {
+            grid-template-columns: 1fr;
+        }
     }
 
     .workflow-column {
         display: flex;
         flex-direction: column;
-        gap: 18px;
+        gap: 16px;
+        min-height: 0;
     }
 
+    /* 卡片样式 */
     .workflow-card {
         background: var(--wf-panel);
-        border-radius: 22px;
-        border: 1px solid rgba(18, 32, 51, 0.06);
+        border-radius: var(--wf-radius);
+        border: 1px solid var(--wf-border);
         box-shadow: var(--wf-shadow);
-        overflow: hidden;
+        transition: box-shadow 0.2s ease, border-color 0.2s ease;
+        overflow: visible;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .workflow-card:hover {
+        box-shadow: var(--wf-shadow-hover);
+        border-color: var(--wf-border-light);
+    }
+
+    .workflow-card.compact {
+        border-radius: var(--wf-radius-sm);
+    }
+
+    /* 处理面板卡片 - 跟随页面滚动，不悬浮 */
+    .workflow-action-card {
+        position: static;
+        top: auto;
+        z-index: auto;
     }
 
     .workflow-card-head {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 12px;
-        padding: 18px 20px 0;
+        padding: 16px 20px 0;
+        border-bottom: 1px solid var(--wf-border-light);
+        margin-bottom: 16px;
+    }
+
+    .workflow-card.compact .workflow-card-head {
+        padding: 12px 16px 0;
+        margin-bottom: 12px;
     }
 
     .workflow-card-title {
+        font-size: 16px;
+        font-weight: 600;
         color: var(--wf-ink);
-        font-size: 18px;
-        font-weight: 700;
+        margin: 0 0 4px 0;
     }
 
     .workflow-card-subtitle {
-        color: var(--wf-subtle);
         font-size: 13px;
-        line-height: 1.6;
-        margin-top: 4px;
+        color: var(--wf-subtle);
+        margin: 0;
     }
 
     .workflow-card-body {
-        padding: 18px 20px 20px;
+        padding: 0 20px 20px;
+        flex: 1;
+        min-height: 0;
     }
 
+    .workflow-card.compact .workflow-card-body {
+        padding: 0 16px 16px;
+    }
+
+    /* 徽章 */
     .workflow-badge {
         display: inline-flex;
         align-items: center;
-        gap: 6px;
-        padding: 7px 12px;
-        border-radius: 999px;
+        padding: 4px 10px;
+        border-radius: 12px;
         font-size: 12px;
         font-weight: 600;
         line-height: 1;
     }
 
     .workflow-badge.brand {
+        background: var(--wf-brand-light);
         color: var(--wf-brand);
-        background: var(--wf-brand-soft);
     }
 
     .workflow-badge.success {
+        background: var(--wf-success-light);
         color: var(--wf-success);
-        background: var(--wf-success-soft);
     }
 
     .workflow-badge.danger {
+        background: var(--wf-danger-light);
         color: var(--wf-danger);
-        background: var(--wf-danger-soft);
     }
 
     .workflow-badge.muted {
+        background: var(--wf-muted-light);
         color: var(--wf-muted);
-        background: var(--wf-muted-soft);
     }
 
+    /* 键值对 */
     .workflow-kv {
         display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 14px;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+    }
+
+    .workflow-kv.workflow-kv-tight {
+        margin-bottom: 16px;
+    }
+
+    @media (max-width: 640px) {
+        .workflow-kv {
+            grid-template-columns: 1fr;
+        }
     }
 
     .workflow-kv-item {
-        padding: 14px 16px;
-        border-radius: 16px;
-        background: #f8fafc;
-        border: 1px solid #edf2f7;
+        padding: 12px;
+        background: var(--wf-muted-light);
+        border: 1px solid var(--wf-border);
+        border-radius: var(--wf-radius-sm);
     }
 
     .workflow-kv-label {
         font-size: 12px;
         color: var(--wf-subtle);
+        margin-bottom: 4px;
     }
 
     .workflow-kv-value {
-        margin-top: 6px;
-        font-size: 15px;
+        font-size: 14px;
         font-weight: 600;
         color: var(--wf-ink);
         word-break: break-word;
     }
 
+    /* 任务列表 */
     .workflow-task-list {
         display: flex;
         flex-direction: column;
-        gap: 12px;
+        gap: 8px;
     }
 
     .workflow-task-item {
-        border: 1px solid #dbe5ef;
-        border-radius: 16px;
-        padding: 14px 16px;
-        transition: all 0.2s ease;
+        padding: 12px 16px;
+        border: 1px solid var(--wf-border);
+        border-radius: var(--wf-radius-sm);
+        background: var(--wf-panel);
         cursor: pointer;
-        background: #fff;
+        transition: all 0.2s ease;
+        position: relative;
+    }
+
+    .workflow-task-item:hover {
+        border-color: var(--wf-brand);
+        background: var(--wf-brand-light);
     }
 
     .workflow-task-item.is-active {
-        border-color: #0f766e;
-        box-shadow: 0 0 0 4px rgba(15, 118, 110, 0.08);
-        background: #f2fbf9;
+        border-color: var(--wf-brand);
+        background: var(--wf-brand-light);
+    }
+
+    .workflow-task-item::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        top: 12px;
+        bottom: 12px;
+        width: 3px;
+        background: var(--wf-border);
+        border-radius: 0 2px 2px 0;
+    }
+
+    .workflow-task-item.is-active::before {
+        background: var(--wf-brand);
     }
 
     .workflow-task-name {
-        font-size: 15px;
-        font-weight: 700;
+        font-size: 14px;
+        font-weight: 600;
         color: var(--wf-ink);
+        margin-bottom: 4px;
     }
 
     .workflow-task-meta {
-        margin-top: 8px;
+        font-size: 12px;
         color: var(--wf-subtle);
-        font-size: 13px;
-        line-height: 1.6;
     }
 
+    /* 空状态 */
     .workflow-empty {
-        border-radius: 18px;
-        border: 1px dashed #cbd5e1;
-        padding: 18px;
-        background: #f8fafc;
+        padding: 24px;
+        text-align: center;
         color: var(--wf-subtle);
         font-size: 14px;
-        line-height: 1.8;
+        background: var(--wf-muted-light);
+        border-radius: var(--wf-radius-sm);
+        border: 1px dashed var(--wf-border);
     }
 
+    /* 重做笔记 */
     .workflow-rework-note {
+        padding: 16px;
+        background: var(--wf-danger-light);
+        border: 1px solid var(--wf-danger);
+        border-radius: var(--wf-radius-sm);
         margin-bottom: 16px;
-        border-radius: 18px;
-        border: 1px solid #fecaca;
-        background: linear-gradient(135deg, #fff5f5 0%, #fff1f2 100%);
-        padding: 16px 18px;
     }
 
     .workflow-rework-title {
         font-size: 14px;
-        font-weight: 700;
+        font-weight: 600;
         color: var(--wf-danger);
+        margin-bottom: 4px;
     }
 
     .workflow-rework-meta {
-        margin-top: 6px;
         font-size: 12px;
-        color: #9f1239;
+        color: var(--wf-danger);
+        opacity: 0.8;
     }
 
     .workflow-rework-memo {
-        margin-top: 8px;
         font-size: 13px;
-        line-height: 1.7;
         color: var(--wf-ink);
+        margin-top: 8px;
         white-space: pre-wrap;
         word-break: break-word;
     }
 
+    /* 步骤列表 */
     .workflow-step-list {
         display: flex;
         flex-direction: column;
-        gap: 12px;
+        gap: 8px;
     }
 
     .workflow-step-item {
-        position: relative;
-        display: grid;
-        grid-template-columns: 44px minmax(0, 1fr) auto;
+        display: flex;
         align-items: center;
-        gap: 14px;
-        padding: 14px 16px;
-        border-radius: 18px;
-        background: #f8fafc;
-        border: 1px solid #edf2f7;
+        gap: 12px;
+        padding: 12px 16px;
+        background: var(--wf-muted-light);
+        border: 1px solid var(--wf-border);
+        border-radius: var(--wf-radius-sm);
+        position: relative;
+    }
+
+    .workflow-step-item:not(:last-child)::after {
+        content: "";
+        position: absolute;
+        left: 28px;
+        top: 44px;
+        bottom: -9px;
+        width: 2px;
+        background: var(--wf-border);
     }
 
     .workflow-step-index {
-        width: 44px;
-        height: 44px;
-        border-radius: 14px;
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-weight: 700;
         font-size: 14px;
-        color: var(--wf-ink);
-        background: #e2e8f0;
+        font-weight: 600;
+        background: var(--wf-panel);
+        border: 1px solid var(--wf-border);
+        color: var(--wf-subtle);
+        flex-shrink: 0;
     }
 
     .workflow-step-item.done .workflow-step-index {
+        background: var(--wf-success-light);
+        border-color: var(--wf-success);
         color: var(--wf-success);
-        background: var(--wf-success-soft);
     }
 
     .workflow-step-item.current .workflow-step-index {
+        background: var(--wf-brand-light);
+        border-color: var(--wf-brand);
         color: var(--wf-brand);
-        background: var(--wf-brand-soft);
     }
 
     .workflow-step-item.rejected .workflow-step-index {
+        background: var(--wf-danger-light);
+        border-color: var(--wf-danger);
         color: var(--wf-danger);
-        background: var(--wf-danger-soft);
+    }
+
+    .workflow-step-content {
+        flex: 1;
+        min-width: 0;
     }
 
     .workflow-step-name {
-        font-size: 15px;
-        font-weight: 700;
+        font-size: 14px;
+        font-weight: 600;
         color: var(--wf-ink);
+        margin-bottom: 2px;
     }
 
     .workflow-step-meta {
-        margin-top: 4px;
+        font-size: 12px;
         color: var(--wf-subtle);
-        font-size: 13px;
     }
 
+    /* 日志列表 */
     .workflow-log-list {
         display: flex;
         flex-direction: column;
-        gap: 12px;
+        gap: 8px;
     }
 
     .workflow-log-item {
-        border-left: 4px solid #cbd5e1;
-        background: #f8fafc;
-        border-radius: 14px;
-        padding: 14px 16px;
+        padding: 12px 16px;
+        background: var(--wf-muted-light);
+        border-left: 4px solid var(--wf-border);
+        border-radius: var(--wf-radius-sm);
     }
 
     .workflow-log-item.brand {
@@ -375,109 +531,210 @@
     }
 
     .workflow-log-title {
-        font-size: 15px;
-        font-weight: 700;
+        font-size: 14px;
+        font-weight: 600;
         color: var(--wf-ink);
+        margin-bottom: 4px;
     }
 
     .workflow-log-meta {
-        margin-top: 6px;
-        color: var(--wf-subtle);
         font-size: 12px;
+        color: var(--wf-subtle);
     }
 
     .workflow-log-memo {
-        margin-top: 8px;
-        color: var(--wf-ink);
         font-size: 13px;
-        line-height: 1.7;
+        color: var(--wf-ink);
+        margin-top: 8px;
         white-space: pre-wrap;
         word-break: break-word;
     }
 
-    .workflow-toolbar {
+    /* 表单区域 */
+    .workflow-form-shell {
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+        min-height: 0;
+    }
+
+    .workflow-form-actions {
+        margin-top: 20px;
+        padding-top: 16px;
+        border-top: 1px solid var(--wf-border);
         display: flex;
         justify-content: flex-end;
-        margin-top: 12px;
+        gap: 12px;
+    }
+
+    @media (max-width: 640px) {
+        .workflow-form-actions {
+            flex-direction: column;
+        }
+
+        .workflow-form-actions .el-button {
+            width: 100%;
+        }
     }
 
     .workflow-form-block {
-        margin-top: 18px;
+        margin-top: 16px;
         padding: 16px;
-        border-radius: 18px;
-        background: #f8fafc;
-        border: 1px solid #e2e8f0;
+        background: var(--wf-muted-light);
+        border: 1px solid var(--wf-border);
+        border-radius: var(--wf-radius-sm);
     }
 
     .workflow-form-title {
         font-size: 14px;
-        font-weight: 700;
+        font-weight: 600;
         color: var(--wf-ink);
-        margin-bottom: 6px;
+        margin-bottom: 4px;
     }
 
     .workflow-form-tip {
         font-size: 12px;
-        line-height: 1.6;
         color: var(--wf-subtle);
-        margin-bottom: 14px;
+        margin-bottom: 12px;
+    }
+
+    /* 工具栏 */
+    .workflow-toolbar {
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        gap: 12px;
+        margin-top: 16px;
+    }
+
+    /* 表单预览相关样式 */
+    .fd-preview-form {
+        padding: 8px 0;
+    }
+
+    .fd-preview-form .workflow-form-block {
+        margin-top: 0;
+        padding: 0;
+        background: transparent;
+        border: none;
     }
 
     .workflow-native-file {
         width: 100%;
-        min-height: 34px;
-        padding: 4px 0;
+        min-height: 36px;
+        padding: 8px;
+        border: 1px solid var(--wf-border);
+        border-radius: var(--wf-radius-sm);
+        background: var(--wf-panel);
     }
 
-    .workflow-form-container-block {
-        margin-bottom: 14px;
-        border: 1px dashed #cbd5e1;
-        border-radius: 12px;
-        background: #ffffff;
-        padding: 12px;
-    }
+    /* 响应式调整 */
+    @media (max-width: 768px) {
+        .workflow-shell {
+            padding: 12px;
+        }
 
-    .workflow-form-container-head {
-        margin-bottom: 10px;
-        font-size: 13px;
-        font-weight: 700;
-        color: #334155;
-    }
+        .workflow-header {
+            padding: 16px;
+        }
 
-    .workflow-form-container-canvas {
-        display: grid;
-        gap: 12px;
-        border: 1px dashed #e2e8f0;
-        border-radius: 10px;
-        background: #f8fafc;
-        padding: 10px;
-    }
+        .workflow-header-top {
+            gap: 16px;
+        }
 
-    .workflow-form-container-item {
-        min-width: 0;
-    }
-
-    .workflow-form-container-empty {
-        border: 1px dashed #d1d5db;
-        border-radius: 8px;
-        padding: 10px;
-        text-align: center;
-        color: #64748b;
-        font-size: 12px;
-    }
-
-    @media (max-width: 1080px) {
-        .workflow-grid {
-            grid-template-columns: 1fr;
+        .workflow-title {
+            font-size: 20px;
         }
 
         .workflow-metrics {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+
+    /* 表单预览相关样式 */
+    .fd-preview-control {
+        width: 100%;
+    }
+
+    .fd-preview-text,
+    .fd-preview-placeholder {
+        border: 1px solid var(--wf-border);
+        border-radius: var(--wf-radius-sm);
+        min-height: 36px;
+        padding: 8px 12px;
+        font-size: 14px;
+        color: var(--wf-subtle);
+        background: var(--wf-panel);
+    }
+
+    .fd-preview-heading {
+        margin: 0;
+        line-height: 1.35;
+        color: var(--wf-ink);
+        font-weight: 700;
+    }
+
+    .fd-preview-h1 { font-size: 28px; }
+    .fd-preview-h2 { font-size: 24px; }
+    .fd-preview-h3 { font-size: 20px; }
+    .fd-preview-h4 { font-size: 18px; }
+    .fd-preview-h5 { font-size: 16px; }
+
+    .fd-preview-paragraph {
+        margin: 0;
+        color: var(--wf-subtle);
+        line-height: 1.8;
+        white-space: pre-wrap;
+    }
+
+    .fd-preview-variable {
+        margin: 8px 0;
+        border: 1px dashed var(--wf-border);
+        border-radius: var(--wf-radius-sm);
+        background: var(--wf-muted-light);
+        padding: 12px;
+        color: var(--wf-ink);
+        font-size: 14px;
+    }
+
+    .fd-preview-inline {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+        color: var(--wf-subtle);
+        font-size: 14px;
+    }
+
+    .fd-container {
+        /* border: 1px dashed var(--wf-border); */
+        border-radius: var(--wf-radius-sm);
+        background: var(--wf-muted-light);
+        min-height: 100px;
+        padding: 16px;
+    }
+
+    .fd-container-empty {
+        /* border: 1px dashed var(--wf-border); */
+        border-radius: var(--wf-radius-sm);
+        text-align: center;
+        color: var(--wf-subtle);
+        font-size: 14px;
+        padding: 24px;
+        background: var(--wf-panel);
+    }
+
+    @media (max-width: 480px) {
+        .workflow-metrics {
             grid-template-columns: 1fr;
-            min-width: 0;
         }
 
-        .workflow-kv {
-            grid-template-columns: 1fr;
+        .workflow-step-item {
+            flex-wrap: wrap;
+        }
+
+        .workflow-step-item:not(:last-child)::after {
+            display: none;
         }
     }
 </style>
@@ -486,14 +743,15 @@
 {% block content %}
 <div id="app" class="workflow-shell">
     <div class="workflow-stack">
-        <section class="workflow-hero">
-            <div class="workflow-hero-top">
+        <section class="workflow-header">
+            <div class="workflow-header-top">
                 <div>
-                    <div class="workflow-title">订单流程工作台</div>
-                    <div class="workflow-chip-row">
-                        <span class="workflow-chip">订单号：{{ order_no }}</span>
-                        <span class="workflow-chip">流程：{{ flow_definition_name|default:"未绑定" }}</span>
-                        <span class="workflow-chip">订单状态：{{ order_status_label|default:"--" }}</span>
+                    <h1 class="workflow-title">订单流程工作台</h1>
+                    <p class="workflow-subtitle">聚焦当前节点快速处理，左侧填单并提交，右侧随时查看任务状态、流程路径和最近动作。</p>
+                    <div class="workflow-tags">
+                        <span class="workflow-tag">订单号：{{ order_no }}</span>
+                        <span class="workflow-tag">流程：{{ flow_definition_name|default:"未绑定" }}</span>
+                        <span class="workflow-tag">订单状态：{{ order_status_label|default:"--" }}</span>
                     </div>
                 </div>
                 <div class="workflow-metrics">
@@ -507,15 +765,59 @@
                     </div>
                     <div class="workflow-metric">
                         <div class="workflow-metric-label">待处理任务</div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             <div class="workflow-metric-value">{{ pending_task_total }}</div>
+                        <div class="workflow-metric-value">{{ pending_task_total }}</div>
                     </div>
                 </div>
             </div>
         </section>
 
         <section class="workflow-grid">
-            <div class="workflow-column">
+            <div class="workflow-column workflow-column-left">
+                {% if workflow_action %}
                 <div class="workflow-card">
+                    <div class="workflow-card-head">
+                        <div>
+                            <div class="workflow-card-title">节点表单</div>
+                            <div class="workflow-card-subtitle" style="display: none;">这里展示的是当前节点高级配置里的表单字段，点击“通过”时会一并提交。</div>
+                        </div>
+                    </div>
+                    <div class="workflow-card-body">
+                        <div class="workflow-form-shell">
+                    <el-form
+                        ref="workflowFormRef"
+                        :model="workflowForm.form_data"
+                        :rules="workflowRules"
+                        label-width="100px"
+                        class="fd-preview-form"
+                        novalidate>
+                                <div v-if="workflowSchemaFields.length" class="workflow-form-block">
+                                    <preview-field-render
+                                        v-for="node in workflowSchemaFields"
+                                        :key="node.uid"
+                                        :node="node"
+                                        :form-data="workflowForm.form_data"
+                                        :current-user="currentUser"
+                                        :container-style="resolveWorkflowContainerStyle"
+                                        :run-script="runWorkflowFieldScript"
+                                        @file-change="onWorkflowPreviewFileChange"></preview-field-render>
+                                </div>
+                                <div v-else class="workflow-form-block">
+                                    <div class="workflow-form-title">该节点未配置表单</div>
+                                    <div class="workflow-form-tip">如果需要收集信息，请在流程设计器为当前节点添加表单字段。</div>
+                                </div>
+                            </el-form>
+                            <div class="workflow-toolbar workflow-form-actions">
+                                <el-button type="primary" :loading="workflowForm.submitting" @click="submitWorkflowAction('approve')">通过并进入下一步</el-button>
+                                <el-button type="danger" plain :loading="workflowForm.submitting" @click="submitWorkflowAction('reject')">驳回并退回当前节点</el-button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="workflow-column workflow-column-right">
+                <div class="workflow-card compact workflow-action-card">
                     <div class="workflow-card-head">
                         <div>
                             <div class="workflow-card-title">处理面板</div>
@@ -546,7 +848,7 @@
                             {% endif %}
                         </div>
                         {% endif %}
-                        <div class="workflow-kv" style="margin-bottom: 16px;">
+                        <div class="workflow-kv workflow-kv-tight">
                             <div class="workflow-kv-item">
                                 <div class="workflow-kv-label">当前节点</div>
                                 <div class="workflow-kv-value">{{ workflow_action.current_node_name|default:"--" }}</div>
@@ -573,280 +875,13 @@
                             {% endfor %}
                         </div>
 
-                        <el-form label-width="76px" style="margin-top: 18px;">
-                            <div v-if="workflowSchemaFields.length" class="workflow-form-block">
-                                <div class="workflow-form-title">节点表单</div>
-                                <div class="workflow-form-tip">这里展示的是当前节点高级配置里的表单字段，点击“通过”时会一并提交。</div>
-                                <template v-for="node in workflowSchemaFields" :key="node.id || node.key || node.label">
-                                    <template v-if="node.component === 'container'">
-                                        <div class="workflow-form-container-block">
-                                            <div class="workflow-form-container-head">[[ node.label || '容器' ]]</div>
-                                            <div class="workflow-form-container-canvas" :style="resolveWorkflowContainerStyle(node)">
-                                                <div v-if="!(node.children || []).length" class="workflow-form-container-empty">该容器暂未配置子组件</div>
-                                                <div
-                                                    v-for="child in (node.children || [])"
-                                                    :key="child.id || child.key || child.label"
-                                                    class="workflow-form-container-item">
-                                                    <el-form-item :label="child.label || child.key" :required="child.required">
-                                                        <el-input
-                                                            v-if="child.component === 'input'"
-                                                            v-model="workflowForm.form_data[child.key]"
-                                                            :placeholder="child.placeholder || '请输入'"
-                                                            :style="resolveWorkflowFieldStyle(child)"
-                                                            @change="onWorkflowFieldChange(child, workflowForm.form_data[child.key])"
-                                                            clearable></el-input>
-                                                        <el-input
-                                                            v-else-if="child.component === 'textarea'"
-                                                            v-model="workflowForm.form_data[child.key]"
-                                                            type="textarea"
-                                                            :autosize="{ minRows: child.rows || 3, maxRows: child.maxRows || 6 }"
-                                                            :placeholder="child.placeholder || '请输入'"
-                                                            :style="resolveWorkflowFieldStyle(child)"
-                                                            @change="onWorkflowFieldChange(child, workflowForm.form_data[child.key])"></el-input>
-                                                        <input
-                                                            v-else-if="child.component === 'file'"
-                                                            type="file"
-                                                            class="workflow-native-file"
-                                                            :accept="child.accept || ''"
-                                                            :multiple="child.multiple"
-                                                            :style="resolveWorkflowFieldStyle(child)"
-                                                            @change="onWorkflowFileChange(child, $event)" />
-                                                        <el-input-number
-                                                            v-else-if="child.component === 'number'"
-                                                            v-model="workflowForm.form_data[child.key]"
-                                                            :min="child.min"
-                                                            :max="child.max"
-                                                            :step="child.step || 1"
-                                                            :style="resolveWorkflowFieldStyle(child)"
-                                                            @change="onWorkflowFieldChange(child, workflowForm.form_data[child.key])"></el-input-number>
-                                                        <el-radio-group
-                                                            v-else-if="child.component === 'radio'"
-                                                            v-model="workflowForm.form_data[child.key]"
-                                                            :style="resolveWorkflowFieldStyle(child)"
-                                                            @change="onWorkflowFieldChange(child, workflowForm.form_data[child.key])">
-                                                            <el-radio
-                                                                v-for="(option, optionIndex) in child.options"
-                                                                :key="String(option.value) + '_' + optionIndex"
-                                                                :label="option.value">
-                                                                [[ option.label ]]
-                                                            </el-radio>
-                                                        </el-radio-group>
-                                                        <el-checkbox-group
-                                                            v-else-if="child.component === 'checkbox'"
-                                                            v-model="workflowForm.form_data[child.key]"
-                                                            :style="resolveWorkflowFieldStyle(child)"
-                                                            @change="onWorkflowFieldChange(child, workflowForm.form_data[child.key])">
-                                                            <el-checkbox
-                                                                v-for="(option, optionIndex) in child.options"
-                                                                :key="String(option.value) + '_' + optionIndex"
-                                                                :label="option.value">
-                                                                [[ option.label ]]
-                                                            </el-checkbox>
-                                                        </el-checkbox-group>
-                                                        <el-select
-                                                            v-else-if="child.component === 'select'"
-                                                            v-model="workflowForm.form_data[child.key]"
-                                                            :placeholder="child.placeholder || '请选择'"
-                                                            clearable
-                                                            :style="resolveWorkflowFieldStyle(child)"
-                                                            @change="onWorkflowFieldChange(child, workflowForm.form_data[child.key])">
-                                                            <el-option
-                                                                v-for="(option, optionIndex) in child.options"
-                                                                :key="String(option.value) + '_' + optionIndex"
-                                                                :label="option.label"
-                                                                :value="option.value"></el-option>
-                                                        </el-select>
-                                                        <el-switch
-                                                            v-else-if="child.component === 'switch'"
-                                                            v-model="workflowForm.form_data[child.key]"
-                                                            :style="resolveWorkflowFieldStyle(child)"
-                                                            @change="onWorkflowFieldChange(child, workflowForm.form_data[child.key])"></el-switch>
-                                                        <el-date-picker
-                                                            v-else-if="child.component === 'date'"
-                                                            v-model="workflowForm.form_data[child.key]"
-                                                            type="date"
-                                                            value-format="YYYY-MM-DD"
-                                                            :placeholder="child.placeholder || '请选择日期'"
-                                                            :style="resolveWorkflowFieldStyle(child)"
-                                                            @change="onWorkflowFieldChange(child, workflowForm.form_data[child.key])"></el-date-picker>
-                                                        <el-date-picker
-                                                            v-else-if="child.component === 'datetime'"
-                                                            v-model="workflowForm.form_data[child.key]"
-                                                            type="datetime"
-                                                            value-format="YYYY-MM-DD HH:mm:ss"
-                                                            :placeholder="child.placeholder || '请选择日期时间'"
-                                                            :style="resolveWorkflowFieldStyle(child)"
-                                                            @change="onWorkflowFieldChange(child, workflowForm.form_data[child.key])"></el-date-picker>
-                                                        <el-input
-                                                            v-else
-                                                            v-model="workflowForm.form_data[child.key]"
-                                                            :placeholder="child.placeholder || '请输入'"
-                                                            :style="resolveWorkflowFieldStyle(child)"
-                                                            @change="onWorkflowFieldChange(child, workflowForm.form_data[child.key])"
-                                                            clearable></el-input>
-                                                    </el-form-item>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </template>
-                                    <el-form-item v-else :label="node.label || node.key" :required="node.required">
-                                        <el-input
-                                            v-if="node.component === 'input'"
-                                            v-model="workflowForm.form_data[node.key]"
-                                            :placeholder="node.placeholder || '请输入'"
-                                            :style="resolveWorkflowFieldStyle(node)"
-                                            @change="onWorkflowFieldChange(node, workflowForm.form_data[node.key])"
-                                            clearable></el-input>
-                                        <el-input
-                                            v-else-if="node.component === 'textarea'"
-                                            v-model="workflowForm.form_data[node.key]"
-                                            type="textarea"
-                                            :autosize="{ minRows: node.rows || 3, maxRows: node.maxRows || 6 }"
-                                            :placeholder="node.placeholder || '请输入'"
-                                            :style="resolveWorkflowFieldStyle(node)"
-                                            @change="onWorkflowFieldChange(node, workflowForm.form_data[node.key])"></el-input>
-                                        <input
-                                            v-else-if="node.component === 'file'"
-                                            type="file"
-                                            class="workflow-native-file"
-                                            :accept="node.accept || ''"
-                                            :multiple="node.multiple"
-                                            :style="resolveWorkflowFieldStyle(node)"
-                                            @change="onWorkflowFileChange(node, $event)" />
-                                        <el-input-number
-                                            v-else-if="node.component === 'number'"
-                                            v-model="workflowForm.form_data[node.key]"
-                                            :min="node.min"
-                                            :max="node.max"
-                                            :step="node.step || 1"
-                                            :style="resolveWorkflowFieldStyle(node)"
-                                            @change="onWorkflowFieldChange(node, workflowForm.form_data[node.key])"></el-input-number>
-                                        <el-radio-group
-                                            v-else-if="node.component === 'radio'"
-                                            v-model="workflowForm.form_data[node.key]"
-                                            :style="resolveWorkflowFieldStyle(node)"
-                                            @change="onWorkflowFieldChange(node, workflowForm.form_data[node.key])">
-                                            <el-radio
-                                                v-for="(option, optionIndex) in node.options"
-                                                :key="String(option.value) + '_' + optionIndex"
-                                                :label="option.value">
-                                                [[ option.label ]]
-                                            </el-radio>
-                                        </el-radio-group>
-                                        <el-checkbox-group
-                                            v-else-if="node.component === 'checkbox'"
-                                            v-model="workflowForm.form_data[node.key]"
-                                            :style="resolveWorkflowFieldStyle(node)"
-                                            @change="onWorkflowFieldChange(node, workflowForm.form_data[node.key])">
-                                            <el-checkbox
-                                                v-for="(option, optionIndex) in node.options"
-                                                :key="String(option.value) + '_' + optionIndex"
-                                                :label="option.value">
-                                                [[ option.label ]]
-                                            </el-checkbox>
-                                        </el-checkbox-group>
-                                        <el-select
-                                            v-else-if="node.component === 'select'"
-                                            v-model="workflowForm.form_data[node.key]"
-                                            :placeholder="node.placeholder || '请选择'"
-                                            clearable
-                                            :style="resolveWorkflowFieldStyle(node)"
-                                            @change="onWorkflowFieldChange(node, workflowForm.form_data[node.key])">
-                                            <el-option
-                                                v-for="(option, optionIndex) in node.options"
-                                                :key="String(option.value) + '_' + optionIndex"
-                                                :label="option.label"
-                                                :value="option.value"></el-option>
-                                        </el-select>
-                                        <el-switch
-                                            v-else-if="node.component === 'switch'"
-                                            v-model="workflowForm.form_data[node.key]"
-                                            :style="resolveWorkflowFieldStyle(node)"
-                                            @change="onWorkflowFieldChange(node, workflowForm.form_data[node.key])"></el-switch>
-                                        <el-date-picker
-                                            v-else-if="node.component === 'date'"
-                                            v-model="workflowForm.form_data[node.key]"
-                                            type="date"
-                                            value-format="YYYY-MM-DD"
-                                            :placeholder="node.placeholder || '请选择日期'"
-                                            :style="resolveWorkflowFieldStyle(node)"
-                                            @change="onWorkflowFieldChange(node, workflowForm.form_data[node.key])"></el-date-picker>
-                                        <el-date-picker
-                                            v-else-if="node.component === 'datetime'"
-                                            v-model="workflowForm.form_data[node.key]"
-                                            type="datetime"
-                                            value-format="YYYY-MM-DD HH:mm:ss"
-                                            :placeholder="node.placeholder || '请选择日期时间'"
-                                            :style="resolveWorkflowFieldStyle(node)"
-                                            @change="onWorkflowFieldChange(node, workflowForm.form_data[node.key])"></el-date-picker>
-                                        <el-input
-                                            v-else
-                                            v-model="workflowForm.form_data[node.key]"
-                                            :placeholder="node.placeholder || '请输入'"
-                                            :style="resolveWorkflowFieldStyle(node)"
-                                            @change="onWorkflowFieldChange(node, workflowForm.form_data[node.key])"
-                                            clearable></el-input>
-                                    </el-form-item>
-                                </template>
-                            </div>
-                            <el-form-item label="处理备注">
-                                <el-input
-                                    v-model="workflowForm.operator_memo"
-                                    type="textarea"
-                                    :autosize="{ minRows: 4, maxRows: 7 }"
-                                    placeholder="可以填写执行情况、异常说明或补充信息"></el-input>
-                            </el-form-item>
-                            <el-form-item label="操作">
-                                <el-button type="primary" :loading="workflowForm.submitting" @click="submitWorkflowAction('approve')">通过并进入下一步</el-button>
-                                <el-button type="danger" plain :loading="workflowForm.submitting" @click="submitWorkflowAction('reject')">驳回并退回当前节点</el-button>
-                            </el-form-item>
-                        </el-form>
                         {% else %}
                         <div class="workflow-empty">
-                            当前流程没有分配给你的待处理任务。你可以先查看右侧最近动作，确认流程目前是在等待他人处理，还是已经顺利结束。                        </div>
+                            当前流程没有分配给你的待处理任务。你可以先查看右侧最近动作，确认流程目前是在等待他人处理，还是已经顺利结束。
+                        </div>
                         {% endif %}
                     </div>
                 </div>
-
-                <div class="workflow-card">
-                    <div class="workflow-card-head">
-                        <div>
-                            <div class="workflow-card-title">流程路径</div>
-                            <div class="workflow-card-subtitle">从开始到结束的完整节点路径，一眼就能看清现在卡在哪一步。</div>
-                        </div>
-                    </div>
-                    <div class="workflow-card-body">
-                        {% if workflow_steps %}
-                        <div class="workflow-step-list">
-                            {% for step in workflow_steps %}
-                            <div class="workflow-step-item {{ step.state }}">
-                                <div class="workflow-step-index">{{ forloop.counter }}</div>
-                                <div>
-                                    <div class="workflow-step-name">{{ step.node_name }}</div>
-                                    <div class="workflow-step-meta">
-                                        {{ step.node_type_label }}{% if step.is_auto %} / 自动节点{% endif %}
-                                    </div>
-                                </div>
-                                {% if step.state == "done" %}
-                                <span class="workflow-badge success">{{ step.state_label }}</span>
-                                {% elif step.state == "current" %}
-                                <span class="workflow-badge brand">{{ step.state_label }}</span>
-                                {% elif step.state == "rejected" %}
-                                <span class="workflow-badge danger">{{ step.state_label }}</span>
-                                {% else %}
-                                <span class="workflow-badge muted">{{ step.state_label }}</span>
-                                {% endif %}
-                            </div>
-                            {% endfor %}
-                        </div>
-                        {% else %}
-                        <div class="workflow-empty">当前订单还没有可展示的流程节点。</div>
-                        {% endif %}
-                    </div>
-                </div>
-            </div>
-
-            <div class="workflow-column">
                 <div class="workflow-card">
                     <div class="workflow-card-head">
                         <div>
@@ -861,11 +896,11 @@
                                 <div class="workflow-kv-value">{{ order_no }}</div>
                             </div>
                             <div class="workflow-kv-item">
-                                <div class="workflow-kv-label">瀹㈡埛</div>
+                                <div class="workflow-kv-label">客户</div>
                                 <div class="workflow-kv-value">{{ receiver_name|default:"--" }}</div>
                             </div>
                             <div class="workflow-kv-item">
-                                <div class="workflow-kv-label">瀹㈡埛鍏徃</div>
+                                <div class="workflow-kv-label">客户公司</div>
                                 <div class="workflow-kv-value">{{ receiver_company|default:"--" }}</div>
                             </div>
                             <div class="workflow-kv-item">
@@ -879,7 +914,7 @@
                     </div>
                 </div>
 
-                <div class="workflow-card">
+                <div class="workflow-card compact">
                     <div class="workflow-card-head">
                         <div>
                             <div class="workflow-card-title">最近动作</div>
@@ -904,6 +939,43 @@
                         {% endif %}
                     </div>
                 </div>
+
+                <div class="workflow-card compact">
+                    <div class="workflow-card-head">
+                        <div>
+                            <div class="workflow-card-title">流程路径</div>
+                            <div class="workflow-card-subtitle">从开始到结束的完整节点路径，一眼就能看清现在卡在哪一步。</div>
+                        </div>
+                    </div>
+                    <div class="workflow-card-body">
+                        {% if workflow_steps %}
+                        <div class="workflow-step-list">
+                            {% for step in workflow_steps %}
+                            <div class="workflow-step-item {{ step.state }}">
+                                <div class="workflow-step-index">{{ forloop.counter }}</div>
+                                <div class="workflow-step-content">
+                                    <div class="workflow-step-name">{{ step.node_name }}</div>
+                                    <div class="workflow-step-meta">
+                                        {{ step.node_type_label }}{% if step.is_auto %} / 自动节点{% endif %}
+                                    </div>
+                                </div>
+                                {% if step.state == "done" %}
+                                <span class="workflow-badge success">{{ step.state_label }}</span>
+                                {% elif step.state == "current" %}
+                                <span class="workflow-badge brand">{{ step.state_label }}</span>
+                                {% elif step.state == "rejected" %}
+                                <span class="workflow-badge danger">{{ step.state_label }}</span>
+                                {% else %}
+                                <span class="workflow-badge muted">{{ step.state_label }}</span>
+                                {% endif %}
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <div class="workflow-empty">当前订单还没有可展示的流程节点。</div>
+                        {% endif %}
+                    </div>
+                </div>
             </div>
         </section>
     </div>
@@ -912,7 +984,278 @@
 
 {% block extra_js %}
 <script type="module">
+    const TEXT_COMPONENTS = new Set(["title_h1", "title_h2", "title_h3", "title_h4", "title_h5", "paragraph"]);
+    const VARIABLE_COMPONENTS = new Set(["var_username", "var_phone", "var_full_name"]);
+    const DISPLAY_COMPONENTS = new Set(["placeholder", ...TEXT_COMPONENTS, ...VARIABLE_COMPONENTS]);
+    const VARIABLE_META_MAP = {
+        var_username: { key: "username", label: "用户名" },
+        var_phone: { key: "phone", label: "手机号" },
+        var_full_name: { key: "full_name", label: "姓名" },
+    };
+
+    const PreviewFieldRender = {
+        name: "PreviewFieldRender",
+        props: {
+            node: {
+                type: Object,
+                required: true,
+            },
+            formData: {
+                type: Object,
+                required: true,
+            },
+            currentUser: {
+                type: Object,
+                required: true,
+            },
+            containerStyle: {
+                type: Function,
+                required: true,
+            },
+            runScript: {
+                type: Function,
+                required: true,
+            },
+        },
+        emits: ["file-change"],
+        methods: {
+            onFieldChange(value) {
+                if (!this.node || !this.node.key) return;
+                this.formData[this.node.key] = value;
+                this.runScript(this.node, value, this.formData);
+            },
+            resolveVariableValue(node) {
+                const fallbackKey = VARIABLE_META_MAP[node?.component]?.key || "";
+                const variableKey = String(node?.variable_key || fallbackKey).trim();
+                if (!variableKey) return "";
+                return this.currentUser?.[variableKey] ?? "";
+            },
+            buildTextDisplayStyle(node) {
+                const align = String(node?.text_align || "left").trim();
+                const vertical = String(node?.text_v_align || "top").trim();
+                const minHeightRaw = Number(node?.text_min_height);
+                const minHeight = Number.isFinite(minHeightRaw) ? Math.max(0, minHeightRaw) : 48;
+                const justifyMap = {
+                    left: "flex-start",
+                    center: "center",
+                    right: "flex-end",
+                };
+                const alignMap = {
+                    top: "flex-start",
+                    middle: "center",
+                    bottom: "flex-end",
+                };
+                const baseParts = [
+                    "display:flex",
+                    "width:100%",
+                    "box-sizing:border-box",
+                    `justify-content:${justifyMap[align] || "flex-start"}`,
+                    `align-items:${alignMap[vertical] || "flex-start"}`,
+                    `text-align:${align || "left"}`,
+                    `min-height:${minHeight}px`,
+                ];
+                const base = baseParts.join(";");
+                const custom = String(node?.css_text || node?.cssText || "").trim();
+                return custom ? `${base};${custom}` : base;
+            },
+            onFileChange(evt) {
+                this.$emit("file-change", {
+                    field: this.node,
+                    files: Array.from(evt?.target?.files || []),
+                });
+            },
+        },
+        template: `
+            <div class="fd-preview-node">
+                <h1
+                    v-if="node.component === 'title_h1'"
+                    class="fd-preview-heading fd-preview-h1"
+                    :style="buildTextDisplayStyle(node)">[[ node.content || node.label || '一级标题' ]]</h1>
+
+                <h2
+                    v-else-if="node.component === 'title_h2'"
+                    class="fd-preview-heading fd-preview-h2"
+                    :style="buildTextDisplayStyle(node)">[[ node.content || node.label || '二级标题' ]]</h2>
+
+                <h3
+                    v-else-if="node.component === 'title_h3'"
+                    class="fd-preview-heading fd-preview-h3"
+                    :style="buildTextDisplayStyle(node)">[[ node.content || node.label || '三级标题' ]]</h3>
+
+                <h4
+                    v-else-if="node.component === 'title_h4'"
+                    class="fd-preview-heading fd-preview-h4"
+                    :style="buildTextDisplayStyle(node)">[[ node.content || node.label || '四级标题' ]]</h4>
+
+                <h5
+                    v-else-if="node.component === 'title_h5'"
+                    class="fd-preview-heading fd-preview-h5"
+                    :style="buildTextDisplayStyle(node)">[[ node.content || node.label || '五级标题' ]]</h5>
+
+                <p
+                    v-else-if="node.component === 'paragraph'"
+                    class="fd-preview-paragraph"
+                    :style="buildTextDisplayStyle(node)">[[ node.content || node.label || '文本内容' ]]</p>
+
+                <div
+                    v-else-if="node.component === 'var_username' || node.component === 'var_phone' || node.component === 'var_full_name'"
+                    class="fd-preview-variable"
+                    :style="node.css_text || node.cssText || ''">
+                    [[ node.variable_label || node.label || '变量' ]]: [[ resolveVariableValue(node) || '-' ]]
+                </div>
+
+                <div
+                    v-else-if="node.component === 'placeholder'"
+                    class="fd-preview-placeholder"
+                    :style="node.css_text || node.cssText || ''">
+                    [[ node.content || '' ]]
+                </div>
+
+                <div v-else-if="node.component === 'container'" class="workflow-form-container-block" style="margin-bottom: 12px;">
+                    <div class="workflow-form-container-canvas fd-container" :style="containerStyle(node)">
+                        <div v-if="!(node.children || []).length" class="workflow-form-container-empty fd-container-empty">拖字段到容器内</div>
+                        <div v-for="child in (node.children || [])" :key="child.uid || child.id || child.key || child.label" class="workflow-form-container-item">
+                            <preview-field-render
+                                :node="child"
+                                :form-data="formData"
+                                :current-user="currentUser"
+                                :container-style="containerStyle"
+                                :run-script="runScript"
+                                @file-change="$emit('file-change', $event)"></preview-field-render>
+                        </div>
+                    </div>
+                </div>
+
+                <el-form-item
+                    v-else
+                    :label="node.label || node.key"
+                    :prop="node.key || undefined"
+                    :required="node.required">
+                    <el-input
+                        v-if="node.component === 'input'"
+                        v-model="formData[node.key]"
+                        :placeholder="node.placeholder || '请输入'"
+                        :style="node.css_text || node.cssText || ''"
+                        :disabled="!!node.disabled"
+                        @change="onFieldChange(formData[node.key])"
+                        clearable></el-input>
+
+                    <el-input
+                        v-else-if="node.component === 'textarea'"
+                        v-model="formData[node.key]"
+                        type="textarea"
+                        :rows="node.rows || 3"
+                        :placeholder="node.placeholder || '请输入'"
+                        :style="node.css_text || node.cssText || ''"
+                        :disabled="!!node.disabled"
+                        @change="onFieldChange(formData[node.key])"></el-input>
+
+                    <el-input-number
+                        v-else-if="node.component === 'number'"
+                        v-model="formData[node.key]"
+                        :min="node.min"
+                        :max="node.max"
+                        :step="node.step || 1"
+                        style="width: 100%;"
+                        :style="node.css_text || node.cssText || ''"
+                        :disabled="!!node.disabled"
+                        @change="onFieldChange(formData[node.key])"></el-input-number>
+
+                    <input
+                        v-else-if="node.component === 'file'"
+                        type="file"
+                        class="workflow-native-file"
+                        :accept="node.accept || ''"
+                        :multiple="node.multiple"
+                        :style="node.css_text || node.cssText || ''"
+                        :disabled="!!node.disabled"
+                        @change="onFileChange" />
+
+                    <el-radio-group
+                        v-else-if="node.component === 'radio'"
+                        v-model="formData[node.key]"
+                        :style="node.css_text || node.cssText || ''"
+                        :disabled="!!node.disabled"
+                        @change="onFieldChange(formData[node.key])">
+                        <el-radio
+                            v-for="(opt, idx) in node.options || []"
+                            :key="opt.id || idx"
+                            :label="opt.value">[[ opt.label || '选项' ]]</el-radio>
+                    </el-radio-group>
+
+                    <el-checkbox-group
+                        v-else-if="node.component === 'checkbox'"
+                        v-model="formData[node.key]"
+                        :style="node.css_text || node.cssText || ''"
+                        :disabled="!!node.disabled"
+                        @change="onFieldChange(formData[node.key])">
+                        <el-checkbox
+                            v-for="(opt, idx) in node.options || []"
+                            :key="opt.id || idx"
+                            :label="opt.value">[[ opt.label || '选项' ]]</el-checkbox>
+                    </el-checkbox-group>
+
+                    <el-select
+                        v-else-if="node.component === 'select'"
+                        v-model="formData[node.key]"
+                        :placeholder="node.placeholder || '请选择'"
+                        :style="node.css_text || node.cssText || ''"
+                        :disabled="!!node.disabled"
+                        @change="onFieldChange(formData[node.key])">
+                        <el-option
+                            v-for="(opt, idx) in node.options || []"
+                            :key="opt.id || idx"
+                            :label="opt.label || '选项'"
+                            :value="opt.value"></el-option>
+                    </el-select>
+
+                    <el-switch
+                        v-else-if="node.component === 'switch'"
+                        v-model="formData[node.key]"
+                        :style="node.css_text || node.cssText || ''"
+                        :disabled="!!node.disabled"
+                        @change="onFieldChange(formData[node.key])"></el-switch>
+
+                    <el-date-picker
+                        v-else-if="node.component === 'date'"
+                        v-model="formData[node.key]"
+                        type="date"
+                        value-format="YYYY-MM-DD"
+                        :placeholder="node.placeholder || '请选择日期'"
+                        :style="node.css_text || node.cssText || ''"
+                        :disabled="!!node.disabled"
+                        @change="onFieldChange(formData[node.key])"></el-date-picker>
+
+                    <el-date-picker
+                        v-else-if="node.component === 'datetime'"
+                        v-model="formData[node.key]"
+                        type="datetime"
+                        value-format="YYYY-MM-DD HH:mm:ss"
+                        :placeholder="node.placeholder || '请选择日期时间'"
+                        :style="node.css_text || node.cssText || ''"
+                        :disabled="!!node.disabled"
+                        @change="onFieldChange(formData[node.key])"></el-date-picker>
+
+                    <el-input
+                        v-else
+                        v-model="formData[node.key]"
+                        :placeholder="node.placeholder || '请输入'"
+                        :style="node.css_text || node.cssText || ''"
+                        :disabled="!!node.disabled"
+                        @change="onFieldChange(formData[node.key])"
+                        clearable></el-input>
+                </el-form-item>
+            </div>
+        `,
+    };
+    PreviewFieldRender.components = {
+        PreviewFieldRender,
+    };
+
     window.initVueApp({
+        components: {
+            PreviewFieldRender,
+        },
         data() {
             return {
                 workflowForm: {
@@ -922,11 +1265,22 @@
                     form_data: {},
                     submitting: false,
                 },
+                currentUser: {
+                    username: "{{ request.user.username|default:''|escapejs }}",
+                    phone: "{{ request.user.phone|default:''|escapejs }}",
+                    full_name: "{{ request.user.get_full_name|default:''|escapejs }}",
+                },
+                workflowInstanceId: {% if workflow_action %}{{ workflow_action.instance_id }}{% else %}null{% endif %},
                 workflowSchemaFields: [],
                 workflowRawSchema: JSON.parse('{{ workflow_form_schema_json|escapejs }}'),
                 workflowInitialFormData: JSON.parse('{{ workflow_form_data_json|escapejs }}'),
                 logPageUrl: "{{ log_page_url|escapejs }}",
             }
+        },
+        computed: {
+            workflowRules() {
+                return this.buildWorkflowRules(this.workflowSchemaFields);
+            },
         },
         created() {
             this.workflowSchemaFields = this.normalizeWorkflowSchema(this.workflowRawSchema);
@@ -934,22 +1288,112 @@
                 this.workflowSchemaFields,
                 this.workflowInitialFormData
             );
+            if (!this.workflowSchemaFields.length) {
+                this.fetchRuntimeWorkflowForm();
+            }
         },
         methods: {
+            isDisplayComponent(node) {
+                return DISPLAY_COMPONENTS.has(String(node?.component || ""));
+            },
+            isVariableComponent(node) {
+                return VARIABLE_COMPONENTS.has(String(node?.component || ""));
+            },
+            resolveVariableValue(node) {
+                const fallbackKey = VARIABLE_META_MAP[node?.component]?.key || "";
+                const variableKey = String(node?.variable_key || node?.variableKey || fallbackKey).trim();
+                if (!variableKey) return "";
+                return this.currentUser?.[variableKey] ?? "";
+            },
+            buildTextDisplayStyle(node) {
+                const align = String(node?.text_align || node?.textAlign || "left").trim();
+                const vertical = String(node?.text_v_align || node?.textVAlign || "top").trim();
+                const minHeightRaw = Number(node?.text_min_height ?? node?.textMinHeight);
+                const minHeight = Number.isFinite(minHeightRaw) ? Math.max(0, minHeightRaw) : 48;
+                const justifyMap = {
+                    left: "flex-start",
+                    center: "center",
+                    right: "flex-end",
+                };
+                const alignMap = {
+                    top: "flex-start",
+                    middle: "center",
+                    bottom: "flex-end",
+                };
+                const baseParts = [
+                    "display:flex",
+                    "width:100%",
+                    "box-sizing:border-box",
+                    `justify-content:${justifyMap[align] || "flex-start"}`,
+                    `align-items:${alignMap[vertical] || "flex-start"}`,
+                    `text-align:${align || "left"}`,
+                    `min-height:${minHeight}px`,
+                ];
+                const base = baseParts.join(";");
+                const custom = String(node?.cssText || "").trim();
+                return custom ? `${base};${custom}` : base;
+            },
+            async fetchRuntimeWorkflowForm() {
+                if (!this.workflowInstanceId || !this.workflowForm.task_id) return;
+                try {
+                    const res = await request.post("/flow_engine/form_runtime_resolve", {
+                        instance_id: this.workflowInstanceId,
+                        task_id: this.workflowForm.task_id,
+                    });
+                    const payload = res?.data ?? res ?? {};
+                    const schema = payload.resolved_form_schema || {};
+                    const formData = payload.resolved_form_data || {};
+                    const normalized = this.normalizeWorkflowSchema(schema);
+                    if (normalized.length) {
+                        this.workflowSchemaFields = normalized;
+                        this.workflowForm.form_data = this.buildWorkflowFormData(normalized, formData);
+                    }
+                } catch (err) {
+                    console.warn("加载流程表单失败", err);
+                }
+            },
             normalizeWorkflowSchema(schema) {
-                const rawFields = Array.isArray(schema)
-                    ? schema
-                    : Array.isArray(schema?.fields)
-                        ? schema.fields
-                        : [];
+                const pickFields = (s) => {
+                    if (Array.isArray(s)) return s;
+                    if (Array.isArray(s?.fields)) return s.fields;
+                    if (Array.isArray(s?.form?.fields)) return s.form.fields;
+                    if (Array.isArray(s?.schema?.fields)) return s.schema.fields;
+                    if (Array.isArray(s?.__ui?.schema?.fields)) return s.__ui.schema.fields;
+                    if (Array.isArray(s?.forms) && s.forms.length && Array.isArray(s.forms[0]?.fields)) {
+                        return s.forms[0].fields;
+                    }
+                    return [];
+                };
+
+                let rawFields = pickFields(schema);
+                if (!rawFields.length && schema && typeof schema === "object") {
+                    const walk = (node) => {
+                        const bucket = [];
+                        if (Array.isArray(node)) {
+                            node.forEach((item) => bucket.push(...walk(item)));
+                            return bucket;
+                        }
+                        if (node && typeof node === "object") {
+                            if (node.key || node.name || node.prop || node.field) {
+                                bucket.push(node);
+                            }
+                            Object.values(node).forEach((v) => {
+                                if (Array.isArray(v) || (v && typeof v === "object")) {
+                                    bucket.push(...walk(v));
+                                }
+                            });
+                        }
+                        return bucket;
+                    };
+                    rawFields = walk(schema);
+                }
                 return rawFields
                     .map((field, index) => this.normalizeWorkflowField(field, index))
                     .filter(Boolean);
             },
             normalizeWorkflowField(field, index) {
                 if (!field || typeof field !== "object") return null;
-                const key = field.key || field.name || field.prop || field.field;
-                if (!key) return null;
+                const rawKey = field.key || field.name || field.prop || field.field;
                 const fieldType = String(field.component || field.widget || field.type || "input").toLowerCase();
                 const componentMap = {
                     input: "input",
@@ -973,12 +1417,42 @@
                     bool: "switch",
                     date: "date",
                     datetime: "datetime",
+                    title_h1: "title_h1",
+                    title_h2: "title_h2",
+                    title_h3: "title_h3",
+                    title_h4: "title_h4",
+                    title_h5: "title_h5",
+                    paragraph: "paragraph",
+                    placeholder: "placeholder",
+                    var_username: "var_username",
+                    var_phone: "var_phone",
+                    var_full_name: "var_full_name",
+                    container: "container",
+                    section: "container",
+                    group: "container",
+                    card: "container",
+                    grid: "container",
+                    layout: "container",
+                    row: "container",
+                    col: "container",
                 };
+                const normalizedChildren = Array.isArray(field.children || field.fields || field.items)
+                    ? (field.children || field.fields || field.items)
+                        .map((child, childIndex) => this.normalizeWorkflowField(child, childIndex))
+                        .filter(Boolean)
+                    : [];
+                const normalizedComponent = componentMap[fieldType] || "input";
+                const isDisplay = DISPLAY_COMPONENTS.has(normalizedComponent);
+                const key = rawKey || (normalizedComponent === "container" ? `container_${index}` : null);
+                if (!key && normalizedComponent !== "container" && !isDisplay) return null;
+                const uid = field.id || key || `${normalizedComponent}_${index}`;
                 return {
-                    key,
+                    uid,
+                    key: rawKey || (normalizedComponent === "container" ? key : null),
                     label: field.label || field.title || field.name || key,
-                    component: componentMap[fieldType] || "input",
+                    component: normalizedComponent,
                     required: !!field.required,
+                    disabled: !!field.disabled,
                     placeholder: field.placeholder || "",
                     options: this.normalizeWorkflowOptions(field.options || field.choices || field.enum || []),
                     defaultValue: Object.prototype.hasOwnProperty.call(field, "default")
@@ -991,9 +1465,22 @@
                     step: field.step,
                     accept: field.accept || "",
                     multiple: !!field.multiple,
+                    css_text: field.css_text || field.css || field.style || "",
                     cssText: field.css_text || field.css || field.style || "",
+                    js_text: field.js_text || field.js || field.script || "",
                     jsText: field.js_text || field.js || field.script || "",
                     order: field.order ?? index,
+                    children: normalizedChildren,
+                    columns: parseInt(field.columns || field.cols || (field.layout || {}).columns, 10) || 1,
+                    gap: parseInt(field.gap || field.grid_gap || (field.layout || {}).gap, 10) || 0,
+                    grid_columns: parseInt(field.grid_columns || (field.layout || {}).grid_columns, 10) || null,
+                    padding: parseInt(field.padding || 0, 10) || 0,
+                    content: field.content,
+                    variable_key: field.variable_key,
+                    variable_label: field.variable_label,
+                    text_align: field.text_align,
+                    text_v_align: field.text_v_align,
+                    text_min_height: field.text_min_height,
                 };
             },
             normalizeWorkflowOptions(options) {
@@ -1011,10 +1498,50 @@
                     };
                 });
             },
+            buildWorkflowRules(fields = []) {
+                const rules = {};
+                const travel = (list) => {
+                    for (const node of list || []) {
+                        if (!node || typeof node !== "object") continue;
+                        if (node.component === "container") {
+                            travel(node.children || []);
+                            continue;
+                        }
+                        if (DISPLAY_COMPONENTS.has(String(node.component || ""))) {
+                            continue;
+                        }
+                        const key = String(node.key || "").trim();
+                        if (!key || !node.required) continue;
+                        const label = String(node.label || node.key || "").trim() || key;
+                        if (node.component === "checkbox") {
+                            rules[key] = [{ required: true, type: "array", min: 1, trigger: "change", message: `${label} 不能为空` }];
+                        } else {
+                            rules[key] = [{ required: true, trigger: "change", message: `${label} 不能为空` }];
+                        }
+                    }
+                };
+                travel(fields);
+                return rules;
+            },
+            flattenWorkflowFields(fields = []) {
+                const result = [];
+                for (const field of fields) {
+                    if (!field) continue;
+                    if (field.component === "container" && Array.isArray(field.children)) {
+                        result.push(...this.flattenWorkflowFields(field.children));
+                        continue;
+                    }
+                    if (this.isDisplayComponent(field)) {
+                        continue;
+                    }
+                    result.push(field);
+                }
+                return result;
+            },
             buildWorkflowFormData(fields, existingData) {
                 const source = existingData && typeof existingData === "object" ? existingData : {};
                 const formData = {};
-                fields
+                this.flattenWorkflowFields(fields)
                     .slice()
                     .sort((a, b) => (a.order || 0) - (b.order || 0))
                     .forEach((field) => {
@@ -1043,6 +1570,14 @@
                     });
                 return formData;
             },
+            resolveWorkflowContainerStyle(container) {
+                const cols = Math.max(1, parseInt(container?.grid_columns || container?.columns || 1, 10) || 1);
+                const gap = Math.max(0, parseInt(container?.gap || 0, 10) || 0);
+                const padding = Math.max(0, parseInt(container?.padding || 0, 10) || 0);
+                const base = `display:grid; grid-template-columns: repeat(${cols}, minmax(0, 1fr)); gap: ${gap}px; padding: ${padding}px;`;
+                if (container?.cssText) return `${base}${container.cssText}`;
+                return base;
+            },
             resolveWorkflowFieldStyle(field) {
                 if (field?.cssText) return field.cssText;
                 if (["number", "select", "date", "datetime"].includes(field?.component)) {
@@ -1051,7 +1586,7 @@
                 return "";
             },
             runWorkflowFieldScript(field, value) {
-                const script = (field?.jsText || "").trim();
+                const script = (field?.jsText || field?.js_text || "").trim();
                 if (!script) return;
                 try {
                     const helpers = {
@@ -1076,6 +1611,13 @@
                     this.$ElMessage.error(`${field?.label || field?.key || "字段"} 脚本执行失败`);
                 }
             },
+            onWorkflowPreviewFileChange({ field, files }) {
+                if (!field?.key) return;
+                const values = (files || []).map((file) => file.name);
+                const value = field.multiple ? values : (values[0] || "");
+                this.workflowForm.form_data[field.key] = value;
+                this.runWorkflowFieldScript(field, value);
+            },
             onWorkflowFieldChange(field, value) {
                 if (!field?.key) return;
                 this.workflowForm.form_data[field.key] = value;
@@ -1088,26 +1630,60 @@
                 this.workflowForm.form_data[field.key] = value;
                 this.runWorkflowFieldScript(field, value);
             },
-            validateWorkflowForm(action) {
+            validateWorkflowRequiredFields() {
+                const requiredFields = this.flattenWorkflowFields(this.workflowSchemaFields)
+                    .filter((field) => field && field.required && field.key);
+                for (const field of requiredFields) {
+                    const key = String(field.key || "").trim();
+                    if (!key) continue;
+                    const value = this.workflowForm.form_data[key];
+                    let valid = true;
+                    if (field.component === "checkbox") {
+                        valid = Array.isArray(value) && value.length > 0;
+                    } else if (field.component === "file" && field.multiple) {
+                        valid = Array.isArray(value) && value.length > 0;
+                    } else if (field.component === "switch") {
+                        valid = value !== undefined && value !== null;
+                    } else if (field.component === "number") {
+                        valid = value !== undefined && value !== null && value !== "";
+                    } else {
+                        valid = value !== undefined && value !== null && String(value).trim() !== "";
+                    }
+                    if (valid) continue;
+                    const label = String(field.label || key || "字段").trim();
+                    const formRef = this.$refs.workflowFormRef;
+                    if (formRef && typeof formRef.scrollToField === "function") {
+                        formRef.scrollToField(key);
+                    }
+                    this.$ElMessage.warning(`${label} 不能为空`);
+                    return false;
+                }
+                return true;
+            },
+            async validateWorkflowForm(action) {
                 if (action !== "approve") return true;
-                for (const field of this.workflowSchemaFields) {
-                    if (!field.required) continue;
-                    const value = this.workflowForm.form_data[field.key];
-                    const empty =
-                        value === null ||
-                        value === undefined ||
-                        value === "" ||
-                        (Array.isArray(value) && !value.length);
-                    if (empty) {
-                        this.$ElMessage.warning(`${field.label || field.key} 涓嶈兘涓虹┖`);
+                const formRef = this.$refs.workflowFormRef;
+                if (formRef && typeof formRef.validate === "function") {
+                    try {
+                        const result = formRef.validate();
+                        if (result && typeof result.then === "function") {
+                            await result;
+                        } else if (!result) {
+                            return false;
+                        }
+                    } catch {
+                        this.$ElMessage.warning("请先完善流程表单必填项后再通过");
                         return false;
                     }
+                }
+                if (!this.validateWorkflowRequiredFields()) {
+                    return false;
                 }
                 return true;
             },
             async submitWorkflowAction(action) {
                 if (this.workflowForm.submitting) return;
-                if (!this.validateWorkflowForm(action)) return;
+                if (!(await this.validateWorkflowForm(action))) return;
                 this.workflowForm.submitting = true;
                 try {
                     await request.post("/order/workflow_action", {

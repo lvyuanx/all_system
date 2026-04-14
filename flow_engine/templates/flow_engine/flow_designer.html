@@ -567,7 +567,6 @@
             <span v-if="pageData.saving || pageData.publishing" class="status-hint" style="padding:0 8px 0 0;">
                 [[ pageData.publishing ? '正在保存并发布...' : '正在保存...' ]]
             </span>
-            <el-button @click="openFlowFormDesigner" :disabled="pageData.saving || pageData.publishing">表单设计器</el-button>
             <el-button @click="refreshFormLibrary" :disabled="!flowId || pageData.saving || pageData.publishing">刷新表单库</el-button>
             <el-button @click="openImportDialog" :disabled="pageData.saving || pageData.publishing">导入JSON</el-button>
             <el-button @click="exportFlowJson" :disabled="!flowId || pageData.saving || pageData.publishing">导出JSON</el-button>
@@ -891,16 +890,11 @@
             <el-form-item label="节点表单">
                 <div style="width: 100%;">
                     <el-row :gutter="12" style="margin-bottom: 8px;">
-                        <el-col :span="12">
+                        <el-col :span="24">
                             <el-form-item label="表单来源">
                                 <el-select v-model="nodeDialog.form.form_ref_code" clearable placeholder="自定义节点表单" @change="onNodeFormRefChange">
                                     <el-option v-for="item in formLibraryOptions" :key="item.code" :label="item.name" :value="item.code" />
                                 </el-select>
-                            </el-form-item>
-                        </el-col>
-                        <el-col :span="12">
-                            <el-form-item label="快速入口">
-                                <el-button type="primary" plain @click="openFlowFormDesigner">打开表单设计器</el-button>
                             </el-form-item>
                         </el-col>
                     </el-row>
@@ -1339,9 +1333,6 @@
             const ElMessage = inject("ElMessage");
             const goBack = () => {
                 window.location.href = "{% get_previous_url %}";
-            };
-            const openFlowFormDesigner = async () => {
-                window.open("/admin/flow_engine/form/designer/", "_blank");
             };
 
             const flowId = ref("{{flow_id}}");
@@ -2692,7 +2683,6 @@
                 addRule,
                 removeRule,
                 confirmNode,
-                openFlowFormDesigner,
                 refreshFormLibrary,
                 saveFlow,
                 publishFlow,

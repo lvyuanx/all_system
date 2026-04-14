@@ -221,12 +221,14 @@ class FlowEngine:
             self.instance.context = deep_merge_dict(self.instance.context or {}, context)
         self.instance.save()
 
+        flow_name = str(getattr(self.instance.flow, "name", "") or "").strip()
+        start_message = f"流程已启动：{flow_name}" if flow_name else "流程已启动"
         FlowLog.objects.create(
             instance=self.instance,
             node=start_node,
             user=user,
             action="start",
-            message="流程已启动",
+            message=start_message,
         )
 
         self._enter_node(start_node, context or {})

@@ -22,7 +22,6 @@ class View(BaseApi):
     response_schema = schemas.GlobalFormLibraryDetailSchema
     error_codes = [
         ("001", "form code already exists"),
-        ("002", "form is still referenced by flow nodes"),
     ]
 
     @staticmethod
@@ -46,7 +45,10 @@ class View(BaseApi):
                     if code in payload_codes:
                         continue
                     if code in referenced_codes:
-                        raise BusinessException("002")
+                        # Keep referenced forms even if they are absent in payload.
+                        # This avoids failing the entire save when payload is partial
+                        # or when a referenced form is removed by mistake.
+                        continue
                     item.delete()
 
                 for item in forms:

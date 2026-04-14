@@ -151,6 +151,19 @@ class FlowFormRuntimeResolveRespSchema(BaseModel):
     context_snapshot: dict[str, Any] = Field(default_factory=dict, description="current context")
 
 
+class FlowFormRuntimePreviewResolveSchema(BaseModel):
+    form_schema: Any = Field(..., description="form schema")
+    context: dict[str, Any] | None = Field(None, description="context snapshot")
+    node_code: str | None = Field("", description="node code")
+    runtime_env: dict[str, Any] | None = Field(None, description="runtime env")
+
+
+class FlowFormRuntimePreviewResolveRespSchema(BaseModel):
+    resolved_form_schema: Any = Field(default_factory=dict, description="resolved form schema")
+    resolved_form_data: dict[str, Any] = Field(default_factory=dict, description="resolved form data")
+    context_snapshot: dict[str, Any] = Field(default_factory=dict, description="context snapshot")
+
+
 class FieldDataSourceMetadataItemSchema(BaseModel):
     key: str = Field(..., description="data source key")
     label: str = Field(..., description="data source label")

@@ -60,6 +60,18 @@ class View(BaseApi):
         request: HttpRequest,
         data: schemas.FlowFormRuntimeResolveSchema = Body(..., description="resolve runtime form"),
     ):
+        def _resolve_request_user():
+            user = request.user
+            return (
+                getattr(user, "id", None),
+                bool(getattr(user, "is_superuser", False)),
+            )
+
+        current_user_id, is_superuser = await sync_to_async(
+            _resolve_request_user,
+            thread_sensitive=True,
+        )()
+
         def _query_instance():
             return (
                 FlowInstance.objects.select_related("current_node")
@@ -88,16 +100,18 @@ class View(BaseApi):
             task = await sync_to_async(_query_task_node, thread_sensitive=True)()
             if not task:
                 raise BusinessException("002")
-            if (not request.user.is_superuser) and task.assignee_id != request.user.id:
+            if (not is_superuser) and task.assignee_id != current_user_id:
                 raise BusinessException("002")
             node = task.node
         else:
-            if not request.user.is_superuser:
+            if not is_superuser:
+                if not current_user_id:
+                    raise BusinessException("002")
                 has_task = await sync_to_async(
                     lambda: FlowTask.objects.filter(
                         instance_id=instance.id,
                         node_id=getattr(node, "id", None),
-                        assignee=request.user,
+                        assignee_id=current_user_id,
                         status="pending",
                     ).exists(),
                     thread_sensitive=True,

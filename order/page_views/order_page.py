@@ -234,14 +234,15 @@ def order_timeline(request, pk: int):
         })
 
     if order and order.flow_definition_id and order.flow_instance_id:
+        flow_name = str(getattr(order.flow_definition, "name", "") or "").strip()
         for log in FlowLog.objects.filter(instance_id=order.flow_instance_id).order_by("create_time"):
             title = log.message or f"流程动作: {log.action}"
             if log.action == "start":
-                title = "流程已启动"
+                title = f"流程已启动：{flow_name}" if flow_name else "流程已启动"
             elif log.action == "enter" and log.node_id:
                 title = f"进入流程节点: {log.node.name}"
             elif log.action == "approve":
-                title = "流程审批通过"
+                title = f"流程审批通过：{log.node.name}" if log.node_id else "流程审批通过"
             elif log.action == "reject":
                 title = "流程审批驳回"
             elif log.action == "reopen" and log.node_id:
@@ -419,10 +420,15 @@ def _build_workflow_recent_logs(order: Order):
 
     recent_logs = []
     log_qs = FlowLog.objects.filter(instance_id=order.flow_instance_id).select_related("user", "node").order_by("-create_time")[:12]
+    flow_name = str(getattr(order.flow_definition, "name", "") or "").strip()
     for log in log_qs:
         title = action_title_map.get(log.action, log.action)
-        if log.action == "enter" and log.node_id:
+        if log.action == "start":
+            title = f"流程已启动：{flow_name}" if flow_name else "流程已启动"
+        elif log.action == "enter" and log.node_id:
             title = f"进入 {log.node.name}"
+        elif log.action == "approve":
+            title = f"流程审批通过：{log.node.name}" if log.node_id else "流程审批通过"
         elif log.action == "finish":
             title = "流程已完成，订单自动完工"
 
@@ -531,3 +537,94 @@ def order_workflow(request, pk: int):
         "log_page_url": reverse("order_timeline", kwargs={"pk": pk}),
     }
     return render(request, "order/order_workflow.html", context)
+
+
+def order_flow_context(request, pk: int):
+    order = (
+        Order.objects.select_related(
+            "flow_definition",
+            "flow_instance",
+            "flow_instance__current_node",
+            "flow_instance__flow_version",
+        )
+        .filter(pk=pk)
+        .first()
+    )
+    if not order:
+        raise Http404()
+
+    flow_status_label_map = {
+        FlowStatusChoices.RUNNING: "进行中",
+        FlowStatusChoices.FINISHED: "已完成",
+        FlowStatusChoices.REJECTED: "已驳回",
+        FlowStatusChoices.CANCELED: "已取消",
+    }
+
+    flow_instance = getattr(order, "flow_instance", None)
+    flow_context = getattr(flow_instance, "context", None)
+    if not isinstance(flow_context, dict):
+        flow_context = {}
+    field_name_map = {
+        "order_id": "订单ID",
+        "order_no": "订单号",
+        "business_type": "业务类型",
+        "business_id": "业务ID",
+    }
+    if flow_instance and getattr(flow_instance, "flow_version_id", None):
+        def _walk_fields(fields):
+            for field in fields or []:
+                if not isinstance(field, dict):
+                    continue
+                key = str(field.get("key") or field.get("name") or field.get("prop") or field.get("field") or "").strip()
+                label = str(field.get("label") or field.get("title") or "").strip()
+                if key and label and key not in field_name_map:
+                    field_name_map[key] = label
+                children = field.get("children") or field.get("fields") or field.get("items") or []
+                if isinstance(children, list) and children:
+                    _walk_fields(children)
+
+        for node in flow_instance.flow_version.nodes.all().only("form_schema"):
+            schema = _hydrate_form_schema(
+                _strip_form_schema_ui(getattr(node, "form_schema", None)),
+                node,
+            )
+            fields = schema.get("fields") if isinstance(schema, dict) else []
+            if isinstance(fields, list):
+                _walk_fields(fields)
+
+    flow_context_rows = []
+    for key in sorted(flow_context.keys(), key=lambda item: str(item)):
+        key_str = str(key)
+        raw_value = flow_context.get(key)
+        is_complex = isinstance(raw_value, (dict, list))
+        if is_complex:
+            display_value = json.dumps(raw_value, ensure_ascii=False, indent=2)
+        else:
+            display_value = "" if raw_value is None else str(raw_value)
+        flow_context_rows.append(
+            {
+                "key": key_str,
+                "name": field_name_map.get(key_str, key_str),
+                "value": display_value,
+                "is_complex": is_complex,
+            }
+        )
+
+    context = {
+        "title": "流程数据",
+        "order_id": order.id,
+        "order_no": order.order_no,
+        "flow_definition_name": getattr(order.flow_definition, "name", "") or "未绑定",
+        "flow_instance_id": getattr(flow_instance, "id", None),
+        "flow_status_label": flow_status_label_map.get(
+            getattr(flow_instance, "status", None),
+            getattr(flow_instance, "status", None) or "--",
+        ) if flow_instance else "未启动",
+        "flow_version_label": getattr(getattr(flow_instance, "flow_version", None), "version_label", "") if flow_instance else "",
+        "current_node_name": getattr(getattr(flow_instance, "current_node", None), "name", "") if flow_instance else "",
+        "business_type": getattr(flow_instance, "business_type", "") if flow_instance else "",
+        "business_id": getattr(flow_instance, "business_id", "") if flow_instance else "",
+        "flow_context_rows": flow_context_rows,
+        "has_flow_instance": bool(flow_instance),
+    }
+    return render(request, "order/order_flow_context.html", context)

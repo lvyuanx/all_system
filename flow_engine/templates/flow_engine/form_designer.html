@@ -673,6 +673,25 @@
         padding: 6px 2px 0;
     }
 
+    .fd-preview-context {
+        border: 1px solid var(--fd-border);
+        border-radius: 12px;
+        background: #fff;
+        padding: 12px 14px;
+        margin-bottom: 10px;
+    }
+
+    .fd-preview-context-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 8px;
+        color: var(--fd-text);
+        font-weight: 600;
+        font-size: 13px;
+    }
+
     .fd-preview-actions {
         display: flex;
         justify-content: flex-end;
@@ -1054,10 +1073,8 @@
                                         </template>
                                         <el-form-item label="写入位置">
                                             <el-select v-model="selectedNode.context_binding.write_target">
-                                                <el-option label="不写入上下文" value="none"></el-option>
-                                                <el-option label="仅写入流程上下文" value="flow"></el-option>
-                                                <el-option label="仅写入当前节点上下文" value="node"></el-option>
-                                                <el-option label="同时写入流程和当前节点上下文" value="both"></el-option>
+                                                <el-option label="不写入" value="none"></el-option>
+                                                <el-option label="写入上下文" value="flow"></el-option>
                                             </el-select>
                                         </el-form-item>
                                         <el-form-item label="写入策略" v-if="selectedNode.context_binding.write_target !== 'none'">
@@ -1245,8 +1262,19 @@
         </div>
     </div>
 
-    <el-dialog v-model="previewDialog.visible" title="表单预览" width="70%">
+    <el-dialog v-model="previewDialog.visible" title="表单预览" width="82%" top="5vh">
         <div class="fd-preview-form">
+            <div class="fd-preview-context">
+                <div class="fd-preview-context-head">
+                    <div>预览上下文（JSON）</div>
+                    <el-button size="small" @click="applyPreviewContext">应用上下文</el-button>
+                </div>
+                <el-input
+                    v-model="previewDialog.contextText"
+                    type="textarea"
+                    :rows="4"
+                    placeholder="例如：{ &quot;form&quot;: { &quot;node&quot;: { &quot;field&quot;: &quot;value&quot; } } }"></el-input>
+            </div>
             <el-form
                 ref="previewFormRef"
                 :model="previewDialog.formData"
@@ -1363,12 +1391,12 @@
 {{ builtin_data_source_examples|json_script:"builtin-data-source-examples" }}
 {{ field_data_source_metadata|json_script:"field-data-source-metadata" }}
 <script type="module">
-    import { mountFlowFormDesigner } from "{% static 'flow_engine/js/form_designer.js' %}?v=20260412-04";
+    import { mountFlowFormDesigner } from "{% static 'flow_engine/js/form_designer.js' %}?v=20260414-01";
     import * as fieldSourceHelper from "{% static 'flow_engine/js/field_source_designer.js' %}?v=20260412-04";
 
     mountFlowFormDesigner({
         flowId: Number("{{ flow_id }}"),
-        previousUrl: "{{ previous_url|default:\"/admin/flow_engine/form/list/\"|escapejs }}",
+        previousUrl: "{{ previous_url|default:'/admin/flow_engine/form/list/'|escapejs }}",
         builtinDataSourceExamples: JSON.parse(
             document.getElementById("builtin-data-source-examples")?.textContent || "[]"
         ),
@@ -1377,9 +1405,9 @@
         ),
         fieldSourceHelper,
         currentUser: {
-            username: "{{ request.user.username|default:\"\"|escapejs }}",
-            phone: "{{ request.user.phone|default:\"\"|escapejs }}",
-            full_name: "{{ request.user.get_full_name|default:\"\"|escapejs }}",
+            username: "{{ request.user.username|default:''|escapejs }}",
+            phone: "{{ request.user.phone|default:''|escapejs }}",
+            full_name: "{{ request.user.get_full_name|default:''|escapejs }}",
         },
     });
 </script>

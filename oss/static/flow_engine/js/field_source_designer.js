@@ -22,16 +22,17 @@ const COMPONENT_VALUE_TYPES = {
     datetime: "datetime",
     file: "file",
 };
-const CONTEXT_WRITE_TARGETS = ["none", "flow", "node", "both"];
+const CONTEXT_WRITE_TARGETS = ["none", "flow"];
 
 const inferWriteTarget = (raw) => {
     const explicitTarget = String(raw?.write_target || "").trim().toLowerCase();
-    if (CONTEXT_WRITE_TARGETS.includes(explicitTarget)) return explicitTarget;
+    if (explicitTarget === "none") return "none";
+    if (["flow", "node", "both"].includes(explicitTarget)) return "flow";
     const legacyPath = String(raw?.write_path || "").trim();
-    if (!legacyPath) return "node";
-    if (legacyPath.startsWith("form.")) return "node";
+    if (!legacyPath) return "flow";
+    if (legacyPath.startsWith("form.")) return "flow";
     if (!legacyPath.includes(".")) return "flow";
-    return "node";
+    return "flow";
 };
 
 export const getFieldSourceMethodName = (target, component) => {
@@ -345,11 +346,11 @@ export const buildContextBindingPayload = (field) => {
         : {};
     const writeTarget = CONTEXT_WRITE_TARGETS.includes(binding.write_target)
         ? binding.write_target
-        : "node";
+        : "flow";
     const writeMode = ["overwrite", "merge_if_absent"].includes(binding.write_mode)
         ? binding.write_mode
         : "overwrite";
-    if (writeTarget !== "node") payload.write_target = writeTarget;
+    if (writeTarget !== "flow") payload.write_target = writeTarget;
     if (writeTarget !== "none" && writeMode !== "overwrite") payload.write_mode = writeMode;
     return Object.keys(payload).length ? { context_binding: payload } : {};
 };

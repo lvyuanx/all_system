@@ -95,6 +95,25 @@ def _field_list(form_schema: Any) -> list[dict[str, Any]]:
     return []
 
 
+def _iter_schema_fields(form_schema: Any) -> list[dict[str, Any]]:
+    """
+    Flatten schema fields recursively so nested fields inside container/group
+    can participate in runtime write-back.
+    """
+    flat: list[dict[str, Any]] = []
+    queue = list(_field_list(form_schema))
+    while queue:
+        field = queue.pop(0)
+        if not isinstance(field, dict):
+            continue
+        flat.append(field)
+        for child_key in ("children", "fields", "items"):
+            children = field.get(child_key)
+            if isinstance(children, list):
+                queue.extend([item for item in children if isinstance(item, dict)])
+    return flat
+
+
 def _normalize_options(raw: Any, label_key: str = "label", value_key: str = "value") -> list[dict[str, Any]]:
     if not isinstance(raw, list):
         return []
@@ -863,7 +882,7 @@ def build_context_updates_from_form_data(
 ) -> dict[str, Any]:
     data = form_data if isinstance(form_data, dict) else {}
     existing = existing_context if isinstance(existing_context, dict) else {}
-    fields = _field_list(form_schema)
+    fields = _iter_schema_fields(form_schema)
 
     # 兜底兼容: 无字段定义时维持历史行为
     if not fields:

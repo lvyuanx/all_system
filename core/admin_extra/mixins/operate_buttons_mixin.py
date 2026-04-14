@@ -7,6 +7,8 @@
 # version    : python 3.11
 # Description: 操作列添加按钮
 """
+import json
+
 from django.utils.html import format_html, format_html_join
 
 class OperateButtonsMixin:
@@ -54,6 +56,9 @@ class OperateButtonsMixin:
             js_func = conf.get("js_func")  # 自定义 JS 函数调用
             modal_width = conf.get("modal_width")
             modal_height = conf.get("modal_height")
+            confirm_text = str(conf.get("confirm") or "").strip()
+            confirm_title = str(conf.get("confirm_title") or "操作确认").strip()
+            confirm_type = str(conf.get("confirm_type") or "warning").strip() or "warning"
 
             # 解析 URL
             if callable(url_func):
@@ -70,46 +75,70 @@ class OperateButtonsMixin:
                 "default": "el-button el-button--default",
             }.get(btn_type, "el-button el-button--default")
 
+            def wrap_confirm(action_js: str) -> str:
+                if not confirm_text:
+                    return action_js
+                msg = json.dumps(confirm_text)
+                title = json.dumps(confirm_title)
+                ctype = json.dumps(confirm_type)
+                return (
+                    "(function(){"
+                    "var _do=function(){" + action_js + "};"
+                    "var _box=(window.SimpleUIExtra&&window.SimpleUIExtra.ElMessageBox)||null;"
+                    "if(_box&&typeof _box.confirm==='function'){"
+                    f"_box.confirm({msg},{title},{{type:{ctype},confirmButtonText:'确认',cancelButtonText:'取消'}})"
+                    ".then(function(){_do();}).catch(function(){});"
+                    f"}}else if(window.confirm({msg})){{_do();}}"
+                    "})();"
+                )
+
             # 按钮 HTML
             if mode == "modal":
+                modal_call = "showModal({url: %s, width: %s, height: %s})" % (
+                    json.dumps(str(url)),
+                    json.dumps(str(modal_width or "")),
+                    json.dumps(str(modal_height or "")),
+                )
+                onclick = wrap_confirm(f"{modal_call};")
                 btn_html = format_html(
                     """
                         <button type="button" class="{}"
-                            onclick="showModal({{url: '{}', width: '{}', height: '{}'}})">
+                            onclick="{}">
                             {}<span>{}</span>
                         </button>
                     """,
                     btn_class,
-                    url,
-                    modal_width,
-                    modal_height,
+                    onclick,
                     format_html('<i class="{}"></i>', icon) if icon else "",
                     label,
                 )
 
             elif mode == "js" and js_func:
+                js_call = "{}(event, {})".format(js_func, obj.pk)
+                onclick = wrap_confirm(f"{js_call};")
                 btn_html = format_html(
                     """
-                    <button type="button" class="{}" onclick="{}(event, {})">
+                    <button type="button" class="{}" onclick="{}">
                         {}<span>{}</span>
                     </button>
                 """,
                     btn_class,
-                    js_func,
-                    obj.pk,
+                    onclick,
                     format_html('<i class="{}"></i>', icon) if icon else "",
                     label,
                 )
             else:
                 # 默认跳转
+                jump_call = f"window.location.href={json.dumps(str(url))}"
+                onclick = wrap_confirm(f"{jump_call};")
                 btn_html = format_html(
                     """
-                    <button type="button" class="{}" onclick="window.location.href='{}'">
+                    <button type="button" class="{}" onclick="{}">
                         {}<span>{}</span>
                     </button>
                 """,
                     btn_class,
-                    url,
+                    onclick,
                     format_html('<i class="{}"></i>', icon) if icon else "",
                     label,
                 )
