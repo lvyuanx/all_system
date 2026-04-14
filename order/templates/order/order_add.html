@@ -401,7 +401,7 @@
             const isDisabledMode = "{{is_disabled_mode}}" == "1"
             const hideBack = new URLSearchParams(window.location.search).get('hide_back') === '1'
             const goBack = () => {
-                window.location.href = "{{ prev_url|default:'/admin/order/order/'|escapejs }}"
+                window.location.href = "{{ prev_url|default:\"/admin/order/order/\"|escapejs }}"
             };
             const ElMessage = inject("ElMessage");
             const itemsRef = ref(null);

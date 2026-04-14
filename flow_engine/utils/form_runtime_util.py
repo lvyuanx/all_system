@@ -4,12 +4,15 @@ from __future__ import annotations
 
 from copy import deepcopy
 from decimal import Decimal
+import logging
 from typing import Any
 
-from django.conf import settings
-
 from core.utils.common_util import import_func_or_class
+from flow_engine.data_sources.base import _MISSING
+from flow_engine.data_sources.registry import RuntimeFieldDataSourceRegistry
 from flow_engine.utils.field_data_source_registry import FieldDataSourceRegistry
+
+logger = logging.getLogger(__name__)
 
 ENUM_CLASS_PATH_MAP: dict[str, str] = {
     "order.type": "order.enums.OrderTypeChoices",
@@ -22,131 +25,8 @@ ENUM_CLASS_PATH_MAP: dict[str, str] = {
     "flow.node_type": "flow_engine.enums.NodeTypeChoices",
 }
 
-_MISSING = object()
-
 DEFAULT_VALUE_SOURCE_REGISTRY = FieldDataSourceRegistry()
 FIELD_OPTIONS_SOURCE_REGISTRY = FieldDataSourceRegistry()
-
-
-class BaseFieldDataSource:
-    key = ""
-    label = ""
-    data_type = ""
-    support_components: list[str] = []
-    support_default = False
-    support_options = False
-    params_schema: list[dict[str, Any]] = []
-
-    def __init__(
-        self,
-        *,
-        ctx: dict[str, Any] | None,
-        request=None,
-        field_schema: dict[str, Any] | None = None,
-        instance=None,
-        node_code: str = "",
-        runtime_env: dict[str, Any] | None = None,
-    ):
-        self.ctx = ctx if isinstance(ctx, dict) else {}
-        self.request = request
-        self.field_schema = field_schema if isinstance(field_schema, dict) else {}
-        self.instance = instance
-        self.node_code = str(node_code or "")
-        self.runtime_env = runtime_env if isinstance(runtime_env, dict) else {}
-
-    def get_config(self, target: str) -> dict[str, Any]:
-        if target == "default":
-            raw = self.field_schema.get("default_source_config")
-        elif target == "options":
-            raw = self.field_schema.get("options_source_config")
-        else:
-            raw = None
-        return raw if isinstance(raw, dict) else {}
-
-    def get_source_params(self, target: str) -> dict[str, Any]:
-        raw = self.get_config(target).get("source_params")
-        return raw if isinstance(raw, dict) else {}
-
-    def get_ctx_value(self, path: str, default: Any = _MISSING):
-        return get_path(self.ctx, path, default)
-
-    def get_default(self, request):
-        return _MISSING
-
-    def get_options(self, request):
-        return []
-
-
-class RuntimeFieldDataSourceRegistry:
-    def __init__(self):
-        self._builtin_classes: dict[str, type[BaseFieldDataSource]] = {}
-
-    @staticmethod
-    def _normalize_key(key: str | None) -> str:
-        return str(key or "").strip().lower()
-
-    def register_builtin(self, source_cls: type[BaseFieldDataSource]):
-        key = self._normalize_key(getattr(source_cls, "key", ""))
-        if not key:
-            raise ValueError("field data source key is required")
-        self._builtin_classes[key] = source_cls
-
-    def _load_setting_classes(self) -> dict[str, type[BaseFieldDataSource]]:
-        loaded: dict[str, type[BaseFieldDataSource]] = {}
-        for item in getattr(settings, "FLOW_ENGINE_FIELD_DATA_SOURCES", []) or []:
-            try:
-                cls = import_func_or_class(item) if isinstance(item, str) else item
-            except Exception:
-                continue
-            if not isinstance(cls, type) or not issubclass(cls, BaseFieldDataSource):
-                continue
-            key = self._normalize_key(getattr(cls, "key", ""))
-            if key:
-                loaded[key] = cls
-        return loaded
-
-    def get(self, key: str | None):
-        source_key = self._normalize_key(key)
-        if not source_key:
-            return None
-        return self._load_setting_classes().get(source_key) or self._builtin_classes.get(source_key)
-
-    def all(self) -> dict[str, type[BaseFieldDataSource]]:
-        combined = dict(self._builtin_classes)
-        combined.update(self._load_setting_classes())
-        return combined
-
-    def metadata(self) -> list[dict[str, Any]]:
-        items: list[dict[str, Any]] = []
-        for key, source_cls in sorted(self.all().items()):
-            support_components = [
-                str(item).strip()
-                for item in (getattr(source_cls, "support_components", None) or [])
-                if item is not None and str(item).strip()
-            ]
-            params_schema = [
-                deepcopy(item)
-                for item in (getattr(source_cls, "params_schema", None) or [])
-                if isinstance(item, dict)
-            ]
-            items.append(
-                {
-                    "key": key,
-                    "label": str(getattr(source_cls, "label", "") or key),
-                    "data_type": str(getattr(source_cls, "data_type", "") or ""),
-                    "support_components": support_components,
-                    "support_default": bool(getattr(source_cls, "support_default", False)),
-                    "support_options": bool(getattr(source_cls, "support_options", False)),
-                    "params_schema": params_schema,
-                }
-            )
-        return items
-
-    def build(self, key: str | None, **kwargs):
-        source_cls = self.get(key)
-        if source_cls is None:
-            return None
-        return source_cls(**kwargs)
 
 
 def get_path(data: Any, path: str, default: Any = _MISSING) -> Any:
@@ -396,71 +276,17 @@ def _resolve_db_options(config: dict[str, Any], context: dict[str, Any], runtime
     return []
 
 
-class ContextTextDataSource(BaseFieldDataSource):
-    key = "ctx_text"
-    label = "流程上下文字段"
-    data_type = "text"
-    support_components = ["input", "textarea", "number", "date", "datetime"]
-    support_default = True
-    support_options = False
-
-    def get_default(self, request):
-        params = self.get_source_params("default")
-        path = str(params.get("context_path") or "").strip()
-        if not path:
-            return _MISSING
-        return self.get_ctx_value(path, _MISSING)
-
-
-class OrderFieldTextDataSource(BaseFieldDataSource):
-    key = "order_field_text"
-    label = "订单字段文本"
-    data_type = "text"
-    support_components = ["input", "textarea", "number", "date", "datetime"]
-    support_default = True
-    support_options = False
-
-    def get_default(self, request):
-        params = self.get_source_params("default")
-        field_name = params.get("field") or params.get("field_name")
-        if not field_name:
-            return _MISSING
-        legacy_config = {
-            "db_source_code": "order.field",
-            "db_params": params,
-            "field": field_name,
-        }
-        value = _resolve_db_value(legacy_config, self.ctx, self.runtime_env)
-        if value in (None, ""):
-            return _MISSING
-        return value
-
-
-class SiteAddressSelectDataSource(BaseFieldDataSource):
-    key = "site_address_select"
-    label = "站点地址选项"
-    data_type = "select"
-    support_components = ["select", "radio", "checkbox"]
-    support_default = False
-    support_options = True
-
-    def get_options(self, request):
-        params = self.get_source_params("options")
-        legacy_config = {
-            "db_source_code": "site.address_options_by_order",
-            "db_params": params,
-        }
-        return _resolve_db_options(legacy_config, self.ctx, self.runtime_env)
-
-
 RUNTIME_FIELD_DATA_SOURCE_REGISTRY = RuntimeFieldDataSourceRegistry()
-RUNTIME_FIELD_DATA_SOURCE_REGISTRY.register_builtin(ContextTextDataSource)
-RUNTIME_FIELD_DATA_SOURCE_REGISTRY.register_builtin(OrderFieldTextDataSource)
-RUNTIME_FIELD_DATA_SOURCE_REGISTRY.register_builtin(SiteAddressSelectDataSource)
 
 
 def get_registered_field_data_source_metadata() -> list[dict[str, Any]]:
     return RUNTIME_FIELD_DATA_SOURCE_REGISTRY.metadata()
+
+
+def build_field_data_source_metadata_payload() -> dict[str, Any]:
+    return {
+        "items": get_registered_field_data_source_metadata(),
+    }
 
 
 def register_default_value_source(source_type: str, resolver):
@@ -477,6 +303,14 @@ def register_field_options_source(source_type: str, resolver):
 
 def unregister_field_options_source(source_type: str):
     FIELD_OPTIONS_SOURCE_REGISTRY.unregister(source_type)
+
+
+def _safe_registry_resolve(registry: FieldDataSourceRegistry, source_type: str | None, default=None, **kwargs):
+    try:
+        return registry.resolve(source_type, default=default, **kwargs)
+    except Exception:
+        logger.exception("字段数据源旧版解析失败: source_type=%s", source_type)
+        return default
 
 
 def _default_value_source_literal(
@@ -618,18 +452,38 @@ def _build_runtime_field_data_source(
 ):
     config_key = "default_source_config" if target == "default" else "options_source_config"
     config = field.get(config_key) if isinstance(field.get(config_key), dict) else {}
+    component = str(field.get("component") or ("input" if target == "default" else "select")).strip().lower()
+    source_params = config.get("source_params") if isinstance(config.get("source_params"), dict) else {}
     source_key = str(config.get("source_key") or "").strip()
     if not source_key:
         return None
-    return RUNTIME_FIELD_DATA_SOURCE_REGISTRY.build(
-        source_key,
-        ctx=context,
-        request=request,
-        field_schema=field,
-        instance=instance,
-        node_code=node_code,
-        runtime_env=runtime_env,
-    )
+    try:
+        return RUNTIME_FIELD_DATA_SOURCE_REGISTRY.build(
+            source_key,
+            ctx=context,
+            request=request,
+            field_schema=field,
+            instance=instance,
+            node_code=node_code,
+            runtime_env=runtime_env,
+            source_config=config,
+            source_params=source_params,
+            component=component,
+            target=target,
+        )
+    except Exception:
+        logger.exception("构建字段数据源实例失败: source_key=%s", source_key)
+        return None
+
+
+def _call_runtime_field_data_source(source, *, target: str, component: str):
+    method_name = RUNTIME_FIELD_DATA_SOURCE_REGISTRY.get_handler_method_name(target, component)
+    if not method_name:
+        return _MISSING
+    handler = getattr(source, method_name, None)
+    if not callable(handler):
+        return _MISSING
+    return handler()
 
 
 def _resolve_default_from_data_source(
@@ -655,6 +509,10 @@ def _resolve_default_from_data_source(
     if mode not in {"data_source", "datasource", "source"}:
         return _MISSING
 
+    fallback_value = _MISSING
+    if "fallback_value" in cfg:
+        fallback_value = _json_safe(cfg.get("fallback_value"))
+
     source = _build_runtime_field_data_source(
         field=field,
         context=context,
@@ -665,18 +523,21 @@ def _resolve_default_from_data_source(
         target="default",
     )
     if source is None:
-        return _MISSING
+        return fallback_value
 
     try:
-        value = source.get_default(request)
+        value = _call_runtime_field_data_source(
+            source,
+            target="default",
+            component=str(field.get("component") or "input").strip().lower(),
+        )
     except Exception:
-        value = _MISSING
+        logger.exception("字段默认值数据源执行失败: source_key=%s", cfg.get("source_key"))
+        return fallback_value
 
     if value is not _MISSING and value not in (None, ""):
         return _json_safe(value)
-    if "fallback_value" in cfg:
-        return _json_safe(cfg.get("fallback_value"))
-    return _MISSING
+    return fallback_value
 
 
 def _resolve_field_options_from_data_source(
@@ -687,7 +548,6 @@ def _resolve_field_options_from_data_source(
     request=None,
     instance=None,
     node_code: str = "",
-    manual: list[dict[str, Any]],
 ):
     cfg = field.get("options_source_config") if isinstance(field.get("options_source_config"), dict) else {}
     mode = _source_config_mode(cfg)
@@ -695,7 +555,7 @@ def _resolve_field_options_from_data_source(
         return _MISSING
 
     if mode in {"fixed", "literal", "manual"}:
-        return manual
+        return []
 
     if mode not in {"data_source", "datasource", "source"}:
         return _MISSING
@@ -713,53 +573,40 @@ def _resolve_field_options_from_data_source(
         return _MISSING
 
     try:
-        dynamic = source.get_options(request)
+        dynamic = _call_runtime_field_data_source(
+            source,
+            target="options",
+            component=str(field.get("component") or "select").strip().lower(),
+        )
     except Exception:
+        logger.exception("字段选项数据源执行失败: source_key=%s", cfg.get("source_key"))
         dynamic = []
 
+    if dynamic is _MISSING:
+        return _MISSING
     options = _normalize_options(dynamic or [])
-    fallback_to_manual = bool(cfg.get("fallback_to_manual", True))
     if options:
         return options
-    if fallback_to_manual:
-        return manual
-    return []
+    return _MISSING
 
 
-def _resolve_field_options(
+def _resolve_field_options_from_legacy_config(
+    *,
     field: dict[str, Any],
     context: dict[str, Any],
     runtime_env: dict[str, Any] | None,
-    request=None,
-    instance=None,
-    node_code: str = "",
-) -> list[dict[str, Any]]:
-    manual = FIELD_OPTIONS_SOURCE_REGISTRY.resolve(
-        "manual",
-        field=field,
-        config={},
-        context=context,
-        runtime_env=runtime_env,
-    ) or []
-    source_options = _resolve_field_options_from_data_source(
-        field=field,
-        context=context,
-        runtime_env=runtime_env,
-        request=request,
-        instance=instance,
-        node_code=node_code,
-        manual=manual,
-    )
-    if source_options is not _MISSING:
-        return source_options
-
-    cfg = field.get("options_config") if isinstance(field.get("options_config"), dict) else {}
+    manual: list[dict[str, Any]],
+):
+    raw_cfg = field.get("options_config")
+    has_legacy_config = isinstance(raw_cfg, dict) and bool(raw_cfg)
+    cfg = raw_cfg if isinstance(raw_cfg, dict) else {}
     source_type = str(cfg.get("source_type") or "manual").strip().lower()
 
     if source_type in ("", "manual", "literal"):
-        return manual
+        return manual if has_legacy_config else _MISSING
 
-    dynamic = FIELD_OPTIONS_SOURCE_REGISTRY.resolve(
+    dynamic = _safe_registry_resolve(
+        FIELD_OPTIONS_SOURCE_REGISTRY,
         source_type,
         default=[],
         field=field,
@@ -774,6 +621,52 @@ def _resolve_field_options(
     if fallback_to_manual:
         return manual
     return []
+
+
+def _resolve_field_options(
+    field: dict[str, Any],
+    context: dict[str, Any],
+    runtime_env: dict[str, Any] | None,
+    request=None,
+    instance=None,
+    node_code: str = "",
+) -> list[dict[str, Any]]:
+    manual = _safe_registry_resolve(
+        FIELD_OPTIONS_SOURCE_REGISTRY,
+        "manual",
+        default=[],
+        field=field,
+        config={},
+        context=context,
+        runtime_env=runtime_env,
+    ) or []
+    source_options = _resolve_field_options_from_data_source(
+        field=field,
+        context=context,
+        runtime_env=runtime_env,
+        request=request,
+        instance=instance,
+        node_code=node_code,
+    )
+    if source_options is not _MISSING:
+        return source_options
+
+    legacy_options = _resolve_field_options_from_legacy_config(
+        field=field,
+        context=context,
+        runtime_env=runtime_env,
+        manual=manual,
+    )
+    if legacy_options is not _MISSING:
+        return legacy_options
+
+    cfg = field.get("options_source_config") if isinstance(field.get("options_source_config"), dict) else {}
+    mode = _source_config_mode(cfg)
+    if mode in {"fixed", "literal", "manual"}:
+        return manual
+    if mode in {"data_source", "datasource", "source"}:
+        return manual if bool(cfg.get("fallback_to_manual", True)) else []
+    return manual
 
 
 def _component_empty_default(field: dict[str, Any]) -> Any:
@@ -809,7 +702,8 @@ def _resolve_default_from_config(
 
     cfg = field.get("default_config") if isinstance(field.get("default_config"), dict) else {}
     source_type = str(cfg.get("source_type") or "literal").strip().lower()
-    resolved = DEFAULT_VALUE_SOURCE_REGISTRY.resolve(
+    resolved = _safe_registry_resolve(
+        DEFAULT_VALUE_SOURCE_REGISTRY,
         source_type,
         default=_MISSING,
         field=field,
@@ -843,6 +737,11 @@ def _resolve_read_path(field: dict[str, Any], node_code: str) -> tuple[str, list
     return read_path, fallback_paths
 
 
+def _is_text_content_component(field: dict[str, Any]) -> bool:
+    component = str(field.get("component") or field.get("type") or "").strip().lower()
+    return component in {"title_h1", "title_h2", "title_h3", "title_h4", "title_h5", "paragraph"}
+
+
 def resolve_form_runtime(
     form_schema: Any,
     context: dict[str, Any] | None,
@@ -860,6 +759,23 @@ def resolve_form_runtime(
     form_data: dict[str, Any] = {}
 
     for field in fields:
+        if _is_text_content_component(field):
+            text_field = deepcopy(field)
+            if "default" not in text_field:
+                text_field["default"] = field.get("content", "")
+            resolved_content = _resolve_default_from_config(
+                text_field,
+                runtime_context,
+                runtime_env,
+                [],
+                request=request,
+                instance=instance,
+                node_code=node_code,
+            )
+            if resolved_content is not _MISSING and resolved_content is not None:
+                field["content"] = _json_safe(resolved_content)
+            continue
+
         key = str(field.get("key") or field.get("name") or field.get("prop") or "").strip()
         if not key:
             continue
@@ -872,7 +788,10 @@ def resolve_form_runtime(
             instance=instance,
             node_code=node_code,
         )
-        if resolved_options:
+        has_option_binding = any(
+            key_name in field for key_name in ("options", "choices", "enum", "options_config", "options_source_config")
+        )
+        if resolved_options or has_option_binding:
             field["options"] = resolved_options
 
         read_path, fallback_paths = _resolve_read_path(field, node_code)
@@ -910,17 +829,30 @@ def resolve_form_runtime(
     return fields, form_data
 
 
-def _resolve_write_binding(field: dict[str, Any], node_code: str, key: str) -> tuple[str, str]:
+def _resolve_write_binding(field: dict[str, Any], node_code: str, key: str) -> tuple[list[str], str]:
     binding = field.get("context_binding") if isinstance(field.get("context_binding"), dict) else None
     if not binding:
-        return key, "overwrite"
+        return [key], "overwrite"
 
     default_path = f"form.{node_code}.{key}" if node_code else key
-    write_path = str(binding.get("write_path") or default_path)
+    write_target = str(binding.get("write_target") or "").strip().lower()
+    if write_target == "none":
+        write_paths: list[str] = []
+    elif write_target == "flow":
+        write_paths = [key]
+    elif write_target == "both":
+        write_paths = [key]
+        if default_path != key:
+            write_paths.append(default_path)
+    elif write_target == "node":
+        write_paths = [default_path]
+    else:
+        write_path = str(binding.get("write_path") or default_path)
+        write_paths = [write_path] if write_path else []
     write_mode = str(binding.get("write_mode") or "overwrite").strip().lower()
     if write_mode not in {"overwrite", "merge_if_absent"}:
         write_mode = "overwrite"
-    return write_path, write_mode
+    return write_paths, write_mode
 
 
 def build_context_updates_from_form_data(
@@ -945,11 +877,14 @@ def build_context_updates_from_form_data(
         if key not in data:
             continue
 
-        write_path, write_mode = _resolve_write_binding(field, node_code, key)
-        if write_mode == "merge_if_absent":
-            existing_val = get_path(existing, write_path, _MISSING)
-            if existing_val is not _MISSING and existing_val not in (None, ""):
-                continue
-        set_path(updates, write_path, _json_safe(data.get(key)))
+        write_paths, write_mode = _resolve_write_binding(field, node_code, key)
+        if not write_paths:
+            continue
+        for write_path in write_paths:
+            if write_mode == "merge_if_absent":
+                existing_val = get_path(existing, write_path, _MISSING)
+                if existing_val is not _MISSING and existing_val not in (None, ""):
+                    continue
+            set_path(updates, write_path, _json_safe(data.get(key)))
 
     return updates

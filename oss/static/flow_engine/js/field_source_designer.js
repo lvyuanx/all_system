@@ -4,38 +4,88 @@ const cloneValue = (value) => {
 };
 
 const own = (obj, key) => Object.prototype.hasOwnProperty.call(obj || {}, key);
+const COMPONENT_VALUE_TYPES = {
+    input: "text",
+    textarea: "text",
+    number: "number",
+    title_h1: "text",
+    title_h2: "text",
+    title_h3: "text",
+    title_h4: "text",
+    title_h5: "text",
+    paragraph: "text",
+    select: "options",
+    radio: "options",
+    checkbox: "options",
+    switch: "boolean",
+    date: "date",
+    datetime: "datetime",
+    file: "file",
+};
+const CONTEXT_WRITE_TARGETS = ["none", "flow", "node", "both"];
 
-const normalizeSchemaItem = (item) => {
-    if (!item || typeof item !== "object") return null;
-    return {
-        name: String(item.name || "").trim(),
-        label: String(item.label || item.name || "").trim(),
-        target: String(item.target || "").trim().toLowerCase(),
-        component: String(item.component || "input").trim().toLowerCase(),
-        placeholder: String(item.placeholder || "").trim(),
-        help: String(item.help || item.description || "").trim(),
-        options: Array.isArray(item.options)
-            ? item.options
-                .map((option) => {
-                    if (option && typeof option === "object") {
-                        return {
-                            label: String(option.label ?? option.name ?? option.value ?? "").trim(),
-                            value: option.value ?? option.key ?? option.label ?? option.name ?? "",
-                        };
-                    }
-                    return {
-                        label: String(option ?? "").trim(),
-                        value: option ?? "",
-                    };
-                })
-                .filter((option) => option.label || option.value !== "")
-            : [],
-    };
+const inferWriteTarget = (raw) => {
+    const explicitTarget = String(raw?.write_target || "").trim().toLowerCase();
+    if (CONTEXT_WRITE_TARGETS.includes(explicitTarget)) return explicitTarget;
+    const legacyPath = String(raw?.write_path || "").trim();
+    if (!legacyPath) return "node";
+    if (legacyPath.startsWith("form.")) return "node";
+    if (!legacyPath.includes(".")) return "flow";
+    return "node";
+};
+
+export const getFieldSourceMethodName = (target, component) => {
+    const cleanTarget = String(target || "").trim().toLowerCase();
+    const cleanComponent = String(component || "").trim().toLowerCase();
+    const valueType = COMPONENT_VALUE_TYPES[cleanComponent];
+    if (!["default", "options"].includes(cleanTarget) || !valueType) return "";
+    return `get_${cleanTarget}_${valueType}`;
+};
+
+const supportsComponentFamily = (supportedComponents, component) => {
+    const cleanComponent = String(component || "").trim().toLowerCase();
+    if (!cleanComponent) return true;
+    const expectedType = COMPONENT_VALUE_TYPES[cleanComponent];
+    return (supportedComponents || []).some((item) => {
+        const cleanItem = String(item || "").trim().toLowerCase();
+        if (!cleanItem) return false;
+        return cleanItem === cleanComponent || (
+            !!expectedType && COMPONENT_VALUE_TYPES[cleanItem] === expectedType
+        );
+    });
+};
+
+const buildLegacySupportedMethods = (item) => {
+    const components = Array.isArray(item.support_components) ? item.support_components : [];
+    const methods = new Set();
+    if (item.support_default) {
+        components.forEach((component) => {
+            const methodName = getFieldSourceMethodName("default", component);
+            if (methodName) methods.add(methodName);
+        });
+    }
+    if (item.support_options) {
+        components.forEach((component) => {
+            const methodName = getFieldSourceMethodName("options", component);
+            if (methodName) methods.add(methodName);
+        });
+    }
+    return Array.from(methods);
+};
+
+const normalizeMetadataInput = (items) => {
+    if (Array.isArray(items)) return items;
+    if (items && typeof items === "object") {
+        if (Array.isArray(items.items)) return items.items;
+        if (Array.isArray(items.data)) return items.data;
+    }
+    return [];
 };
 
 export const normalizeFieldDataSourceMetadata = (items) => {
-    if (!Array.isArray(items)) return [];
-    return items
+    const list = normalizeMetadataInput(items);
+    if (!list.length) return [];
+    return list
         .map((item) => {
             if (!item || typeof item !== "object") return null;
             const key = String(item.key || "").trim().toLowerCase();
@@ -49,11 +99,13 @@ export const normalizeFieldDataSourceMetadata = (items) => {
                         .map((component) => String(component || "").trim().toLowerCase())
                         .filter(Boolean)
                     : [],
-                support_default: !!item.support_default,
-                support_options: !!item.support_options,
-                params_schema: Array.isArray(item.params_schema)
-                    ? item.params_schema.map(normalizeSchemaItem).filter(Boolean)
-                    : [],
+                supported_methods: (
+                    Array.isArray(item.supported_methods)
+                        ? item.supported_methods
+                        : buildLegacySupportedMethods(item)
+                )
+                    .map((methodName) => String(methodName || "").trim().toLowerCase())
+                    .filter(Boolean),
             };
         })
         .filter(Boolean);
@@ -141,10 +193,7 @@ export const normalizeDefaultSourceUi = (field, defaultValue) => {
         ui.mode = "fixed";
         return ui;
     }
-    if (hasLegacyDefaultConfig(field?.default_config)) {
-        ui.mode = "legacy";
-        return ui;
-    }
+    if (hasLegacyDefaultConfig(field?.default_config)) return ui;
     if (own(sourceConfig, "fallback_value")) {
         ui.fallback_value = cloneValue(sourceConfig.fallback_value);
     }
@@ -172,27 +221,29 @@ export const normalizeOptionsSourceUi = (field) => {
             : {};
         return ui;
     }
-    if (hasLegacyOptionsConfig(field?.options_config)) {
-        ui.mode = "legacy";
-        return ui;
-    }
+    if (hasLegacyOptionsConfig(field?.options_config)) return ui;
     return ui;
 };
 
-export const shouldShowLegacyDefaultMode = (field) =>
-    field?.default_source_ui?.mode === "legacy" || !!field?.default_source_ui?.legacy_config;
+export const shouldShowLegacyDefaultMode = () => false;
 
-export const shouldShowLegacyOptionsMode = (field) =>
-    field?.options_source_ui?.mode === "legacy" || !!field?.options_source_ui?.legacy_config;
+export const shouldShowLegacyOptionsMode = () => false;
 
 export const getAvailableFieldDataSources = (items, target, component) => {
     const cleanTarget = String(target || "").trim().toLowerCase();
     const cleanComponent = String(component || "").trim().toLowerCase();
+    const methodName = getFieldSourceMethodName(cleanTarget, cleanComponent);
     return normalizeFieldDataSourceMetadata(items).filter((item) => {
-        if (cleanTarget === "default" && !item.support_default) return false;
-        if (cleanTarget === "options" && !item.support_options) return false;
-        if (!item.support_components.length) return true;
-        return item.support_components.includes(cleanComponent);
+        const supportedMethods = Array.isArray(item.supported_methods) ? item.supported_methods : [];
+        const supportsTarget = supportedMethods.some((name) => name.startsWith(`get_${cleanTarget}_`));
+        if (!supportsTarget) return false;
+        if (!item.support_components.length) {
+            if (!cleanComponent) return true;
+            return !!methodName && supportedMethods.includes(methodName);
+        }
+        if (cleanComponent && !supportsComponentFamily(item.support_components, cleanComponent)) return false;
+        if (!cleanComponent) return true;
+        return !!methodName && supportedMethods.includes(methodName);
     });
 };
 
@@ -203,16 +254,13 @@ export const getFieldDataSourceByKey = (items, key) => {
 };
 
 export const getFieldSourceParamSchema = (items, key, target) => {
-    const source = getFieldDataSourceByKey(items, key);
-    if (!source) return [];
-    const cleanTarget = String(target || "").trim().toLowerCase();
-    return (source.params_schema || []).filter((item) => !item.target || item.target === cleanTarget);
+    return [];
 };
 
 export const syncFieldSourceParamsBySchema = (items, key, target, sourceParams) => {
     const schema = getFieldSourceParamSchema(items, key, target);
-    if (!schema.length) return {};
     const current = sourceParams && typeof sourceParams === "object" ? sourceParams : {};
+    if (!schema.length) return cloneValue(current) || {};
     const normalized = {};
     schema.forEach((item) => {
         if (!item?.name) return;
@@ -220,7 +268,6 @@ export const syncFieldSourceParamsBySchema = (items, key, target, sourceParams) 
             normalized[item.name] = cloneValue(current[item.name]);
             return;
         }
-        normalized[item.name] = item.component === "switch" ? false : "";
     });
     return normalized;
 };
@@ -228,7 +275,8 @@ export const syncFieldSourceParamsBySchema = (items, key, target, sourceParams) 
 export const buildDefaultSourcePayload = (field) => {
     const ui = field?.default_source_ui;
     const payload = {};
-    if (ui?.mode === "data_source" && ui.source_key) {
+    const hasNewDataSource = ui?.mode === "data_source" && ui.source_key;
+    if (hasNewDataSource) {
         payload.default_source_config = {
             mode: "data_source",
             source_key: String(ui.source_key).trim().toLowerCase(),
@@ -239,7 +287,7 @@ export const buildDefaultSourcePayload = (field) => {
         }
     }
     const legacy = ui?.legacy_config;
-    if (legacy && (ui.mode === "legacy" || ui.mode === "data_source")) {
+    if (legacy && !hasNewDataSource) {
         const normalized = normalizeLegacyDefaultConfig(legacy, field?.default);
         if (hasLegacyDefaultConfig(normalized)) {
             payload.default_config = normalized;
@@ -251,7 +299,8 @@ export const buildDefaultSourcePayload = (field) => {
 export const buildOptionsSourcePayload = (field) => {
     const ui = field?.options_source_ui;
     const payload = {};
-    if (ui?.mode === "data_source" && ui.source_key) {
+    const hasNewDataSource = ui?.mode === "data_source" && ui.source_key;
+    if (hasNewDataSource) {
         payload.options_source_config = {
             mode: "data_source",
             source_key: String(ui.source_key).trim().toLowerCase(),
@@ -260,13 +309,49 @@ export const buildOptionsSourcePayload = (field) => {
         };
     }
     const legacy = ui?.legacy_config;
-    if (legacy && (ui.mode === "legacy" || ui.mode === "data_source")) {
+    if (legacy && !hasNewDataSource) {
         const normalized = normalizeLegacyOptionsConfig(legacy);
         if (hasLegacyOptionsConfig(normalized)) {
             payload.options_config = normalized;
         }
     }
     return payload;
+};
+
+export const normalizeContextBindingUi = (field) => {
+    const raw = field?.context_binding;
+    const extras = {};
+    if (raw && typeof raw === "object") {
+        Object.keys(raw).forEach((key) => {
+            if (!["read_path", "write_path", "write_mode", "write_target"].includes(key)) {
+                extras[key] = cloneValue(raw[key]);
+            }
+        });
+    }
+    return {
+        write_target: inferWriteTarget(raw),
+        write_mode: ["overwrite", "merge_if_absent"].includes(raw?.write_mode)
+            ? raw.write_mode
+            : "overwrite",
+        legacy_config: Object.keys(extras).length ? extras : null,
+    };
+};
+
+export const buildContextBindingPayload = (field) => {
+    const binding = field?.context_binding;
+    if (!binding || typeof binding !== "object") return {};
+    const payload = binding.legacy_config && typeof binding.legacy_config === "object"
+        ? cloneValue(binding.legacy_config)
+        : {};
+    const writeTarget = CONTEXT_WRITE_TARGETS.includes(binding.write_target)
+        ? binding.write_target
+        : "node";
+    const writeMode = ["overwrite", "merge_if_absent"].includes(binding.write_mode)
+        ? binding.write_mode
+        : "overwrite";
+    if (writeTarget !== "node") payload.write_target = writeTarget;
+    if (writeTarget !== "none" && writeMode !== "overwrite") payload.write_mode = writeMode;
+    return Object.keys(payload).length ? { context_binding: payload } : {};
 };
 
 export const shouldUseManualOptions = (field) => {

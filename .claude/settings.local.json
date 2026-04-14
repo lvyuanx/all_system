@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Read(//d/projects/image_search/image_search/**)"
+      "Read(//d/projects/image_search/image_search/**)",
+      "Bash(python -c ':*)"
     ]
   }
 }

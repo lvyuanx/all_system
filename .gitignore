@@ -122,3 +122,8 @@ main/config.py
 # Docker
 # ================================
 docker/.env
+
+
+.bun/
+.codex-tasks/
+.ralphy/

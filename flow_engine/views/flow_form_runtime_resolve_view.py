@@ -10,6 +10,7 @@ from core.exceptions.base_exceptions import BusinessException
 from core.ninja_extra.api_extra import BaseApi, HttpRequest, Body
 from flow_engine.models import FlowInstance, FlowTask
 from flow_engine.utils.form_runtime_util import resolve_form_runtime
+from flow_engine.utils.form_library_util import FORM_REF_CODE_KEY, FORM_REF_NAME_KEY, resolve_form_ref_definition
 
 from . import schemas
 
@@ -34,6 +35,25 @@ class View(BaseApi):
         cleaned.pop("__ui", None)
         cleaned.pop("__form_library", None)
         return cleaned
+
+    @staticmethod
+    def _hydrate_form_schema(schema):
+        if not isinstance(schema, dict):
+            return schema
+        ref_code = str(schema.get(FORM_REF_CODE_KEY) or "").strip()
+        if not ref_code:
+            return schema
+        matched = resolve_form_ref_definition(ref_code)
+        if not matched:
+            return schema
+        hydrated = {
+            "fields": matched.get("fields") or [],
+            FORM_REF_CODE_KEY: matched.get("code") or ref_code,
+            FORM_REF_NAME_KEY: matched.get("name") or ref_code,
+        }
+        if "__ui" in schema:
+            hydrated["__ui"] = schema["__ui"]
+        return hydrated
 
     @staticmethod
     async def api(
@@ -88,7 +108,9 @@ class View(BaseApi):
         if not node:
             raise BusinessException("003")
 
-        raw_schema = View._strip_form_schema_ui(getattr(node, "form_schema", None))
+        raw_schema = View._hydrate_form_schema(
+            View._strip_form_schema_ui(getattr(node, "form_schema", None))
+        )
         resolved_schema, resolved_form_data = await sync_to_async(
             lambda: resolve_form_runtime(
                 form_schema=raw_schema,

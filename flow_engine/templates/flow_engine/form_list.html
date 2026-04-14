@@ -1,7 +1,6 @@
 {% extends "vue_setup_base.html" %}
 {% load i18n %}
 {% load static %}
-{% load simpletags %}
 
 {% block title %}
 {{ title }}
@@ -19,8 +18,9 @@
 {% block content %}
 <div id="app">
     <div class="page-header">
-        <el-page-header title="{% trans 'Back' %}" @back="goBack" content="{{title}}"></el-page-header>
+        <div class="page-title">{{ title }}</div>
         <div class="header-right">
+            <el-button type="primary" @click="openCreateFormDialog">新建表单</el-button>
             <el-button @click="goFlowList">流程列表</el-button>
         </div>
     </div>
@@ -30,29 +30,57 @@
             :columns="pageData.columns"
             :loading="pageData.loading"
             :border="true"
-            :actions-width="220"
+            :actions-width="140"
             :filterForm="pageData.filterForm"
             @update:filterForm="onFilterUpdate"
             @page-change="onFilterSearch"
         >
             <template #filter="{ model }">
-                <el-form-item label="关键词">
-                    <el-input v-model="model.keyword" placeholder="流程编码/名称" clearable />
+                <el-form-item label="关键字">
+                    <el-input v-model="model.keyword" placeholder="表单编码/名称" clearable />
                 </el-form-item>
-                <el-form-item label="状态">
-                    <el-select v-model="model.is_active" clearable style="width: 120px">
-                        <el-option label="启用" :value="1" />
-                        <el-option label="禁用" :value="0" />
+                <el-form-item label="表单分组">
+                    <el-select v-model="model.group_name" clearable filterable style="width: 180px">
+                        <el-option
+                            v-for="item in groupOptions"
+                            :key="item"
+                            :label="item"
+                            :value="item" />
                     </el-select>
                 </el-form-item>
             </template>
 
             <template #actions="{ row }">
-                <el-button link type="primary" @click="openFormDesigner(row)">表单设计</el-button>
-                <el-button link type="success" @click="openFlowDesigner(row)">流程设计</el-button>
+                <el-button link type="primary" @click="openFormDesigner(row)">编辑表单</el-button>
             </template>
         </common-table>
     </div>
+
+    <el-dialog v-model="createDialog.visible" title="新建表单" width="460px">
+        <el-form label-width="88px">
+            <el-form-item label="表单分组">
+                <el-select
+                    v-model="createDialog.groupName"
+                    filterable
+                    allow-create
+                    default-first-option
+                    clearable
+                    placeholder="可选已有分组，或直接输入新分组"
+                    style="width: 100%">
+                    <el-option
+                        v-for="item in groupOptions"
+                        :key="item"
+                        :label="item"
+                        :value="item" />
+                </el-select>
+            </el-form-item>
+            <div class="fd-head-sub">新建后会进入独立表单设计器，表单可被任意流程环节引用。</div>
+        </el-form>
+        <template #footer>
+            <el-button @click="createDialog.visible = false">取消</el-button>
+            <el-button type="primary" @click="confirmCreateForm">进入表单设计器</el-button>
+        </template>
+    </el-dialog>
 </div>
 {% endblock %}
 
@@ -64,36 +92,53 @@
     window.createApp({
         components: { CommonTable },
         setup() {
-            const goBack = () => {
-                window.location.href = "{% get_previous_url %}";
-            };
-
             const pageData = reactive({
                 pageLoading: true,
                 loading: false,
                 filterForm: {
                     keyword: "",
-                    is_active: null,
+                    group_name: "",
                 },
                 columns: [
-                    { prop: "code", label: "编码", width: 180 },
-                    { prop: "name", label: "名称", minWidth: 280 },
-                    { prop: "version", label: "版本", width: 100 },
-                    { prop: "is_active", label: "启用", width: 90 },
+                    { prop: "code", label: "表单编码", width: 180 },
+                    { prop: "name", label: "表单名称", minWidth: 220 },
+                    { prop: "group_name", label: "表单分组", width: 160 },
+                    { prop: "field_count", label: "字段数", width: 100 },
+                    { prop: "bind_flow_count", label: "绑定流程数", width: 120 },
+                    { prop: "bind_node_count", label: "绑定环节数", width: 120 },
                     { prop: "update_time_str", label: "更新时间", minWidth: 220 },
                 ],
                 tableData: [],
             });
 
+            const createDialog = reactive({
+                visible: false,
+                groupName: "",
+            });
+
+            const groupOptions = reactive([]);
+
             const loadList = async (filters = null) => {
                 pageData.loading = true;
                 try {
                     const query = filters || pageData.filterForm;
-                    const res = await request.get("/flow_engine/flow_definition_page_list", query);
+                    const res = await request.get("/flow_engine/form_library_global_list", query);
                     pageData.tableData = res || [];
                 } finally {
                     pageData.loading = false;
                 }
+            };
+
+            const loadGroupOptions = async () => {
+                const rows = await request.get("/flow_engine/form_library_global_list");
+                const groups = Array.from(
+                    new Set(
+                        (Array.isArray(rows) ? rows : [])
+                            .map((item) => String(item?.group_name || "").trim())
+                            .filter(Boolean)
+                    )
+                ).sort((a, b) => a.localeCompare(b, "zh-Hans-CN"));
+                groupOptions.splice(0, groupOptions.length, ...groups);
             };
 
             const onFilterUpdate = (val) => {
@@ -105,13 +150,24 @@
             };
 
             const openFormDesigner = (row) => {
-                if (!row?.flow_id) return;
-                window.location.href = `/admin/flow_engine/definition/${row.flow_id}/form_designer/`;
+                if (!row?.code) return;
+                const params = new URLSearchParams();
+                params.set("selected_code", row.code);
+                window.location.href = `/admin/flow_engine/form/designer/?${params.toString()}`;
             };
 
-            const openFlowDesigner = (row) => {
-                if (!row?.flow_id) return;
-                window.location.href = `/admin/flow_engine/definition/${row.flow_id}/change/`;
+            const openCreateFormDialog = () => {
+                createDialog.groupName = "";
+                createDialog.visible = true;
+            };
+
+            const confirmCreateForm = () => {
+                const params = new URLSearchParams();
+                params.set("new_form", "1");
+                if (createDialog.groupName) {
+                    params.set("group_name", createDialog.groupName);
+                }
+                window.location.href = `/admin/flow_engine/form/designer/?${params.toString()}`;
             };
 
             const goFlowList = () => {
@@ -120,20 +176,22 @@
 
             onMounted(async () => {
                 await loadList();
+                await loadGroupOptions();
                 pageData.pageLoading = false;
             });
 
             return {
-                goBack,
                 pageData,
+                createDialog,
+                groupOptions,
                 onFilterUpdate,
                 onFilterSearch,
                 openFormDesigner,
-                openFlowDesigner,
+                openCreateFormDialog,
+                confirmCreateForm,
                 goFlowList,
             };
         },
     });
 </script>
 {% endblock %}
-

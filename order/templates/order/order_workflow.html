@@ -489,25 +489,25 @@
         <section class="workflow-hero">
             <div class="workflow-hero-top">
                 <div>
-                    <div class="workflow-title">璁㈠崟娴佺▼宸ヤ綔鍙?/div>
+                    <div class="workflow-title">订单流程工作台</div>
                     <div class="workflow-chip-row">
-                        <span class="workflow-chip">璁㈠崟鍙凤細{{ order_no }}</span>
-                        <span class="workflow-chip">娴佺▼锛歿{ flow_definition_name|default:"鏈粦瀹? }}</span>
-                        <span class="workflow-chip">璁㈠崟鐘舵€侊細{{ order_status_label|default:"--" }}</span>
+                        <span class="workflow-chip">订单号：{{ order_no }}</span>
+                        <span class="workflow-chip">流程：{{ flow_definition_name|default:"未绑定" }}</span>
+                        <span class="workflow-chip">订单状态：{{ order_status_label|default:"--" }}</span>
                     </div>
                 </div>
                 <div class="workflow-metrics">
                     <div class="workflow-metric">
-                        <div class="workflow-metric-label">娴佺▼鐘舵€?/div>
-                        <div class="workflow-metric-value">{{ flow_status_label|default:"鏈惎鍔? }}</div>
+                        <div class="workflow-metric-label">流程状态</div>
+                        <div class="workflow-metric-value">{{ flow_status_label|default:"未启动" }}</div>
                     </div>
                     <div class="workflow-metric">
-                        <div class="workflow-metric-label">褰撳墠鑺傜偣</div>
+                        <div class="workflow-metric-label">当前节点</div>
                         <div class="workflow-metric-value">{{ current_node_name|default:"--" }}</div>
                     </div>
                     <div class="workflow-metric">
-                        <div class="workflow-metric-label">寰呭鐞嗕换鍔?/div>
-                        <div class="workflow-metric-value">{{ pending_task_total }}</div>
+                        <div class="workflow-metric-label">待处理任务</div>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             <div class="workflow-metric-value">{{ pending_task_total }}</div>
                     </div>
                 </div>
             </div>
@@ -518,29 +518,29 @@
                 <div class="workflow-card">
                     <div class="workflow-card-head">
                         <div>
-                            <div class="workflow-card-title">澶勭悊闈㈡澘</div>
-                            <div class="workflow-card-subtitle">鍦ㄨ繖閲岀洿鎺ュ畬鎴愬綋鍓嶆祦绋嬭妭鐐癸紱濡傛灉鑺傜偣琚┏鍥烇紝绯荤粺浼氳嚜鍔ㄩ€€鍥炲綋鍓嶈妭鐐瑰苟閲嶆柊鐢熸垚寰呭姙銆?/div>
+                            <div class="workflow-card-title">处理面板</div>
+                            <div class="workflow-card-subtitle">在这里直接完成当前流程节点；如果节点被驳回，系统会自动退回当前节点并重新生成待办。</div>
                         </div>
                         {% if workflow_action %}
                         {% if rework_note %}
-                        <span class="workflow-badge danger">宸查€€鍥炲緟閲嶅仛</span>
+                        <span class="workflow-badge danger">已退回待重做</span>
                         {% else %}
-                        <span class="workflow-badge brand">寰呮垜澶勭悊 {{ active_task_count }} 椤?/span>
+                        <span class="workflow-badge brand">待我处理 {{ active_task_count }} 项</span>
                         {% endif %}
-                        {% elif flow_status_label == "宸插畬鎴? %}
-                        <span class="workflow-badge success">娴佺▼宸插畬鎴?/span>
-                        {% elif flow_status_label == "宸查┏鍥? %}
-                        <span class="workflow-badge danger">娴佺▼宸查┏鍥?/span>
+                        {% elif flow_status_label == "已完成" %}
+                        <span class="workflow-badge success">流程已完成</span>
+                        {% elif flow_status_label == "已驳回" %}
+                        <span class="workflow-badge danger">流程已驳回</span>
                         {% else %}
-                        <span class="workflow-badge muted">褰撳墠鏃犲彲鎿嶄綔浠诲姟</span>
+                        <span class="workflow-badge muted">当前无可操作任务</span>
                         {% endif %}
                     </div>
                     <div class="workflow-card-body">
                         {% if workflow_action %}
                         {% if rework_note %}
                         <div class="workflow-rework-note">
-                            <div class="workflow-rework-title">涓婁竴杞鐞嗗凡琚┏鍥烇紝褰撳墠鑺傜偣宸查噸鏂版墦寮€锛岀瓑寰呴噸鏂板鐞?/div>
-                            <div class="workflow-rework-meta">{{ rework_note.operator_name|default:"绯荤粺" }} 路 {{ rework_note.time|default:"--" }}</div>
+                            <div class="workflow-rework-title">上一轮处理已被驳回，当前节点已重新打开，等待重新处理。</div>
+                            <div class="workflow-rework-meta">{{ rework_note.operator_name|default:"系统" }} · {{ rework_note.time|default:"--" }}</div>
                             {% if rework_note.memo %}
                             <div class="workflow-rework-memo">{{ rework_note.memo }}</div>
                             {% endif %}
@@ -548,11 +548,11 @@
                         {% endif %}
                         <div class="workflow-kv" style="margin-bottom: 16px;">
                             <div class="workflow-kv-item">
-                                <div class="workflow-kv-label">褰撳墠鑺傜偣</div>
+                                <div class="workflow-kv-label">当前节点</div>
                                 <div class="workflow-kv-value">{{ workflow_action.current_node_name|default:"--" }}</div>
                             </div>
                             <div class="workflow-kv-item">
-                                <div class="workflow-kv-label">鍙鐞嗕换鍔℃暟</div>
+                                <div class="workflow-kv-label">可处理任务数</div>
                                 <div class="workflow-kv-value">{{ active_task_count }}</div>
                             </div>
                         </div>
@@ -564,10 +564,10 @@
                                 :class="{ 'is-active': workflowForm.task_id === {{ task.task_id }} }"
                                 @click="workflowForm.task_id = {{ task.task_id }}">
                                 <div class="workflow-task-name">
-                                    {% if task.group_key %}{{ task.group_key }} / {% endif %}{{ task.assignee_name|default:"寰呭垎閰? }}
+                                    {% if task.group_key %}{{ task.group_key }} / {% endif %}{{ task.assignee_name|default:"待分配" }}
                                 </div>
                                 <div class="workflow-task-meta">
-                                    鑺傜偣锛歿{ task.node_name|default:workflow_action.current_node_name }}
+                                    节点：{{ task.node_name|default:workflow_action.current_node_name }}
                                 </div>
                             </div>
                             {% endfor %}
@@ -575,8 +575,8 @@
 
                         <el-form label-width="76px" style="margin-top: 18px;">
                             <div v-if="workflowSchemaFields.length" class="workflow-form-block">
-                                <div class="workflow-form-title">鑺傜偣琛ㄥ崟</div>
-                                <div class="workflow-form-tip">杩欓噷灞曠ず鐨勬槸褰撳墠鑺傜偣楂樼骇閰嶇疆閲岀殑琛ㄥ崟瀛楁锛岀偣鍑烩€滈€氳繃鈥濇椂浼氫竴骞舵彁浜ゃ€?/div>
+                                <div class="workflow-form-title">节点表单</div>
+                                <div class="workflow-form-tip">这里展示的是当前节点高级配置里的表单字段，点击“通过”时会一并提交。</div>
                                 <template v-for="node in workflowSchemaFields" :key="node.id || node.key || node.label">
                                     <template v-if="node.component === 'container'">
                                         <div class="workflow-form-container-block">
@@ -789,21 +789,21 @@
                                     </el-form-item>
                                 </template>
                             </div>
-                            <el-form-item label="澶勭悊澶囨敞">
+                            <el-form-item label="处理备注">
                                 <el-input
                                     v-model="workflowForm.operator_memo"
                                     type="textarea"
                                     :autosize="{ minRows: 4, maxRows: 7 }"
-                                    placeholder="鍙互濉啓鎵ц鎯呭喌銆佸紓甯歌鏄庢垨琛ュ厖淇℃伅"></el-input>
+                                    placeholder="可以填写执行情况、异常说明或补充信息"></el-input>
                             </el-form-item>
-                            <el-form-item label="鎿嶄綔">
-                                <el-button type="primary" :loading="workflowForm.submitting" @click="submitWorkflowAction('approve')">閫氳繃骞惰繘鍏ヤ笅涓€姝?/el-button>
-                                <el-button type="danger" plain :loading="workflowForm.submitting" @click="submitWorkflowAction('reject')">椹冲洖骞堕€€鍥炲綋鍓嶈妭鐐?/el-button>
+                            <el-form-item label="操作">
+                                <el-button type="primary" :loading="workflowForm.submitting" @click="submitWorkflowAction('approve')">通过并进入下一步</el-button>
+                                <el-button type="danger" plain :loading="workflowForm.submitting" @click="submitWorkflowAction('reject')">驳回并退回当前节点</el-button>
                             </el-form-item>
                         </el-form>
                         {% else %}
                         <div class="workflow-empty">
-                            褰撳墠娴佺▼娌℃湁鍒嗛厤缁欎綘鐨勫緟澶勭悊浠诲姟銆備綘鍙互鍏堟煡鐪嬪彸渚ф渶杩戝姩浣滐紝纭娴佺▼鐩墠鏄瓑寰呬粬浜哄鐞嗭紝杩樻槸宸茬粡椤哄埄缁撴潫銆?                        </div>
+                            当前流程没有分配给你的待处理任务。你可以先查看右侧最近动作，确认流程目前是在等待他人处理，还是已经顺利结束。                        </div>
                         {% endif %}
                     </div>
                 </div>
@@ -811,8 +811,8 @@
                 <div class="workflow-card">
                     <div class="workflow-card-head">
                         <div>
-                            <div class="workflow-card-title">娴佺▼璺緞</div>
-                            <div class="workflow-card-subtitle">浠庡紑濮嬪埌缁撴潫鐨勫畬鏁磋妭鐐硅矾寰勶紝涓€鐪煎氨鑳界湅娓呮鐜板湪鍗″湪鍝竴姝ャ€?/div>
+                            <div class="workflow-card-title">流程路径</div>
+                            <div class="workflow-card-subtitle">从开始到结束的完整节点路径，一眼就能看清现在卡在哪一步。</div>
                         </div>
                     </div>
                     <div class="workflow-card-body">
@@ -824,7 +824,7 @@
                                 <div>
                                     <div class="workflow-step-name">{{ step.node_name }}</div>
                                     <div class="workflow-step-meta">
-                                        {{ step.node_type_label }}{% if step.is_auto %} / 鑷姩鑺傜偣{% endif %}
+                                        {{ step.node_type_label }}{% if step.is_auto %} / 自动节点{% endif %}
                                     </div>
                                 </div>
                                 {% if step.state == "done" %}
@@ -840,7 +840,7 @@
                             {% endfor %}
                         </div>
                         {% else %}
-                        <div class="workflow-empty">褰撳墠璁㈠崟杩樻病鏈夊彲灞曠ず鐨勬祦绋嬭妭鐐广€?/div>
+                        <div class="workflow-empty">当前订单还没有可展示的流程节点。</div>
                         {% endif %}
                     </div>
                 </div>
@@ -850,14 +850,14 @@
                 <div class="workflow-card">
                     <div class="workflow-card-head">
                         <div>
-                            <div class="workflow-card-title">璁㈠崟鎽樿</div>
-                            <div class="workflow-card-subtitle">鏂逛究澶勭悊娴佺▼鏃堕『鎵嬬‘璁よ鍗曟槸璋佺殑銆佷粈涔堟椂鍊欏缓鐨勩€?/div>
+                            <div class="workflow-card-title">订单摘要</div>
+                            <div class="workflow-card-subtitle">方便处理流程时顺手确认订单是谁的、什么时候建的。</div>
                         </div>
                     </div>
                     <div class="workflow-card-body">
                         <div class="workflow-kv">
                             <div class="workflow-kv-item">
-                                <div class="workflow-kv-label">璁㈠崟鍙?/div>
+                                <div class="workflow-kv-label">订单号</div>
                                 <div class="workflow-kv-value">{{ order_no }}</div>
                             </div>
                             <div class="workflow-kv-item">
@@ -869,12 +869,12 @@
                                 <div class="workflow-kv-value">{{ receiver_company|default:"--" }}</div>
                             </div>
                             <div class="workflow-kv-item">
-                                <div class="workflow-kv-label">鍒涘缓鏃堕棿</div>
+                                <div class="workflow-kv-label">创建时间</div>
                                 <div class="workflow-kv-value">{{ create_time_str|default:"--" }}</div>
                             </div>
                         </div>
                         <div class="workflow-toolbar">
-                            <el-button plain @click="openLogPage">鏌ョ湅鎿嶄綔鏃ュ織</el-button>
+                            <el-button plain @click="openLogPage">查看操作日志</el-button>
                         </div>
                     </div>
                 </div>
@@ -882,8 +882,8 @@
                 <div class="workflow-card">
                     <div class="workflow-card-head">
                         <div>
-                            <div class="workflow-card-title">鏈€杩戝姩浣?/div>
-                            <div class="workflow-card-subtitle">鍙睍绀哄拰娴佺▼鐩存帴鐩稿叧鐨勫姩浣滆褰曪紝涓嶅啀鎶婃暣涓鍗曟祦姘存贩鍦ㄤ竴璧枫€?/div>
+                            <div class="workflow-card-title">最近动作</div>
+                            <div class="workflow-card-subtitle">只展示和流程直接相关的动作记录，不再把整个订单流水混在一起。</div>
                         </div>
                     </div>
                     <div class="workflow-card-body">
@@ -892,7 +892,7 @@
                             {% for item in recent_logs %}
                             <div class="workflow-log-item {{ item.tone }}">
                                 <div class="workflow-log-title">{{ item.title }}</div>
-                                <div class="workflow-log-meta">{{ item.operator_name|default:"绯荤粺" }} 路 {{ item.time|default:"--" }}</div>
+                                <div class="workflow-log-meta">{{ item.operator_name|default:"系统" }} · {{ item.time|default:"--" }}</div>
                                 {% if item.memo %}
                                 <div class="workflow-log-memo">{{ item.memo }}</div>
                                 {% endif %}
@@ -900,7 +900,7 @@
                             {% endfor %}
                         </div>
                         {% else %}
-                        <div class="workflow-empty">褰撳墠杩樻病鏈夋祦绋嬪姩浣滆褰曘€?/div>
+                        <div class="workflow-empty">当前还没有流程动作记录。</div>
                         {% endif %}
                     </div>
                 </div>
@@ -1117,17 +1117,17 @@
                         operator_memo: this.workflowForm.operator_memo,
                         form_data: action === "approve" ? this.workflowForm.form_data : {},
                     });
-                    this.$ElMessage.success(action === "approve" ? "娴佺▼澶勭悊鎴愬姛" : "宸查┏鍥炲苟閫€鍥炲綋鍓嶈妭鐐?);
+                    this.$ElMessage.success(action === "approve" ? "流程处理成功" : "已驳回并退回当前节点");
                     if (window.parent && window.parent !== window) {
                         try {
                             window.parent.location.reload();
                         } catch (e) {
-                            console.warn("鐖堕〉闈㈠埛鏂板け璐?, e);
+                            console.warn("父页面刷新失败", e);
                         }
                     }
                     window.location.reload();
                 } catch (err) {
-                    this.$ElMessage.error(err.message || "娴佺▼鎿嶄綔澶辫触");
+                    this.$ElMessage.error(err.message || "流程操作失败");
                 } finally {
                     this.workflowForm.submitting = false;
                 }
@@ -1140,4 +1140,3 @@
     });
 </script>
 {% endblock %}
-

@@ -39,9 +39,19 @@ class FlowTransitionSchema(BaseModel):
 class FlowFormDefinitionSchema(BaseModel):
     code: str = Field(..., description="form code")
     name: str = Field(..., description="form name")
+    group_name: str | None = Field(None, description="form group name")
     description: str | None = Field(None, description="form description")
     fields: list[dict[str, Any]] = Field(default_factory=list, description="form fields")
     order: int = Field(0, description="form order")
+
+
+class GlobalFormLibraryItemSchema(FlowFormDefinitionSchema):
+    form_id: int = Field(..., description="form id")
+    bind_flow_count: int = Field(0, description="bound flow count")
+    field_count: int = Field(0, description="field count")
+    bind_node_count: int = Field(0, description="bound node count")
+    is_active: bool = Field(True, description="form active")
+    update_time_str: str | None = Field(None, description="update time")
 
 
 class FlowDefinitionSaveSchema(BaseModel):
@@ -119,6 +129,14 @@ class FlowFormLibrarySaveSchema(BaseModel):
     forms: list[FlowFormDefinitionSchema] = Field(default_factory=list, description="form definitions")
 
 
+class GlobalFormLibraryDetailSchema(BaseModel):
+    forms: list[FlowFormDefinitionSchema] = Field(default_factory=list, description="form definitions")
+
+
+class GlobalFormLibrarySaveSchema(BaseModel):
+    forms: list[FlowFormDefinitionSchema] = Field(default_factory=list, description="form definitions")
+
+
 class FlowFormRuntimeResolveSchema(BaseModel):
     instance_id: int = Field(..., description="flow instance id")
     task_id: int | None = Field(None, description="task id")
@@ -131,3 +149,15 @@ class FlowFormRuntimeResolveRespSchema(BaseModel):
     resolved_form_schema: Any = Field(default_factory=dict, description="resolved form schema")
     resolved_form_data: dict[str, Any] = Field(default_factory=dict, description="resolved form data")
     context_snapshot: dict[str, Any] = Field(default_factory=dict, description="current context")
+
+
+class FieldDataSourceMetadataItemSchema(BaseModel):
+    key: str = Field(..., description="data source key")
+    label: str = Field(..., description="data source label")
+    data_type: str = Field(..., description="data type")
+    support_components: list[str] = Field(default_factory=list, description="supported components")
+    supported_methods: list[str] = Field(default_factory=list, description="component-specific datasource methods")
+
+
+class FieldDataSourceMetadataRespSchema(BaseModel):
+    items: list[FieldDataSourceMetadataItemSchema] = Field(default_factory=list, description="data source metadata")

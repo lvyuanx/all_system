@@ -38,6 +38,26 @@ class FlowDefinition(models.Model):
         return f"{self.name} ({self.code})"
 
 
+class FlowForm(models.Model):
+    """独立表单定义，可被任意流程节点引用"""
+    code = models.CharField(max_length=100, unique=True, verbose_name="表单编码")
+    name = models.CharField(max_length=200, verbose_name="表单名称")
+    group_name = models.CharField(max_length=100, blank=True, default="", verbose_name="表单分组")
+    description = models.TextField(blank=True, null=True, verbose_name="表单描述")
+    form_schema = models.JSONField(blank=True, null=True, verbose_name="表单配置")
+    is_active = models.BooleanField(default=True, verbose_name="是否启用")
+    create_time = models.DateTimeField(auto_now_add=True)
+    update_time = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["group_name", "code"]
+        verbose_name = "表单定义"
+        verbose_name_plural = verbose_name
+
+    def __str__(self):
+        return f"{self.name} ({self.code})"
+
+
 class FlowVersion(models.Model):
     """Flow definition snapshot version"""
     definition = models.ForeignKey(

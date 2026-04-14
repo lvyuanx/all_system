@@ -1,7 +1,6 @@
 {% extends "vue_setup_base.html" %}
 {% load i18n %}
 {% load static %}
-{% load simpletags %}
 
 {% block title %}
 {{ title }}
@@ -13,14 +12,13 @@
         overflow: hidden;
         padding: 8px;
     }
-
 </style>
 {% endblock %}
 
 {% block content %}
 <div id="app">
     <div class="page-header">
-        <el-page-header title="{% trans 'Back' %}" @back="goBack" content="{{title}}"></el-page-header>
+        <div class="page-title">{{ title }}</div>
         <div class="header-right">
             <el-button type="primary" @click="createFlow">新建流程</el-button>
         </div>
@@ -37,13 +35,13 @@
             @page-change="onFilterSearch"
         >
             <template #filter="{ model }">
-                <el-form-item label="关键词">
+                <el-form-item label="关键字">
                     <el-input v-model="model.keyword" placeholder="流程编码/名称" clearable />
                 </el-form-item>
                 <el-form-item label="状态">
                     <el-select v-model="model.is_active" clearable style="width: 120px">
                         <el-option label="启用" :value="1" />
-                        <el-option label="禁用" :value="0" />
+                        <el-option label="停用" :value="0" />
                     </el-select>
                 </el-form-item>
             </template>
@@ -52,7 +50,7 @@
                 <el-button link type="primary" @click="editFlow(row)">设计</el-button>
                 <el-button link type="success" @click="publishFlow(row)">发布</el-button>
                 <el-button link :type="row.is_active ? 'warning' : 'success'" @click="toggleFlow(row)">
-                    [[ row.is_active ? '禁用' : '启用' ]]
+                    [[ row.is_active ? '停用' : '启用' ]]
                 </el-button>
                 <el-button link type="danger" :disabled="row.bind_order_count > 0" @click="deleteFlow(row)">
                     删除
@@ -73,10 +71,6 @@
         setup() {
             const ElMessage = inject("ElMessage");
             const ElMessageBox = inject("ElMessageBox");
-
-            const goBack = () => {
-                window.location.href = "{% get_previous_url %}";
-            };
 
             const pageData = reactive({
                 pageLoading: true,
@@ -134,7 +128,7 @@
                     flow_id: row.flow_id,
                     is_active: !row.is_active,
                 });
-                ElMessage.success(row.is_active ? "已禁用" : "已启用");
+                ElMessage.success(row.is_active ? "已停用" : "已启用");
                 await loadList();
             };
 
@@ -163,7 +157,6 @@
             });
 
             return {
-                goBack,
                 pageData,
                 loadList,
                 onFilterUpdate,

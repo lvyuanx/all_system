@@ -9,12 +9,19 @@
 
 {% block extra_css %}
 <style>
+    .page-container {
+        overflow: hidden;
+        min-width: 0;
+    }
+
     .designer-root {
         display: grid;
         grid-template-columns: 220px 1fr 320px;
         gap: 12px;
         height: calc(100vh - 140px);
         min-height: 560px;
+        min-width: 0;
+        overflow: hidden;
     }
 
     .designer-panel {
@@ -24,6 +31,7 @@
         display: flex;
         flex-direction: column;
         min-height: 0;
+        min-width: 0;
     }
 
     .panel-head {
@@ -52,6 +60,7 @@
         align-items: center;
         justify-content: space-between;
         gap: 8px;
+        min-width: 0;
     }
 
     .canvas-wrap {
@@ -60,6 +69,7 @@
         background: radial-gradient(circle at 1px 1px, #e2e8f0 1px, transparent 0);
         background-size: 20px 20px;
         flex: 1;
+        min-width: 0;
     }
 
     .canvas-board {
@@ -359,6 +369,193 @@
         white-space: pre-wrap;
         word-break: break-all;
     }
+
+    .data-source-picker-row {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 8px;
+        align-items: start;
+    }
+
+    .data-source-picker-trigger {
+        min-height: 40px;
+        border: 1px solid #dbe5ef;
+        border-radius: 10px;
+        background: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 0 12px;
+        cursor: pointer;
+        transition: all 0.16s ease;
+    }
+
+    .data-source-picker-trigger:hover {
+        border-color: #2563eb;
+        background: #fafcff;
+    }
+
+    .data-source-picker-value {
+        min-width: 0;
+        color: #1e293b;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .data-source-picker-placeholder {
+        color: #64748b;
+    }
+
+    .data-source-picker-action {
+        flex: none;
+        color: #2563eb;
+        font-size: 12px;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+
+    .data-source-modal {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .data-source-modal-current {
+        padding: 10px 12px;
+        border: 1px solid #dbe5ef;
+        border-radius: 12px;
+        background: #fafcff;
+        color: #64748b;
+        font-size: 12px;
+        line-height: 1.7;
+    }
+
+    .data-source-modal-summary {
+        color: #64748b;
+        font-size: 12px;
+        line-height: 1.6;
+    }
+
+    .data-source-modal-list {
+        border: 1px solid #dbe5ef;
+        border-radius: 12px;
+        overflow: hidden;
+    }
+
+    .data-source-table-wrap {
+        max-height: 360px;
+        overflow: auto;
+        background: #fff;
+    }
+
+    .data-source-table {
+        width: 100%;
+        border-collapse: collapse;
+        table-layout: fixed;
+    }
+
+    .data-source-table th,
+    .data-source-table td {
+        padding: 10px 12px;
+        border-bottom: 1px solid #dbe5ef;
+        text-align: left;
+        vertical-align: top;
+        font-size: 12px;
+    }
+
+    .data-source-table th {
+        background: #f8faff;
+        color: #64748b;
+        font-weight: 700;
+    }
+
+    .data-source-table tr.clickable {
+        cursor: pointer;
+    }
+
+    .data-source-table tr.clickable:hover {
+        background: #fafcff;
+    }
+
+    .data-source-table tr.active {
+        background: #eff6ff;
+    }
+
+    .data-source-modal-item {
+        padding: 12px 14px;
+        border: 1px solid #dbe5ef;
+        border-radius: 12px;
+        background: #fbfcff;
+        cursor: pointer;
+        transition: all 0.16s ease;
+    }
+
+    .data-source-modal-item:hover {
+        border-color: #2563eb;
+        background: #eff6ff;
+    }
+
+    .data-source-modal-item.active {
+        border-color: #2563eb;
+        background: #eff6ff;
+        box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.12);
+    }
+
+    .data-source-modal-title {
+        color: #1e293b;
+        font-size: 14px;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+    }
+
+    .data-source-modal-code {
+        margin-top: 6px;
+        display: inline-flex;
+        padding: 2px 8px;
+        border-radius: 999px;
+        background: #dbeafe;
+        color: #1d4ed8;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    .data-source-modal-desc {
+        margin-top: 6px;
+        color: #64748b;
+        font-size: 12px;
+        line-height: 1.7;
+    }
+
+    .data-source-modal-empty {
+        padding: 18px 12px;
+        border: 1px dashed #cbd5e1;
+        border-radius: 12px;
+        color: #64748b;
+        text-align: center;
+        background: #fafcff;
+    }
+
+    .data-source-modal-pagination {
+        display: flex;
+        justify-content: flex-end;
+        margin-top: 10px;
+    }
+
+    .data-source-selected-tag {
+        display: inline-flex;
+        align-items: center;
+        padding: 2px 8px;
+        border-radius: 999px;
+        background: #dbeafe;
+        color: #1d4ed8;
+        font-size: 12px;
+        font-weight: 600;
+    }
 </style>
 {% endblock %}
 
@@ -591,6 +788,71 @@
         </template>
     </el-dialog>
 
+    <el-dialog v-model="fieldDataSourcePicker.visible" :title="fieldDataSourcePicker.title" width="640px">
+        <div class="data-source-modal">
+            <div class="data-source-modal-current">
+                当前选择：[[ getFieldDataSourceKeyLabel(fieldDataSourcePicker.selectedKey, fieldDataSourcePicker.target, getFieldDataSourcePickerField()) || '未选择' ]]
+            </div>
+            <el-input
+                v-model="fieldDataSourcePicker.keyword"
+                @input="onFieldDataSourcePickerKeywordChange"
+                clearable
+                placeholder="搜索数据源类名称、编码或数据类型" />
+            <div class="data-source-modal-summary">
+                共 [[ getCurrentFieldDataSourceOptions().length ]] 条结果
+            </div>
+            <div class="data-source-modal-list">
+                <div class="data-source-table-wrap">
+                    <table class="data-source-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 26%;">名称</th>
+                                <th style="width: 28%;">编码</th>
+                                <th style="width: 16%;">数据类型</th>
+                                <th>支持组件</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr
+                                v-for="item in getCurrentFieldDataSourcePagedOptions()"
+                                :key="`picker-row-${fieldDataSourcePicker.target}-${item.key}`"
+                                :class="['clickable', { active: fieldDataSourcePicker.selectedKey === item.key }]"
+                                @click="chooseFieldDataSource(item)"
+                                @dblclick="chooseFieldDataSource(item); applyFieldDataSourceSelection()">
+                                <td>
+                                    <div class="data-source-modal-title">
+                                        <span>[[ item.label ]]</span>
+                                        <span v-if="fieldDataSourcePicker.selectedKey === item.key" class="data-source-selected-tag">当前已选</span>
+                                    </div>
+                                </td>
+                                <td><span class="data-source-modal-code">[[ item.key ]]</span></td>
+                                <td>[[ item.data_type || '-' ]]</td>
+                                <td>[[ (item.support_components || []).join('、') || '全部' ]]</td>
+                            </tr>
+                            <tr v-if="!getCurrentFieldDataSourceOptions().length">
+                                <td colspan="4" class="data-source-modal-empty">没有匹配的数据源类</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div v-if="getCurrentFieldDataSourceOptions().length" class="data-source-modal-pagination">
+                <el-pagination
+                    background
+                    layout="total, prev, pager, next"
+                    :total="getCurrentFieldDataSourceOptions().length"
+                    :page-size="fieldDataSourcePicker.pageSize"
+                    :current-page="fieldDataSourcePicker.page"
+                    @current-change="fieldDataSourcePicker.page = $event" />
+            </div>
+        </div>
+        <template #footer>
+            <el-button @click="clearFieldDataSourceSelection">清空选择</el-button>
+            <el-button @click="closeFieldDataSourcePicker">关闭</el-button>
+            <el-button type="primary" :disabled="!fieldDataSourcePicker.selectedKey" @click="applyFieldDataSourceSelection">确定</el-button>
+        </template>
+    </el-dialog>
+
     <el-dialog v-model="nodeDialog.visible" title="节点高级配置" width="60%">
         <el-form :model="nodeDialog.form" label-width="auto">
             <el-row :gutter="16">
@@ -642,18 +904,6 @@
                             </el-form-item>
                         </el-col>
                     </el-row>
-                    <div class="form-builder-toolbar">
-                        <el-button size="small" type="primary" plain @click="addFormField('input')" :disabled="!!nodeDialog.form.form_ref_code">单行输入</el-button>
-                        <el-button size="small" type="primary" plain @click="addFormField('textarea')" :disabled="!!nodeDialog.form.form_ref_code">多行文本</el-button>
-                        <el-button size="small" type="primary" plain @click="addFormField('file')" :disabled="!!nodeDialog.form.form_ref_code">文件上传</el-button>
-                        <el-button size="small" type="primary" plain @click="addFormField('radio')" :disabled="!!nodeDialog.form.form_ref_code">单选</el-button>
-                        <el-button size="small" type="primary" plain @click="addFormField('checkbox')" :disabled="!!nodeDialog.form.form_ref_code">多选</el-button>
-                        <el-button size="small" type="primary" plain @click="addFormField('number')" :disabled="!!nodeDialog.form.form_ref_code">数字</el-button>
-                        <el-button size="small" type="primary" plain @click="addFormField('select')" :disabled="!!nodeDialog.form.form_ref_code">下拉选择</el-button>
-                        <el-button size="small" type="primary" plain @click="addFormField('switch')" :disabled="!!nodeDialog.form.form_ref_code">开关</el-button>
-                        <el-button size="small" type="primary" plain @click="addFormField('date')" :disabled="!!nodeDialog.form.form_ref_code">日期</el-button>
-                        <el-button size="small" type="primary" plain @click="addFormField('datetime')" :disabled="!!nodeDialog.form.form_ref_code">日期时间</el-button>
-                    </div>
                     <el-alert
                         v-if="nodeDialog.form.form_ref_code"
                         :title="`当前节点引用表单: ${currentNodeFormRefName || nodeDialog.form.form_ref_code}`"
@@ -724,11 +974,6 @@
                                         <el-input v-model="field.placeholder" :disabled="!!nodeDialog.form.form_ref_code" placeholder="可选" />
                                     </el-form-item>
                                 </el-col>
-                                <el-col :span="6">
-                                    <el-form-item label="默认值">
-                                        <el-input v-model="field.default" :disabled="!!nodeDialog.form.form_ref_code" placeholder="可选" />
-                                    </el-form-item>
-                                </el-col>
                                 <el-col :span="5">
                                     <el-form-item label="必填">
                                         <el-switch v-model="field.required" :disabled="!!nodeDialog.form.form_ref_code" />
@@ -746,8 +991,14 @@
                                         <el-select v-model="field.default_source_ui.mode" :disabled="!!nodeDialog.form.form_ref_code">
                                             <el-option label="固定值" value="fixed" />
                                             <el-option label="数据源类" value="data_source" />
-                                            <el-option v-if="showLegacyDefaultConfigMode(field)" label="兼容旧配置" value="legacy" />
                                         </el-select>
+                                    </el-form-item>
+                                </el-col>
+                            </el-row>
+                            <el-row :gutter="12" v-if="field.default_source_ui.mode === 'fixed'">
+                                <el-col :span="8">
+                                    <el-form-item label="默认值">
+                                        <el-input v-model="field.default" :disabled="!!nodeDialog.form.form_ref_code" placeholder="可选" />
                                     </el-form-item>
                                 </el-col>
                             </el-row>
@@ -755,17 +1006,24 @@
                                 <el-row :gutter="12">
                                     <el-col :span="12">
                                         <el-form-item label="数据源类">
-                                            <el-select
-                                                v-model="field.default_source_ui.source_key"
-                                                :disabled="!!nodeDialog.form.form_ref_code"
-                                                placeholder="请选择默认值数据源"
-                                                @change="onFieldDataSourceChange(field, 'default')">
-                                                <el-option
-                                                    v-for="item in getDefaultFieldDataSources(field)"
-                                                    :key="item.key"
-                                                    :label="`${item.label} (${item.key})`"
-                                                    :value="item.key" />
-                                            </el-select>
+                                            <div class="data-source-picker-row">
+                                                <div
+                                                    class="data-source-picker-trigger"
+                                                    @click="!nodeDialog.form.form_ref_code && openFieldDataSourcePicker(field, 'default')">
+                                                    <span
+                                                        :class="[
+                                                            'data-source-picker-value',
+                                                            { 'data-source-picker-placeholder': !field.default_source_ui.source_key }
+                                                        ]">
+                                                        [[ getFieldDataSourceKeyLabel(field.default_source_ui.source_key, 'default', field) || buildFieldDataSourcePlaceholder('default') ]]
+                                                    </span>
+                                                    <span class="data-source-picker-action">点击选择</span>
+                                                </div>
+                                                <el-button
+                                                    v-if="field.default_source_ui.source_key"
+                                                    :disabled="!!nodeDialog.form.form_ref_code"
+                                                    @click="field.default_source_ui.source_key = ''; onFieldDataSourceChange(field, 'default')">清空</el-button>
+                                            </div>
                                         </el-form-item>
                                     </el-col>
                                     <el-col :span="12">
@@ -816,72 +1074,18 @@
                                     </el-col>
                                 </el-row>
                             </template>
-                            <template v-else-if="field.default_source_ui.mode === 'legacy'">
-                                <el-row :gutter="12">
-                                    <el-col :span="8">
-                                        <el-form-item label="旧来源类型">
-                                            <el-select v-model="field.default_source_ui.legacy_config.source_type" :disabled="!!nodeDialog.form.form_ref_code">
-                                                <el-option label="固定值" value="literal" />
-                                                <el-option label="流程上下文" value="context" />
-                                                <el-option label="枚举" value="enum" />
-                                                <el-option label="数据库" value="db" />
-                                            </el-select>
-                                        </el-form-item>
-                                    </el-col>
-                                    <el-col :span="8" v-if="field.default_source_ui.legacy_config.source_type === 'context'">
-                                        <el-form-item label="上下文路径">
-                                            <el-input v-model="field.default_source_ui.legacy_config.context_path" :disabled="!!nodeDialog.form.form_ref_code" placeholder="如: form.NODE_A.amount" />
-                                        </el-form-item>
-                                    </el-col>
-                                    <el-col :span="8" v-if="field.default_source_ui.legacy_config.source_type === 'enum'">
-                                        <el-form-item label="枚举编码">
-                                            <el-input v-model="field.default_source_ui.legacy_config.enum_code" :disabled="!!nodeDialog.form.form_ref_code" placeholder="如: order.status" />
-                                        </el-form-item>
-                                    </el-col>
-                                    <el-col :span="8" v-if="field.default_source_ui.legacy_config.source_type === 'db'">
-                                        <el-form-item label="数据源编码">
-                                            <el-input v-model="field.default_source_ui.legacy_config.db_source_code" :disabled="!!nodeDialog.form.form_ref_code" placeholder="如: order.field" />
-                                        </el-form-item>
-                                    </el-col>
-                                </el-row>
-                            </template>
-                            <div v-if="field.default_source_ui.mode === 'legacy' && defaultSourceExamples.length" class="data-source-examples">
-                                <div class="data-source-examples-head">
-                                    <span>内置数据源示例</span>
-                                    <span class="status-hint">兼容 default_config</span>
-                                </div>
-                                <div class="data-source-examples-tip">以下示例均可直接作为旧版 `default_config` 参考。</div>
-                                <div v-for="example in defaultSourceExamples" :key="example.code" class="data-source-example">
-                                    <div class="data-source-example-title">[[ example.title ]]</div>
-                                    <div class="data-source-example-desc">[[ example.description ]]</div>
-                                    <div class="data-source-example-code">[[ example.code ]]</div>
-                                    <div class="data-source-example-json">[[ formatDataSourceExample(example.config) ]]</div>
-                                </div>
-                            </div>
-                            <div v-if="field.default_source_ui.mode === 'data_source' && getDefaultFieldDataSources(field).length" class="data-source-examples">
-                                <div class="data-source-examples-head">
-                                    <span>可用数据源类</span>
-                                    <span class="status-hint">默认值</span>
-                                </div>
-                                <div class="data-source-examples-tip">仅展示当前字段类型可用的数据源类。</div>
-                                <div v-for="item in getDefaultFieldDataSources(field)" :key="`default-source-${item.key}`" class="data-source-example">
-                                    <div class="data-source-example-title">[[ item.label ]]</div>
-                                    <div class="data-source-example-code">[[ item.key ]]</div>
-                                    <div class="data-source-example-desc">支持组件：[[ (item.support_components || []).join('、') || '全部' ]]</div>
-                                </div>
-                            </div>
                             <el-row :gutter="12">
                                 <el-col :span="8">
-                                    <el-form-item label="读取路径">
-                                        <el-input v-model="field.context_binding.read_path" :disabled="!!nodeDialog.form.form_ref_code" placeholder="为空则走默认路径" />
+                                    <el-form-item label="写入位置">
+                                        <el-select v-model="field.context_binding.write_target" :disabled="!!nodeDialog.form.form_ref_code">
+                                            <el-option label="不写入上下文" value="none" />
+                                            <el-option label="仅写入流程上下文" value="flow" />
+                                            <el-option label="仅写入当前节点上下文" value="node" />
+                                            <el-option label="同时写入流程和当前节点上下文" value="both" />
+                                        </el-select>
                                     </el-form-item>
                                 </el-col>
-                                <el-col :span="8">
-                                    <el-form-item label="写入路径">
-                                        <el-input v-model="field.context_binding.write_path" :disabled="!!nodeDialog.form.form_ref_code" placeholder="为空则走默认路径" />
-                                    </el-form-item>
-                                </el-col>
-                                <el-col :span="8">
+                                <el-col :span="8" v-if="field.context_binding.write_target !== 'none'">
                                     <el-form-item label="写入策略">
                                         <el-select v-model="field.context_binding.write_mode" :disabled="!!nodeDialog.form.form_ref_code">
                                             <el-option label="覆盖写入" value="overwrite" />
@@ -932,11 +1136,10 @@
                                 </div>
                                 <el-row :gutter="12" style="margin-bottom: 8px;">
                                     <el-col :span="8">
-                                        <el-form-item label="选项方式">
+                                        <el-form-item label="选项来源">
                                             <el-select v-model="field.options_source_ui.mode" :disabled="!!nodeDialog.form.form_ref_code">
-                                                <el-option label="手工维护" value="manual" />
+                                                <el-option label="固定选项" value="manual" />
                                                 <el-option label="数据源类" value="data_source" />
-                                                <el-option v-if="showLegacyOptionsConfigMode(field)" label="兼容旧配置" value="legacy" />
                                             </el-select>
                                         </el-form-item>
                                     </el-col>
@@ -945,21 +1148,28 @@
                                     <el-row :gutter="12" style="margin-bottom: 8px;">
                                         <el-col :span="12">
                                             <el-form-item label="数据源类">
-                                                <el-select
-                                                    v-model="field.options_source_ui.source_key"
-                                                    :disabled="!!nodeDialog.form.form_ref_code"
-                                                    placeholder="请选择选项数据源"
-                                                    @change="onFieldDataSourceChange(field, 'options')">
-                                                    <el-option
-                                                        v-for="item in getOptionsFieldDataSources(field)"
-                                                        :key="item.key"
-                                                        :label="`${item.label} (${item.key})`"
-                                                        :value="item.key" />
-                                                </el-select>
+                                                <div class="data-source-picker-row">
+                                                    <div
+                                                        class="data-source-picker-trigger"
+                                                        @click="!nodeDialog.form.form_ref_code && openFieldDataSourcePicker(field, 'options')">
+                                                        <span
+                                                            :class="[
+                                                                'data-source-picker-value',
+                                                                { 'data-source-picker-placeholder': !field.options_source_ui.source_key }
+                                                            ]">
+                                                            [[ getFieldDataSourceKeyLabel(field.options_source_ui.source_key, 'options', field) || buildFieldDataSourcePlaceholder('options') ]]
+                                                        </span>
+                                                        <span class="data-source-picker-action">点击选择</span>
+                                                    </div>
+                                                    <el-button
+                                                        v-if="field.options_source_ui.source_key"
+                                                        :disabled="!!nodeDialog.form.form_ref_code"
+                                                        @click="field.options_source_ui.source_key = ''; onFieldDataSourceChange(field, 'options')">清空</el-button>
+                                                </div>
                                             </el-form-item>
                                         </el-col>
                                         <el-col :span="12">
-                                            <el-form-item label="失败回退手工选项">
+                                            <el-form-item label="失败回退固定选项">
                                                 <el-switch
                                                     v-model="field.options_source_ui.fallback_to_manual"
                                                     :disabled="!!nodeDialog.form.form_ref_code" />
@@ -1008,60 +1218,6 @@
                                         </el-col>
                                     </el-row>
                                 </template>
-                                <template v-else-if="field.options_source_ui.mode === 'legacy'">
-                                    <el-row :gutter="12" style="margin-bottom: 8px;">
-                                        <el-col :span="8">
-                                            <el-form-item label="旧来源类型">
-                                                <el-select v-model="field.options_source_ui.legacy_config.source_type" :disabled="!!nodeDialog.form.form_ref_code">
-                                                    <el-option label="手工维护" value="manual" />
-                                                    <el-option label="枚举" value="enum" />
-                                                    <el-option label="流程上下文" value="context" />
-                                                    <el-option label="数据库" value="db" />
-                                                </el-select>
-                                            </el-form-item>
-                                        </el-col>
-                                        <el-col :span="8" v-if="field.options_source_ui.legacy_config.source_type === 'enum'">
-                                            <el-form-item label="枚举编码">
-                                                <el-input v-model="field.options_source_ui.legacy_config.enum_code" :disabled="!!nodeDialog.form.form_ref_code" placeholder="如: order.status" />
-                                            </el-form-item>
-                                        </el-col>
-                                        <el-col :span="8" v-if="field.options_source_ui.legacy_config.source_type === 'context'">
-                                            <el-form-item label="上下文路径">
-                                                <el-input v-model="field.options_source_ui.legacy_config.context_path" :disabled="!!nodeDialog.form.form_ref_code" placeholder="如: options.audit_status" />
-                                            </el-form-item>
-                                        </el-col>
-                                        <el-col :span="8" v-if="field.options_source_ui.legacy_config.source_type === 'db'">
-                                            <el-form-item label="数据源编码">
-                                                <el-input v-model="field.options_source_ui.legacy_config.db_source_code" :disabled="!!nodeDialog.form.form_ref_code" placeholder="如: site.address_options_by_order" />
-                                            </el-form-item>
-                                        </el-col>
-                                    </el-row>
-                                </template>
-                                <div v-if="field.options_source_ui.mode === 'legacy' && optionSourceExamples.length" class="data-source-examples">
-                                    <div class="data-source-examples-head">
-                                        <span>内置数据源示例</span>
-                                        <span class="status-hint">兼容 options_config</span>
-                                    </div>
-                                    <div class="data-source-examples-tip">以下示例均可直接作为旧版 `options_config` 参考。</div>
-                                    <div v-for="example in optionSourceExamples" :key="example.code" class="data-source-example">
-                                        <div class="data-source-example-title">[[ example.title ]]</div>
-                                        <div class="data-source-example-desc">[[ example.description ]]</div>
-                                        <div class="data-source-example-code">[[ example.code ]]</div>
-                                        <div class="data-source-example-json">[[ formatDataSourceExample(example.config) ]]</div>
-                                    </div>
-                                </div>
-                                <div v-if="field.options_source_ui.mode === 'data_source' && getOptionsFieldDataSources(field).length" class="data-source-examples">
-                                    <div class="data-source-examples-head">
-                                        <span>可用数据源类</span>
-                                        <span class="status-hint">选项</span>
-                                    </div>
-                                    <div class="data-source-examples-tip">仅展示当前字段类型可用的数据源类。</div>
-                                    <div v-for="item in getOptionsFieldDataSources(field)" :key="`options-source-${item.key}`" class="data-source-example">
-                                        <div class="data-source-example-title">[[ item.label ]]</div>
-                                        <div class="data-source-example-code">[[ item.key ]]</div>
-                                        <div class="data-source-example-desc">支持组件：[[ (item.support_components || []).join('、') || '全部' ]]</div>
-                                    </div>
-                                </div>
                                 <div
                                     v-if="usesManualOptions(field) && !field.options.length"
                                     class="form-builder-empty"
@@ -1157,40 +1313,35 @@
 {{ field_data_source_metadata|json_script:"field-data-source-metadata" }}
 <script type="module">
     import {
+        buildContextBindingPayload,
         buildDefaultSourcePayload,
         buildOptionsSourcePayload,
         getAvailableFieldDataSources,
         getFieldSourceParamSchema,
+        normalizeContextBindingUi,
         normalizeDefaultSourceUi,
         normalizeFieldDataSourceMetadata,
         normalizeOptionsSourceUi,
-        shouldShowLegacyDefaultMode,
-        shouldShowLegacyOptionsMode,
         shouldUseManualOptions,
         syncFieldSourceParamsBySchema,
-    } from "{% static 'flow_engine/js/field_source_designer.js' %}?v=20260412-01";
+    } from "{% static 'flow_engine/js/field_source_designer.js' %}?v=20260412-04";
 
     const { reactive, ref, computed, onMounted, onBeforeUnmount, inject, nextTick } = Vue;
 
     window.createApp({
         setup() {
-            const builtinDataSourceExamples = JSON.parse(
-                document.getElementById("builtin-data-source-examples")?.textContent || "[]"
-            );
             const fieldDataSourceMetadata = normalizeFieldDataSourceMetadata(
                 JSON.parse(document.getElementById("field-data-source-metadata")?.textContent || "[]")
             );
+            const buildFieldDataSourcePlaceholder = (target) => target === "default"
+                ? "请选择默认值数据源"
+                : "请选择选项数据源";
             const ElMessage = inject("ElMessage");
             const goBack = () => {
                 window.location.href = "{% get_previous_url %}";
             };
             const openFlowFormDesigner = async () => {
-                if (!flowId.value) {
-                    ElMessage.warning("请先保存流程后再进入表单设计器");
-                    const saved = await saveFlow({ showMessage: false });
-                    if (!saved || !flowId.value) return;
-                }
-                window.open(`/admin/flow_engine/definition/${flowId.value}/form_designer/`, "_blank");
+                window.open("/admin/flow_engine/form/designer/", "_blank");
             };
 
             const flowId = ref("{{flow_id}}");
@@ -1265,8 +1416,9 @@
             const userOptions = ref([]);
             const userLoading = ref(false);
             const formLibrary = reactive([]);
+            const globalFormLibrary = reactive([]);
             const formLibraryOptions = computed(() =>
-                formLibrary.map((item) => ({
+                (globalFormLibrary.length ? globalFormLibrary : formLibrary).map((item) => ({
                     code: item.code,
                     name: `${item.name || item.code}${item.code ? ` (${item.code})` : ""}`,
                 }))
@@ -1301,7 +1453,8 @@
             const currentNodeFormRefName = computed(() => {
                 const refCode = nodeDialog.form?.form_ref_code || "";
                 if (!refCode) return "";
-                const matched = formLibrary.find((item) => item.code === refCode);
+                const source = globalFormLibrary.length ? globalFormLibrary : formLibrary;
+                const matched = source.find((item) => item.code === refCode);
                 return matched?.name || "";
             });
 
@@ -1373,8 +1526,14 @@
                             order: Number.isFinite(Number(field?.order)) ? Number(field.order) : index,
                         };
                         if (field?.placeholder) payload.placeholder = field.placeholder;
-                        if (Object.prototype.hasOwnProperty.call(field || {}, "default")) payload.default = field.default;
-                        if (Object.prototype.hasOwnProperty.call(field || {}, "default_value") && !Object.prototype.hasOwnProperty.call(payload, "default")) {
+                        if ((field?.default_source_ui?.mode || "fixed") === "fixed" && Object.prototype.hasOwnProperty.call(field || {}, "default")) {
+                            payload.default = field.default;
+                        }
+                        if (
+                            (field?.default_source_ui?.mode || "fixed") === "fixed"
+                            && Object.prototype.hasOwnProperty.call(field || {}, "default_value")
+                            && !Object.prototype.hasOwnProperty.call(payload, "default")
+                        ) {
                             payload.default = field.default_value;
                         }
                         if (field?.default_config && typeof field.default_config === "object") {
@@ -1448,7 +1607,8 @@
 
             const findLibraryForm = (code) => {
                 if (!code) return null;
-                return formLibrary.find((item) => item.code === code) || null;
+                const source = globalFormLibrary.length ? globalFormLibrary : formLibrary;
+                return source.find((item) => item.code === code) || null;
             };
 
             const nextFormFieldId = () => {
@@ -1482,53 +1642,6 @@
                 value: "",
             });
 
-            const defaultSourceExamples = builtinDataSourceExamples.filter((item) => item?.target === "default");
-            const optionSourceExamples = builtinDataSourceExamples.filter((item) => item?.target === "options");
-            const formatDataSourceExample = (config) => JSON.stringify(config || {}, null, 2);
-
-            const normalizeDefaultConfig = (field, defaultValue) => {
-                const raw = field?.default_config;
-                const sourceType = (raw?.source_type || "literal").toString().toLowerCase();
-                return {
-                    source_type: sourceType,
-                    value: Object.prototype.hasOwnProperty.call(raw || {}, "value")
-                        ? raw.value
-                        : defaultValue,
-                    context_path: raw?.context_path || "",
-                    enum_code: raw?.enum_code || "",
-                    db_source_code: raw?.db_source_code || "",
-                    fallback_value: Object.prototype.hasOwnProperty.call(raw || {}, "fallback_value")
-                        ? raw.fallback_value
-                        : "",
-                };
-            };
-
-            const normalizeContextBinding = (field) => {
-                const raw = field?.context_binding;
-                return {
-                    read_path: raw?.read_path || "",
-                    write_path: raw?.write_path || "",
-                    write_mode: ["overwrite", "merge_if_absent"].includes(raw?.write_mode)
-                        ? raw.write_mode
-                        : "overwrite",
-                };
-            };
-
-            const normalizeOptionsConfig = (field) => {
-                const raw = field?.options_config;
-                return {
-                    source_type: (raw?.source_type || "manual").toString().toLowerCase(),
-                    context_path: raw?.context_path || "",
-                    enum_code: raw?.enum_code || "",
-                    db_source_code: raw?.db_source_code || "",
-                    label_key: raw?.label_key || "label",
-                    value_key: raw?.value_key || "value",
-                    fallback_to_manual: Object.prototype.hasOwnProperty.call(raw || {}, "fallback_to_manual")
-                        ? !!raw.fallback_to_manual
-                        : true,
-                };
-            };
-
             const getDefaultFieldDataSources = (field) => getAvailableFieldDataSources(
                 fieldDataSourceMetadata,
                 "default",
@@ -1557,8 +1670,112 @@
                 );
             };
 
-            const showLegacyDefaultConfigMode = (field) => shouldShowLegacyDefaultMode(field);
-            const showLegacyOptionsConfigMode = (field) => shouldShowLegacyOptionsMode(field);
+            const fieldDataSourcePicker = reactive({
+                visible: false,
+                keyword: "",
+                target: "default",
+                fieldId: "",
+                fieldRef: null,
+                title: "选择数据源类",
+                selectedKey: "",
+                page: 1,
+                pageSize: 8,
+                options: [],
+            });
+
+            const getFieldDataSourcePickerField = () => {
+                if (fieldDataSourcePicker.fieldRef && typeof fieldDataSourcePicker.fieldRef === "object") {
+                    return fieldDataSourcePicker.fieldRef;
+                }
+                const fields = nodeDialog.form.form_fields || [];
+                return fields.find((item) => item.id === fieldDataSourcePicker.fieldId) || null;
+            };
+
+            const getFieldDataSourceKeyLabel = (key, target, field) => {
+                const cleanKey = String(key || "").trim().toLowerCase();
+                if (!cleanKey) return "";
+                const list = target === "default"
+                    ? getDefaultFieldDataSources(field)
+                    : getOptionsFieldDataSources(field);
+                const item = list.find((source) => source.key === cleanKey);
+                return item ? `${item.label} (${item.key})` : cleanKey;
+            };
+
+            const getCurrentFieldDataSourceOptions = () => {
+                const list = Array.isArray(fieldDataSourcePicker.options) ? fieldDataSourcePicker.options : [];
+                const keyword = fieldDataSourcePicker.keyword.trim().toLowerCase();
+                if (!keyword) return list;
+                return list.filter((item) =>
+                    item.key.toLowerCase().includes(keyword)
+                    || (item.label || "").toLowerCase().includes(keyword)
+                    || (item.data_type || "").toLowerCase().includes(keyword)
+                );
+            };
+
+            const getCurrentFieldDataSourcePagedOptions = () => {
+                const list = getCurrentFieldDataSourceOptions();
+                const start = (Math.max(fieldDataSourcePicker.page, 1) - 1) * fieldDataSourcePicker.pageSize;
+                return list.slice(start, start + fieldDataSourcePicker.pageSize);
+            };
+
+            const openFieldDataSourcePicker = (field, target) => {
+                if (!field) return;
+                fieldDataSourcePicker.visible = true;
+                fieldDataSourcePicker.keyword = "";
+                fieldDataSourcePicker.target = target;
+                fieldDataSourcePicker.fieldId = field.id || "";
+                fieldDataSourcePicker.fieldRef = field;
+                const filteredList = target === "default"
+                    ? getDefaultFieldDataSources(field)
+                    : getOptionsFieldDataSources(field);
+                const baseList = target === "default"
+                    ? getAvailableFieldDataSources(fieldDataSourceMetadata, "default", "")
+                    : getAvailableFieldDataSources(fieldDataSourceMetadata, "options", "");
+                fieldDataSourcePicker.options = filteredList.length ? filteredList : baseList;
+                fieldDataSourcePicker.selectedKey = String(
+                    (target === "default" ? field?.default_source_ui?.source_key : field?.options_source_ui?.source_key) || ""
+                ).trim().toLowerCase();
+                fieldDataSourcePicker.page = 1;
+                fieldDataSourcePicker.title = target === "default"
+                    ? "选择默认值数据源类"
+                    : "选择选项数据源类";
+            };
+
+            const closeFieldDataSourcePicker = () => {
+                fieldDataSourcePicker.visible = false;
+                fieldDataSourcePicker.keyword = "";
+                fieldDataSourcePicker.fieldId = "";
+                fieldDataSourcePicker.fieldRef = null;
+                fieldDataSourcePicker.selectedKey = "";
+                fieldDataSourcePicker.page = 1;
+                fieldDataSourcePicker.options = [];
+            };
+
+            const chooseFieldDataSource = (item) => {
+                if (!item) return;
+                fieldDataSourcePicker.selectedKey = item.key;
+            };
+
+            const applyFieldDataSourceSelection = () => {
+                const field = getFieldDataSourcePickerField();
+                if (!field) return;
+                const ui = fieldDataSourcePicker.target === "default"
+                    ? field.default_source_ui
+                    : field.options_source_ui;
+                if (!ui) return;
+                ui.source_key = String(fieldDataSourcePicker.selectedKey || "").trim().toLowerCase();
+                onFieldDataSourceChange(field, fieldDataSourcePicker.target);
+                closeFieldDataSourcePicker();
+            };
+
+            const clearFieldDataSourceSelection = () => {
+                fieldDataSourcePicker.selectedKey = "";
+            };
+
+            const onFieldDataSourcePickerKeywordChange = () => {
+                fieldDataSourcePicker.page = 1;
+            };
+
             const usesManualOptions = (field) => shouldUseManualOptions(field);
 
             const createEmptyFormField = (component = "input") => ({
@@ -1577,14 +1794,6 @@
                 multiple: component === "file" ? false : undefined,
                 css_text: "",
                 js_text: "",
-                default_config: {
-                    source_type: "literal",
-                    value: component === "switch" ? false : "",
-                    context_path: "",
-                    enum_code: "",
-                    db_source_code: "",
-                    fallback_value: "",
-                },
                 default_source_ui: {
                     mode: "fixed",
                     source_key: "",
@@ -1593,18 +1802,8 @@
                     legacy_config: null,
                 },
                 context_binding: {
-                    read_path: "",
-                    write_path: "",
+                    write_target: "node",
                     write_mode: "overwrite",
-                },
-                options_config: {
-                    source_type: "manual",
-                    context_path: "",
-                    enum_code: "",
-                    db_source_code: "",
-                    label_key: "label",
-                    value_key: "value",
-                    fallback_to_manual: true,
                 },
                 options_source_ui: {
                     mode: "manual",
@@ -1641,20 +1840,13 @@
                     multiple: !!field?.multiple,
                     css_text: field?.css_text || "",
                     js_text: field?.js_text || "",
-                    default_config: normalizeDefaultConfig(
-                        field,
-                        Object.prototype.hasOwnProperty.call(field || {}, "default")
-                            ? field.default
-                            : field?.default_value ?? ""
-                    ),
                     default_source_ui: normalizeDefaultSourceUi(
                         field,
                         Object.prototype.hasOwnProperty.call(field || {}, "default")
                             ? field.default
                             : field?.default_value ?? ""
                     ),
-                    context_binding: normalizeContextBinding(field),
-                    options_config: normalizeOptionsConfig(field),
+                    context_binding: normalizeContextBindingUi(field),
                     options_source_ui: normalizeOptionsSourceUi(field),
                     options: Array.isArray(field?.options || field?.choices || field?.enum)
                         ? (field.options || field.choices || field.enum).map((option) => ({
@@ -1679,25 +1871,12 @@
                             required: !!field.required,
                         };
                         if (field.placeholder) payload.placeholder = field.placeholder;
-                        if (field.default !== "" && field.default !== undefined && field.default !== null) payload.default = field.default;
-                        const defaultSource = (field?.default_config?.source_type || "literal").toString().toLowerCase();
-                        const defaultConfig = {
-                            source_type: defaultSource,
-                            value: field?.default_config?.value,
-                            context_path: field?.default_config?.context_path || "",
-                            enum_code: field?.default_config?.enum_code || "",
-                            db_source_code: field?.default_config?.db_source_code || "",
-                            fallback_value: field?.default_config?.fallback_value,
-                        };
                         if (
-                            defaultConfig.source_type !== "literal"
-                            || defaultConfig.context_path
-                            || defaultConfig.enum_code
-                            || defaultConfig.db_source_code
-                            || (defaultConfig.fallback_value !== "" && defaultConfig.fallback_value !== undefined && defaultConfig.fallback_value !== null)
-                        ) {
-                            payload.default_config = defaultConfig;
-                        }
+                            (field?.default_source_ui?.mode || "fixed") === "fixed"
+                            && field.default !== ""
+                            && field.default !== undefined
+                            && field.default !== null
+                        ) payload.default = field.default;
                         Object.assign(payload, buildDefaultSourcePayload(field));
                         if (field.component === "textarea" && field.rows) payload.rows = field.rows;
                         if (field.component === "file") {
@@ -1712,15 +1891,6 @@
                             if (field.step !== undefined && field.step !== null) payload.step = field.step;
                         }
                         if (["select", "radio", "checkbox"].includes(field.component)) {
-                            const optionsConfig = {
-                                source_type: (field?.options_config?.source_type || "manual").toString().toLowerCase(),
-                                context_path: field?.options_config?.context_path || "",
-                                enum_code: field?.options_config?.enum_code || "",
-                                db_source_code: field?.options_config?.db_source_code || "",
-                                label_key: field?.options_config?.label_key || "label",
-                                value_key: field?.options_config?.value_key || "value",
-                                fallback_to_manual: !!field?.options_config?.fallback_to_manual,
-                            };
                             const options = (field.options || [])
                                 .map((option) => {
                                     const labelVal = (option.label ?? "").toString().trim();
@@ -1737,29 +1907,9 @@
                             if (usesManualOptions(field)) {
                                 payload.options = options;
                             }
-                            if (
-                                optionsConfig.source_type !== "manual"
-                                || optionsConfig.context_path
-                                || optionsConfig.enum_code
-                                || optionsConfig.db_source_code
-                                || optionsConfig.label_key !== "label"
-                                || optionsConfig.value_key !== "value"
-                                || !optionsConfig.fallback_to_manual
-                            ) {
-                                payload.options_config = optionsConfig;
-                            }
                             Object.assign(payload, buildOptionsSourcePayload(field));
                         }
-                        const contextBinding = {
-                            read_path: field?.context_binding?.read_path || "",
-                            write_path: field?.context_binding?.write_path || "",
-                            write_mode: ["overwrite", "merge_if_absent"].includes(field?.context_binding?.write_mode)
-                                ? field.context_binding.write_mode
-                                : "overwrite",
-                        };
-                        if (contextBinding.read_path || contextBinding.write_path || contextBinding.write_mode !== "overwrite") {
-                            payload.context_binding = contextBinding;
-                        }
+                        Object.assign(payload, buildContextBindingPayload(field));
                         payload.order = index;
                         return payload;
                     })
@@ -1804,11 +1954,14 @@
                 transitions.splice(0, transitions.length, ...(res.transitions || []));
             };
 
+            const loadGlobalFormLibrary = async () => {
+                const res = await request.get("/flow_engine/form_library_global_list");
+                const normalized = normalizeFormLibrary(res || []);
+                globalFormLibrary.splice(0, globalFormLibrary.length, ...normalized);
+            };
+
             const refreshFormLibrary = async () => {
-                if (!flowId.value) return;
-                const res = await request.get("/flow_engine/form_library_detail", { flow_id: flowId.value });
-                const normalized = normalizeFormLibrary(res.forms || []);
-                formLibrary.splice(0, formLibrary.length, ...normalized);
+                await loadGlobalFormLibrary();
                 ElMessage.success("表单库已刷新");
             };
 
@@ -2347,13 +2500,7 @@
                             condition_expr: t.condition_expr,
                             description: t.description,
                         })),
-                        form_library: normalizeFormLibrary(formLibrary).map((item, index) => ({
-                            code: item.code,
-                            name: item.name,
-                            description: item.description,
-                            order: Number.isFinite(Number(item.order)) ? Number(item.order) : index,
-                            fields: deepClone(item.fields || []),
-                        })),
+                        form_library: [],
                     };
 
                     const res = await request.post("/flow_engine/flow_definition_save", payload);
@@ -2458,6 +2605,7 @@
                 window.addEventListener("mouseup", onMouseUp);
                 await loadOptions();
                 await loadDetail();
+                await loadGlobalFormLibrary();
                 pageData.pageLoading = false;
             });
 
@@ -2518,16 +2666,22 @@
                 removeFormField,
                 addFormFieldOption,
                 removeFormFieldOption,
-                defaultSourceExamples,
-                optionSourceExamples,
-                formatDataSourceExample,
                 fieldDataSourceMetadata,
                 getDefaultFieldDataSources,
                 getOptionsFieldDataSources,
+                getCurrentFieldDataSourceOptions,
+                getCurrentFieldDataSourcePagedOptions,
+                getFieldDataSourceKeyLabel,
                 getSourceParamsSchema,
+                fieldDataSourcePicker,
                 onFieldDataSourceChange,
-                showLegacyDefaultConfigMode,
-                showLegacyOptionsConfigMode,
+                openFieldDataSourcePicker,
+                closeFieldDataSourcePicker,
+                chooseFieldDataSource,
+                applyFieldDataSourceSelection,
+                clearFieldDataSourceSelection,
+                onFieldDataSourcePickerKeywordChange,
+                buildFieldDataSourcePlaceholder,
                 usesManualOptions,
                 onFormFieldDragStart,
                 onFormFieldDrop,

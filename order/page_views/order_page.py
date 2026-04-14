@@ -9,6 +9,7 @@ from order.machine import OrderStateMachine
 from flow_engine.models import FlowLog, FlowTask
 from flow_engine.enums import FlowStatusChoices
 from flow_engine.utils.form_runtime_util import resolve_form_runtime
+from flow_engine.utils.form_library_util import FORM_REF_CODE_KEY, FORM_REF_NAME_KEY, resolve_form_ref_definition
 
 
 def _get_prev_url(request):
@@ -30,6 +31,25 @@ def _strip_form_schema_ui(schema):
     cleaned.pop("__ui", None)
     cleaned.pop("__form_library", None)
     return cleaned
+
+
+def _hydrate_form_schema(schema, node=None):
+    if not isinstance(schema, dict):
+        return schema
+    ref_code = str(schema.get(FORM_REF_CODE_KEY) or "").strip()
+    if not ref_code:
+        return schema
+    matched = resolve_form_ref_definition(ref_code, node)
+    if not matched:
+        return schema
+    hydrated = {
+        "fields": matched.get("fields") or [],
+        FORM_REF_CODE_KEY: matched.get("code") or ref_code,
+        FORM_REF_NAME_KEY: matched.get("name") or ref_code,
+    }
+    if "__ui" in schema:
+        hydrated["__ui"] = schema["__ui"]
+    return hydrated
 
 
 def order_add(request):
@@ -289,7 +309,10 @@ def _build_workflow_action_payload(request, order: Order):
         pending_tasks = list(pending_qs.order_by("id"))
         if pending_tasks:
             current_node = pending_tasks[0].node if pending_tasks[0].node_id else getattr(order.flow_instance, "current_node", None)
-            raw_schema = _strip_form_schema_ui(getattr(current_node, "form_schema", None))
+            raw_schema = _hydrate_form_schema(
+                _strip_form_schema_ui(getattr(current_node, "form_schema", None)),
+                current_node,
+            )
             runtime_schema, runtime_form_data = resolve_form_runtime(
                 form_schema=raw_schema,
                 context=order.flow_instance.context or {},

@@ -1,11 +1,12 @@
 # -*-coding:utf-8 -*-
 
 """
-# Description: 流程列表（设计器页面用）
+# Description: 流程列表（设计器页面使用）
 """
 
 from asgiref.sync import sync_to_async
 from django.db import models
+
 from core.ninja_extra.api_extra import BaseApi, HttpRequest, Query
 from core.utils import time_util
 
@@ -24,7 +25,7 @@ class View(BaseApi):
     @staticmethod
     async def api(
         request: HttpRequest,
-        keyword: str | None = Query(None, description="关键词"),
+        keyword: str | None = Query(None, description="关键字"),
         is_active: int | None = Query(None, description="是否启用(1/0)"),
     ):
         def _query():

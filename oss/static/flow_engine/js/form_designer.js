@@ -2,25 +2,28 @@
     const { reactive, ref, computed, onMounted, onBeforeUnmount, inject, watch } = Vue;
 
     const flowId = Number(options.flowId || 0);
+    const queryParams = new URLSearchParams(window.location.search || "");
+    const shouldCreateFormFromQuery = queryParams.get("new_form") === "1";
+    const initialGroupName = String(queryParams.get("group_name") || "").trim();
+    const selectedFormCodeFromQuery = String(queryParams.get("selected_code") || "").trim();
     const previousUrl = options.previousUrl || "";
     const currentUser = options.currentUser || {};
     const {
+        buildContextBindingPayload,
         buildDefaultSourcePayload,
         buildOptionsSourcePayload,
         getAvailableFieldDataSources,
+        getFieldDataSourceByKey,
+        getFieldSourceMethodName,
         getFieldSourceParamSchema,
+        normalizeContextBindingUi,
         normalizeDefaultSourceUi,
         normalizeFieldDataSourceMetadata,
         normalizeOptionsSourceUi,
-        shouldShowLegacyDefaultMode,
-        shouldShowLegacyOptionsMode,
         shouldUseManualOptions,
         syncFieldSourceParamsBySchema,
     } = options.fieldSourceHelper || {};
-    const builtinDataSourceExamples = Array.isArray(options.builtinDataSourceExamples)
-        ? options.builtinDataSourceExamples
-        : [];
-    const fieldDataSourceMetadata = normalizeFieldDataSourceMetadata(options.fieldDataSourceMetadata || []);
+    let fieldDataSourceMetadata = normalizeFieldDataSourceMetadata(options.fieldDataSourceMetadata || []);
     const HISTORY_LIMIT = 80;
     const DRAFT_STORAGE_PREFIX = "flow_form_designer_draft";
     const PLACEHOLDER_COMPONENTS = new Set(["placeholder"]);
@@ -41,6 +44,9 @@
             label: "姓名",
         },
     };
+    const buildFieldDataSourcePlaceholder = (target) => target === "default"
+        ? "请选择默认值数据源"
+        : "请选择选项数据源";
 
     const resolveVariableValueByKey = (key) => {
         const cleanKey = String(key || "").trim();
@@ -296,6 +302,14 @@
                 type: Function,
                 required: true,
             },
+            onNodeDragEnter: {
+                type: Function,
+                required: true,
+            },
+            isNodeDropTarget: {
+                type: Function,
+                required: true,
+            },
             containerStyle: {
                 type: Function,
                 required: true,
@@ -307,9 +321,10 @@
         },
         template: `
             <div
-                :class="[childMode ? 'fd-child' : 'fd-node', { active: selectedNodeId === node.id }]"
+                :class="[childMode ? 'fd-child' : 'fd-node', { active: selectedNodeId === node.id, 'fd-drop-before': isNodeDropTarget(node.id) }]"
                 draggable="true"
-                @dragstart="onNodeDragStart(node.id)"
+                @dragstart.stop="onNodeDragStart(node.id)"
+                @dragenter.stop.prevent="onNodeDragEnter(node.id)"
                 @dragover.prevent
                 @drop.stop="onNodeDrop(node.id)">
                 <div class="fd-node-head" @click.stop="selectNode(node.id)">
@@ -318,10 +333,10 @@
                         <span>[[ node.label || node.key || '未命名组件' ]]</span>
                     </div>
                     <div class="fd-node-actions">
-                        <el-button link @click.stop="moveNode(node.id, -1)">上移</el-button>
-                        <el-button link @click.stop="moveNode(node.id, 1)">下移</el-button>
-                        <el-button link @click.stop="copyNode(node.id)">复制</el-button>
-                        <el-button link type="danger" @click.stop="removeNode(node.id)">删除</el-button>
+                        <el-button link @click.stop="moveNode(node.id, -1)" title="上移"><el-icon><Top /></el-icon></el-button>
+                        <el-button link @click.stop="moveNode(node.id, 1)" title="下移"><el-icon><Bottom /></el-icon></el-button>
+                        <el-button link @click.stop="copyNode(node.id)" title="复制"><el-icon><CopyDocument /></el-icon></el-button>
+                        <el-button link type="danger" @click.stop="removeNode(node.id)" title="删除"><el-icon><Delete /></el-icon></el-button>
                     </div>
                 </div>
                 <div class="fd-node-body">
@@ -353,6 +368,8 @@
                                 :on-container-drag-over="onContainerDragOver"
                                 :on-container-drag-leave="onContainerDragLeave"
                                 :is-container-drop-active="isContainerDropActive"
+                                :on-node-drag-enter="onNodeDragEnter"
+                                :is-node-drop-target="isNodeDropTarget"
                                 :container-style="containerStyle"
                                 :child-mode="true"></designer-node-item>
                         </div>
@@ -668,15 +685,6 @@
                         { value: "paragraph", label: "文本", thumb: "TXT" },
                     ],
                 },
-                {
-                    key: "variable",
-                    title: "变量组件",
-                    list: [
-                        { value: "var_username", label: "当前用户用户名", thumb: "U" },
-                        { value: "var_phone", label: "当前用户手机号", thumb: "P" },
-                        { value: "var_full_name", label: "当前用户姓名", thumb: "N" },
-                    ],
-                },
             ];
 
             const componentPalette = componentGroups.flatMap((group) => group.list);
@@ -744,6 +752,7 @@
                 paletteComponent: "",
                 sourceNodeId: "",
                 overContainerId: "",
+                overNodeId: "",
             });
 
             let idSeed = 1;
@@ -849,9 +858,8 @@
             };
 
             const saveDraftToLocal = () => {
-                if (!flowId || isApplyingHistory.value || pageData.pageLoading) return;
+                if (isApplyingHistory.value || pageData.pageLoading) return;
                 const payload = {
-                    flow_id: flowId,
                     forms: buildPayloadForms(),
                 };
                 localStorage.setItem(getDraftStorageKey(), JSON.stringify({
@@ -861,7 +869,6 @@
             };
 
             const clearDraft = () => {
-                if (!flowId) return;
                 localStorage.removeItem(getDraftStorageKey());
             };
 
@@ -883,61 +890,55 @@
                 value: "",
             });
 
-            const defaultSourceExamples = builtinDataSourceExamples.filter((item) => item?.target === "default");
-            const optionSourceExamples = builtinDataSourceExamples.filter((item) => item?.target === "options");
-            const formatDataSourceExample = (config) => JSON.stringify(config || {}, null, 2);
+    const getDefaultFieldDataSources = (node) => getAvailableFieldDataSources(
+        fieldDataSourceMetadata,
+        "default",
+        node?.component,
+    );
 
-            const normalizeDefaultConfig = (rawNode, defaultValue) => {
-                const raw = rawNode?.default_config;
-                return {
-                    source_type: String(raw?.source_type || "literal").toLowerCase(),
-                    value: Object.prototype.hasOwnProperty.call(raw || {}, "value") ? raw.value : defaultValue,
-                    context_path: raw?.context_path || "",
-                    enum_code: raw?.enum_code || "",
-                    db_source_code: raw?.db_source_code || "",
-                    fallback_value: Object.prototype.hasOwnProperty.call(raw || {}, "fallback_value")
-                        ? raw.fallback_value
-                        : "",
-                };
-            };
+    const getOptionsFieldDataSources = (node) => getAvailableFieldDataSources(
+        fieldDataSourceMetadata,
+        "options",
+        node?.component,
+    );
 
-            const normalizeContextBinding = (rawNode) => {
-                const raw = rawNode?.context_binding;
-                return {
-                    read_path: raw?.read_path || "",
-                    write_path: raw?.write_path || "",
-                    write_mode: ["overwrite", "merge_if_absent"].includes(raw?.write_mode)
-                        ? raw.write_mode
-                        : "overwrite",
-                };
-            };
+    const hasCompatibleFieldDataSources = (node, target) => {
+        const list = target === "default"
+            ? getDefaultFieldDataSources(node)
+            : getOptionsFieldDataSources(node);
+        return list.length > 0;
+    };
 
-            const normalizeOptionsConfig = (rawNode) => {
-                const raw = rawNode?.options_config;
-                return {
-                    source_type: String(raw?.source_type || "manual").toLowerCase(),
-                    context_path: raw?.context_path || "",
-                    enum_code: raw?.enum_code || "",
-                    db_source_code: raw?.db_source_code || "",
-                    label_key: raw?.label_key || "label",
-                    value_key: raw?.value_key || "value",
-                    fallback_to_manual: Object.prototype.hasOwnProperty.call(raw || {}, "fallback_to_manual")
-                        ? !!raw.fallback_to_manual
-                        : true,
-                };
-            };
+    const isDualSupportDataSource = (sourceKey, component) => {
+        if (!sourceKey) return false;
+        const source = getFieldDataSourceByKey(fieldDataSourceMetadata, sourceKey);
+        const defaultMethod = getFieldSourceMethodName?.("default", component);
+        const optionsMethod = getFieldSourceMethodName?.("options", component);
+        const supportedMethods = Array.isArray(source?.supported_methods) ? source.supported_methods : [];
+        return !!source && !!defaultMethod && !!optionsMethod
+            && supportedMethods.includes(defaultMethod)
+            && supportedMethods.includes(optionsMethod);
+    };
 
-            const getDefaultFieldDataSources = (node) => getAvailableFieldDataSources(
-                fieldDataSourceMetadata,
-                "default",
-                node?.component,
-            );
+    const refreshFieldDataSourceMetadata = (items) => {
+        fieldDataSourceMetadata = normalizeFieldDataSourceMetadata(items || []);
+    };
 
-            const getOptionsFieldDataSources = (node) => getAvailableFieldDataSources(
-                fieldDataSourceMetadata,
-                "options",
-                node?.component,
-            );
+    const fetchFieldDataSourceMetadata = async () => {
+        if (fieldDataSourceMetadata?.length) return;
+        try {
+            const res = await fetch("/flow_engine/field_data_sources/metadata/", {
+                method: "GET",
+                credentials: "same-origin",
+                headers: { "Accept": "application/json" },
+            });
+            if (!res.ok) throw new Error(`status ${res.status}`);
+            const data = await res.json();
+            refreshFieldDataSourceMetadata(data?.items || data || []);
+        } catch (err) {
+            console.error("加载字段数据源元信息失败", err);
+        }
+    };
 
             const getSourceParamsSchema = (node, target) => {
                 const ui = target === "default" ? node?.default_source_ui : node?.options_source_ui;
@@ -955,8 +956,148 @@
                 );
             };
 
-            const showLegacyDefaultConfigMode = (node) => shouldShowLegacyDefaultMode(node);
-            const showLegacyOptionsConfigMode = (node) => shouldShowLegacyOptionsMode(node);
+            const fieldDataSourcePicker = reactive({
+                visible: false,
+                keyword: "",
+                target: "default",
+                nodeId: "",
+                nodeRef: null,
+                title: "选择数据源类",
+                selectedKey: "",
+                page: 1,
+                pageSize: 8,
+                options: [],
+            });
+
+            const getFieldDataSourcePickerNode = () => {
+                if (fieldDataSourcePicker.nodeRef && typeof fieldDataSourcePicker.nodeRef === "object") {
+                    return fieldDataSourcePicker.nodeRef;
+                }
+                const form = activeForm.value;
+                if (!form || !fieldDataSourcePicker.nodeId) return null;
+                return findNodeLocation(form, fieldDataSourcePicker.nodeId)?.node || null;
+            };
+
+            const getFieldDataSourceKeyLabel = (key, target, node) => {
+                const cleanKey = String(key || "").trim().toLowerCase();
+                if (!cleanKey) return "";
+                const list = target === "default"
+                    ? getDefaultFieldDataSources(node)
+                    : getOptionsFieldDataSources(node);
+                const item = list.find((source) => source.key === cleanKey);
+                return item ? `${item.label} (${item.key})` : cleanKey;
+            };
+
+            const getCurrentFieldDataSourceOptions = () => {
+                const list = Array.isArray(fieldDataSourcePicker.options) ? fieldDataSourcePicker.options : [];
+                const keyword = fieldDataSourcePicker.keyword.trim().toLowerCase();
+                if (!keyword) return list;
+                return list.filter((item) =>
+                    item.key.toLowerCase().includes(keyword)
+                    || (item.label || "").toLowerCase().includes(keyword)
+                    || (item.data_type || "").toLowerCase().includes(keyword)
+                );
+            };
+
+            const getCurrentFieldDataSourcePagedOptions = () => {
+                const list = getCurrentFieldDataSourceOptions();
+                const start = (Math.max(fieldDataSourcePicker.page, 1) - 1) * fieldDataSourcePicker.pageSize;
+                return list.slice(start, start + fieldDataSourcePicker.pageSize);
+            };
+
+            const openFieldDataSourcePicker = async (node, target) => {
+                if (!node) return;
+                await fetchFieldDataSourceMetadata();
+                fieldDataSourcePicker.visible = true;
+                fieldDataSourcePicker.keyword = "";
+                fieldDataSourcePicker.target = target;
+                fieldDataSourcePicker.nodeId = node.id || "";
+                fieldDataSourcePicker.nodeRef = node;
+                fieldDataSourcePicker.options = target === "default"
+                    ? getDefaultFieldDataSources(node)
+                    : getOptionsFieldDataSources(node);
+                fieldDataSourcePicker.selectedKey = String(
+                    (target === "default" ? node?.default_source_ui?.source_key : node?.options_source_ui?.source_key) || ""
+                ).trim().toLowerCase();
+                fieldDataSourcePicker.page = 1;
+                fieldDataSourcePicker.title = target === "default"
+                    ? "选择默认值数据源类"
+                    : "选择选项数据源类";
+            };
+
+            const closeFieldDataSourcePicker = () => {
+                fieldDataSourcePicker.visible = false;
+                fieldDataSourcePicker.keyword = "";
+                fieldDataSourcePicker.nodeId = "";
+                fieldDataSourcePicker.nodeRef = null;
+                fieldDataSourcePicker.selectedKey = "";
+                fieldDataSourcePicker.page = 1;
+                fieldDataSourcePicker.options = [];
+            };
+
+            const chooseFieldDataSource = (item) => {
+                if (!item) return;
+                fieldDataSourcePicker.selectedKey = item.key;
+            };
+
+            const applyFieldDataSourceSelection = () => {
+                const node = getFieldDataSourcePickerNode();
+                if (!node) return;
+                const target = fieldDataSourcePicker.target;
+                const ui = target === "default"
+                    ? node.default_source_ui
+                    : node.options_source_ui;
+                if (!ui) return;
+                const selectedKey = String(fieldDataSourcePicker.selectedKey || "").trim().toLowerCase();
+                const previousKey = ui.source_key;
+                ui.source_key = selectedKey;
+                onFieldDataSourceChange(node, target);
+                if (selectedKey && isDualSupportDataSource(selectedKey, node.component)) {
+                    const otherTarget = target === "default" ? "options" : "default";
+                    const otherUi = target === "default" ? node.options_source_ui : node.default_source_ui;
+                    if (otherUi) {
+                        otherUi.mode = "data_source";
+                        otherUi.source_key = selectedKey;
+                        onFieldDataSourceChange(node, otherTarget);
+                    }
+                } else if (!selectedKey && previousKey && isDualSupportDataSource(previousKey, node.component)) {
+                    const otherTarget = target === "default" ? "options" : "default";
+                    const otherUi = target === "default" ? node.options_source_ui : node.default_source_ui;
+                    if (otherUi && otherUi.source_key === previousKey) {
+                        otherUi.source_key = "";
+                        otherUi.mode = otherTarget === "default" ? "fixed" : "manual";
+                        onFieldDataSourceChange(node, otherTarget);
+                    }
+                }
+                closeFieldDataSourcePicker();
+            };
+
+            const clearFieldDataSourceSelection = () => {
+                fieldDataSourcePicker.selectedKey = "";
+            };
+
+            const clearFieldDataSource = (node, target) => {
+                if (!node) return;
+                const ui = target === "default" ? node.default_source_ui : node.options_source_ui;
+                if (!ui) return;
+                const previousKey = ui.source_key;
+                ui.source_key = "";
+                onFieldDataSourceChange(node, target);
+                if (previousKey && isDualSupportDataSource(previousKey, node.component)) {
+                    const otherTarget = target === "default" ? "options" : "default";
+                    const otherUi = target === "default" ? node.options_source_ui : node.default_source_ui;
+                    if (otherUi && otherUi.source_key === previousKey) {
+                        otherUi.source_key = "";
+                        otherUi.mode = otherTarget === "default" ? "fixed" : "manual";
+                        onFieldDataSourceChange(node, otherTarget);
+                    }
+                }
+            };
+
+            const onFieldDataSourcePickerKeywordChange = () => {
+                fieldDataSourcePicker.page = 1;
+            };
+
             const usesManualOptions = (node) => shouldUseManualOptions(node);
 
             const createNode = (component = "input") => {
@@ -995,6 +1136,13 @@
                         text_align: "left",
                         text_v_align: "top",
                         text_min_height: 48,
+                        default_source_ui: {
+                            mode: "fixed",
+                            source_key: "",
+                            source_params: {},
+                            fallback_value: "",
+                            legacy_config: null,
+                        },
                         css_text: "",
                         js_text: "",
                     };
@@ -1030,14 +1178,6 @@
                     step: component === "number" ? 1 : undefined,
                     accept: component === "file" ? "" : undefined,
                     multiple: component === "file" ? false : undefined,
-                    default_config: {
-                        source_type: "literal",
-                        value: "",
-                        context_path: "",
-                        enum_code: "",
-                        db_source_code: "",
-                        fallback_value: "",
-                    },
                     default_source_ui: {
                         mode: "fixed",
                         source_key: "",
@@ -1045,20 +1185,10 @@
                         fallback_value: "",
                         legacy_config: null,
                     },
-                    context_binding: {
-                        read_path: "",
-                        write_path: "",
-                        write_mode: "overwrite",
-                    },
-                    options_config: {
-                        source_type: "manual",
-                        context_path: "",
-                        enum_code: "",
-                        db_source_code: "",
-                        label_key: "label",
-                        value_key: "value",
-                        fallback_to_manual: true,
-                    },
+                context_binding: {
+                    write_target: "node",
+                    write_mode: "overwrite",
+                },
                     options_source_ui: {
                         mode: "manual",
                         source_key: "",
@@ -1074,7 +1204,6 @@
                 } else if (component === "checkbox") {
                     node.default = [];
                 }
-                node.default_config.value = node.default;
                 node.default_source_ui = normalizeDefaultSourceUi(node, node.default);
                 node.options_source_ui = normalizeOptionsSourceUi(node);
                 return node;
@@ -1113,7 +1242,7 @@
 
                 let component = String(rawNode.component || rawNode.type || rawNode.widget || "input").toLowerCase();
                 component = componentAliasMap[component] || component;
-                if (!componentValueSet.has(component)) {
+                if (!componentValueSet.has(component) && !VARIABLE_COMPONENTS.has(component)) {
                     component = "input";
                 }
 
@@ -1157,6 +1286,10 @@
                         text_min_height: Number.isFinite(Number(rawNode.text_min_height))
                             ? Number(rawNode.text_min_height)
                             : 48,
+                        default_source_ui: normalizeDefaultSourceUi(
+                            rawNode,
+                            String(rawNode.content || rawNode.text || rawNode.label || componentLabelMap[component] || ""),
+                        ),
                         css_text: rawNode.css_text || rawNode.css || rawNode.style || "",
                         js_text: rawNode.js_text || rawNode.js || rawNode.script || "",
                     };
@@ -1192,16 +1325,11 @@
                     step: Number.isFinite(Number(rawNode.step)) ? Number(rawNode.step) : 1,
                     accept: rawNode.accept || "",
                     multiple: !!rawNode.multiple,
-                    default_config: normalizeDefaultConfig(
-                        rawNode,
-                        normalizeDefaultValue(component, rawNode)
-                    ),
                     default_source_ui: normalizeDefaultSourceUi(
                         rawNode,
                         normalizeDefaultValue(component, rawNode),
                     ),
-                    context_binding: normalizeContextBinding(rawNode),
-                    options_config: normalizeOptionsConfig(rawNode),
+                    context_binding: normalizeContextBindingUi(rawNode),
                     options_source_ui: normalizeOptionsSourceUi(rawNode),
                     options: [],
                 };
@@ -1234,6 +1362,7 @@
                     id: nextId("form"),
                     code: String(rawForm.code || "").trim(),
                     name: String(rawForm.name || "").trim(),
+                    group_name: String(rawForm.group_name || rawForm.group || "").trim(),
                     description: String(rawForm.description || "").trim(),
                     order: Number.isFinite(Number(rawForm.order)) ? Number(rawForm.order) : index,
                     nodes: rawFields
@@ -1325,6 +1454,7 @@
                     id: nextId("form"),
                     code: "",
                     name: `新表单${forms.length + 1}`,
+                    group_name: initialGroupName,
                     description: "",
                     order: forms.length,
                     nodes: [],
@@ -1350,6 +1480,7 @@
                 dragState.paletteComponent = "";
                 dragState.sourceNodeId = "";
                 dragState.overContainerId = "";
+                dragState.overNodeId = "";
             };
 
             const onPaletteDragStart = (component) => {
@@ -1357,6 +1488,7 @@
                 dragState.paletteComponent = component;
                 dragState.sourceNodeId = "";
                 dragState.overContainerId = "";
+                dragState.overNodeId = "";
             };
 
             const onNodeDragStart = (nodeId) => {
@@ -1364,6 +1496,7 @@
                 dragState.sourceNodeId = nodeId;
                 dragState.paletteComponent = "";
                 dragState.overContainerId = "";
+                dragState.overNodeId = "";
             };
 
             const isDraggingActive = computed(() =>
@@ -1386,6 +1519,15 @@
 
             const isContainerDropActive = (containerId) =>
                 isDraggingActive.value && dragState.overContainerId === containerId;
+
+            const onNodeDragEnter = (nodeId) => {
+                if (!isDraggingActive.value) return;
+                if (nodeId === dragState.sourceNodeId) return;
+                dragState.overNodeId = nodeId || "";
+            };
+
+            const isNodeDropTarget = (nodeId) =>
+                isDraggingActive.value && dragState.overNodeId === nodeId && nodeId !== dragState.sourceNodeId;
 
             const selectNode = (nodeId) => {
                 selectedNodeId.value = nodeId || "";
@@ -1644,6 +1786,7 @@
             const showDefaultField = (node) => {
                 if (!node || node.component === "container") return false;
                 if (DISPLAY_COMPONENTS.has(node.component)) return false;
+                if (node?.default_source_ui?.mode !== "fixed") return false;
                 return !["switch", "file", "checkbox"].includes(node.component);
             };
 
@@ -1718,10 +1861,6 @@
             };
 
             const validateBeforeSave = () => {
-                if (!flowId) {
-                    ElMessage.error("缺少流程编号，无法保存表单库");
-                    return false;
-                }
                 if (!forms.length) {
                     ElMessage.error("请至少创建一张表单");
                     return false;
@@ -1768,7 +1907,10 @@
                 }
 
                 if (TEXT_COMPONENTS.has(node.component)) {
-                    payload.content = String(node.content || node.label || "").trim();
+                    if (node?.default_source_ui?.mode === "fixed") {
+                        payload.content = String(node.content || node.label || "").trim();
+                    }
+                    Object.assign(payload, buildDefaultSourcePayload(node));
                     payload.text_align = String(node.text_align || "left");
                     payload.text_v_align = String(node.text_v_align || "top");
                     payload.text_min_height = Math.max(0, Number(node.text_min_height || 0));
@@ -1787,38 +1929,12 @@
                 payload.required = !!node.required;
 
                 if (node.placeholder) payload.placeholder = node.placeholder;
-                if (node.default !== "" && node.default !== null && node.default !== undefined) {
+                if (node?.default_source_ui?.mode === "fixed" && node.default !== "" && node.default !== null && node.default !== undefined) {
                     payload.default = node.default;
-                }
-                const defaultConfig = {
-                    source_type: String(node?.default_config?.source_type || "literal").toLowerCase(),
-                    value: node?.default_config?.value,
-                    context_path: node?.default_config?.context_path || "",
-                    enum_code: node?.default_config?.enum_code || "",
-                    db_source_code: node?.default_config?.db_source_code || "",
-                    fallback_value: node?.default_config?.fallback_value,
-                };
-                if (
-                    defaultConfig.source_type !== "literal"
-                    || defaultConfig.context_path
-                    || defaultConfig.enum_code
-                    || defaultConfig.db_source_code
-                    || (defaultConfig.fallback_value !== "" && defaultConfig.fallback_value !== undefined && defaultConfig.fallback_value !== null)
-                ) {
-                    payload.default_config = defaultConfig;
                 }
                 Object.assign(payload, buildDefaultSourcePayload(node));
 
-                const contextBinding = {
-                    read_path: node?.context_binding?.read_path || "",
-                    write_path: node?.context_binding?.write_path || "",
-                    write_mode: ["overwrite", "merge_if_absent"].includes(node?.context_binding?.write_mode)
-                        ? node.context_binding.write_mode
-                        : "overwrite",
-                };
-                if (contextBinding.read_path || contextBinding.write_path || contextBinding.write_mode !== "overwrite") {
-                    payload.context_binding = contextBinding;
-                }
+                Object.assign(payload, buildContextBindingPayload(node));
 
                 if (node.component === "textarea" && node.rows) {
                     payload.rows = node.rows;
@@ -1839,26 +1955,6 @@
                             value: option.value,
                         }));
                     }
-                    const optionsConfig = {
-                        source_type: String(node?.options_config?.source_type || "manual").toLowerCase(),
-                        context_path: node?.options_config?.context_path || "",
-                        enum_code: node?.options_config?.enum_code || "",
-                        db_source_code: node?.options_config?.db_source_code || "",
-                        label_key: node?.options_config?.label_key || "label",
-                        value_key: node?.options_config?.value_key || "value",
-                        fallback_to_manual: !!node?.options_config?.fallback_to_manual,
-                    };
-                    if (
-                        optionsConfig.source_type !== "manual"
-                        || optionsConfig.context_path
-                        || optionsConfig.enum_code
-                        || optionsConfig.db_source_code
-                        || optionsConfig.label_key !== "label"
-                        || optionsConfig.value_key !== "value"
-                        || !optionsConfig.fallback_to_manual
-                    ) {
-                        payload.options_config = optionsConfig;
-                    }
                     Object.assign(payload, buildOptionsSourcePayload(node));
                 }
                 return payload;
@@ -1868,13 +1964,13 @@
                 forms.map((form, index) => ({
                     code: String(form.code || "").trim(),
                     name: String(form.name || "").trim(),
+                    group_name: String(form.group_name || "").trim(),
                     description: String(form.description || "").trim(),
                     order: index,
                     fields: (form.nodes || []).map((node, nodeIndex) => buildPayloadNode(node, nodeIndex)),
                 }));
 
             const buildJsonPayload = () => ({
-                flow_id: flowId,
                 forms: buildPayloadForms(),
             });
 
@@ -1961,11 +2057,15 @@
             };
 
             const loadFormLibrary = async () => {
-                const res = await request.get("/flow_engine/form_library_detail", {
-                    flow_id: flowId,
-                });
+                const res = await request.get("/flow_engine/form_global_detail");
                 const rawForms = Array.isArray(res?.forms) ? res.forms : [];
                 setFormsFromRaw(rawForms, 0);
+                if (selectedFormCodeFromQuery) {
+                    const idx = forms.findIndex((item) => String(item.code || "").trim() === selectedFormCodeFromQuery);
+                    if (idx >= 0) {
+                        setActiveForm(idx);
+                    }
+                }
             };
 
             const saveFormLibrary = async () => {
@@ -1974,8 +2074,7 @@
                 pageData.saving = true;
                 try {
                     const payloadForms = buildPayloadForms();
-                    const res = await request.post("/flow_engine/form_library_save", {
-                        flow_id: flowId,
+                    const res = await request.post("/flow_engine/form_global_save", {
                         forms: payloadForms,
                     });
 
@@ -2126,7 +2225,6 @@
             };
 
             const restoreLocalDraft = async () => {
-                if (!flowId) return;
                 let draft = null;
                 try {
                     draft = JSON.parse(localStorage.getItem(getDraftStorageKey()) || "null");
@@ -2187,11 +2285,14 @@
             };
 
             const goBack = () => {
-                window.location.href = previousUrl || "/admin/flow_engine/definition/list/";
+                window.location.href = previousUrl || "/admin/flow_engine/form/list/";
             };
 
             const gotoFlowDesigner = () => {
-                if (!flowId) return;
+                if (!flowId) {
+                    window.location.href = "/admin/flow_engine/definition/list/";
+                    return;
+                }
                 window.location.href = `/admin/flow_engine/definition/${flowId}/change/`;
             };
 
@@ -2217,10 +2318,14 @@
             });
 
             onMounted(async () => {
+                await fetchFieldDataSourceMetadata();
                 paletteState.tab = "all";
                 paletteState.keyword = "";
                 try {
                     await loadFormLibrary();
+                    if (shouldCreateFormFromQuery && !forms.length) {
+                        addForm();
+                    }
                     pushHistorySnapshot();
                     pageData.pageLoading = false;
                     await restoreLocalDraft();
@@ -2273,6 +2378,8 @@
                 onContainerDragOver,
                 onContainerDragLeave,
                 isContainerDropActive,
+                onNodeDragEnter,
+                isNodeDropTarget,
                 addComponentByClick,
                 selectNode,
                 moveNode,
@@ -2281,16 +2388,24 @@
                 addOption,
                 moveOption,
                 removeOption,
-                defaultSourceExamples,
-                optionSourceExamples,
-                formatDataSourceExample,
                 fieldDataSourceMetadata,
                 getDefaultFieldDataSources,
                 getOptionsFieldDataSources,
+                hasCompatibleFieldDataSources,
+                getCurrentFieldDataSourceOptions,
+                getCurrentFieldDataSourcePagedOptions,
+                getFieldDataSourceKeyLabel,
                 getSourceParamsSchema,
+                fieldDataSourcePicker,
                 onFieldDataSourceChange,
-                showLegacyDefaultConfigMode,
-                showLegacyOptionsConfigMode,
+                openFieldDataSourcePicker,
+                closeFieldDataSourcePicker,
+                chooseFieldDataSource,
+                applyFieldDataSourceSelection,
+                clearFieldDataSourceSelection,
+                clearFieldDataSource,
+                onFieldDataSourcePickerKeywordChange,
+                buildFieldDataSourcePlaceholder,
                 usesManualOptions,
                 containerStyle,
                 showPlaceholder,
@@ -2315,3 +2430,4 @@
         },
     });
 }
+

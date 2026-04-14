@@ -25,6 +25,7 @@ def normalize_form_library(forms: list[dict[str, Any]] | None) -> list[dict[str,
         existed_codes.add(code)
 
         name = str(raw.get("name") or "").strip() or code
+        group_name = str(raw.get("group_name") or raw.get("group") or "").strip()
         description = str(raw.get("description") or "").strip()
 
         fields = raw.get("fields")
@@ -40,6 +41,7 @@ def normalize_form_library(forms: list[dict[str, Any]] | None) -> list[dict[str,
             {
                 "code": code,
                 "name": name,
+                "group_name": group_name,
                 "description": description,
                 "fields": deepcopy(fields),
                 "order": order,
@@ -88,3 +90,40 @@ def inject_form_library(form_schema: Any, forms: list[dict[str, Any]] | None) ->
         schema[FORM_LIBRARY_KEY] = normalized_forms
     return schema if schema else None
 
+
+def resolve_form_ref_definition(ref_code: str, node=None) -> dict[str, Any] | None:
+    code = str(ref_code or "").strip()
+    if not code:
+        return None
+
+    from flow_engine.models import FlowForm  # Local import to avoid circular imports.
+
+    form_obj = FlowForm.objects.filter(code=code).first()
+    if form_obj:
+        schema = form_obj.form_schema if isinstance(form_obj.form_schema, dict) else {}
+        fields = schema.get("fields") if isinstance(schema.get("fields"), list) else []
+        return {
+            "code": form_obj.code,
+            "name": form_obj.name,
+            "fields": deepcopy(fields),
+        }
+
+    related_nodes = []
+    flow_version = getattr(node, "flow_version", None)
+    if flow_version is not None:
+        related_nodes = list(flow_version.nodes.all())
+    elif getattr(node, "flow_id", None):
+        related_nodes = list(node.flow.nodes.all())
+
+    for item in related_nodes:
+        schema = getattr(item, "form_schema", None)
+        forms = extract_form_library(schema)
+        matched = next((form for form in forms if str(form.get("code") or "").strip() == code), None)
+        if matched:
+            return {
+                "code": code,
+                "name": str(matched.get("name") or code).strip(),
+                "fields": deepcopy(matched.get("fields") or []),
+            }
+
+    return None

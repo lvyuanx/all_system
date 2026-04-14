@@ -460,6 +460,14 @@ IMAGE_SEARCH_GROUP = merge_config("IMAGE_SEARCH_GROUP", "default")
 # endregion ****************** 图片搜索服务 end ********************* #
 
 
+# region ******************** 流程引擎字段数据源 start ******************** #
+FLOW_ENGINE_FIELD_DATA_SOURCES = [
+    "flow_engine.data_sources.order_status.OrderStatusChoicesDataSource",
+    "flow_engine.data_sources.site_address.SiteAddressSelectDataSource",
+]
+# endregion ****************** 流程引擎字段数据源 end ********************* #
+
+
 # region ******************** Redis 缓存配置 start ******************** #
 REDIS_HOST = merge_config("REDIS_HOST", "47.119.156.247")
 REDIS_PORT = merge_config("REDIS_PORT", "19376")

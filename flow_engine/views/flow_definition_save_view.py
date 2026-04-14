@@ -13,6 +13,7 @@ from core.exceptions.base_exceptions import BusinessException
 
 from flow_engine.models import (
     FlowDefinition,
+    FlowForm,
     FlowNode,
     FlowTransition,
     FlowNodeGroup,
@@ -20,11 +21,9 @@ from flow_engine.models import (
 )
 from flow_engine.enums import NodeTypeChoices
 from flow_engine.utils.form_library_util import (
-    inject_form_library,
-    normalize_form_library,
-    strip_form_library,
     FORM_REF_CODE_KEY,
     FORM_REF_NAME_KEY,
+    strip_form_library,
 )
 from . import schemas
 
@@ -72,39 +71,24 @@ def save_flow_definition(data: schemas.FlowDefinitionSaveSchema) -> dict:
         FlowNodeGroup.objects.filter(node__flow=flow_def).delete()
         FlowNode.objects.filter(flow=flow_def).delete()
 
-        library_host_code = ""
-        for node in data.nodes:
-            if node.node_type == NodeTypeChoices.START:
-                library_host_code = node.code
-                break
-        if not library_host_code and data.nodes:
-            library_host_code = data.nodes[0].code
-
-        form_library = normalize_form_library(
-            [
-                item.dict() if hasattr(item, "dict") else item
-                for item in (data.form_library or [])
-            ]
-        )
-        form_library_map = {item["code"]: item for item in form_library}
+        form_name_map = {
+            item.code: item.name
+            for item in FlowForm.objects.all().only("code", "name")
+        }
 
         node_map = {}
         for idx, node in enumerate(data.nodes):
             node_schema = strip_form_library(node.form_schema)
             if isinstance(node_schema, dict):
                 ref_code = node_schema.get(FORM_REF_CODE_KEY)
-                if ref_code and ref_code in form_library_map:
+                if ref_code:
                     ui_state = node_schema.get("__ui")
-                    matched = form_library_map[ref_code]
                     node_schema = {
-                        "fields": deepcopy(matched.get("fields") or []),
-                        FORM_REF_CODE_KEY: matched["code"],
-                        FORM_REF_NAME_KEY: matched.get("name") or matched["code"],
+                        FORM_REF_CODE_KEY: ref_code,
+                        FORM_REF_NAME_KEY: form_name_map.get(ref_code) or ref_code,
                     }
                     if ui_state:
                         node_schema["__ui"] = ui_state
-            if node.code == library_host_code:
-                node_schema = inject_form_library(node_schema, form_library)
 
             node_obj = FlowNode.objects.create(
                 flow=flow_def,

@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -c ':*)",
+      "Bash(npx vitest:*)",
+      "Bash(python manage.py test flow_engine --verbosity=2)",
+      "Bash(node --test flow_engine/tests_field_source_designer.test.mjs)",
+      "Bash(python manage.py test flow_engine)",
+      "Bash(node --experimental-vm-modules node_modules/.bin/jest flow_engine/tests_field_source_designer.test.mjs)",
+      "Bash(grep -E \"\\\\.py$|^d\")"
+    ]
+  }
+}

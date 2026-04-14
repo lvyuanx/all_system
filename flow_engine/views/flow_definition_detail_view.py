@@ -9,16 +9,12 @@ from core.ninja_extra.api_extra import BaseApi, HttpRequest, Query
 from core.exceptions.base_exceptions import BusinessException
 
 from flow_engine.models import FlowDefinition, FlowNode, FlowTransition
-from flow_engine.utils.form_library_util import (
-    extract_form_library_from_nodes,
-    strip_form_library,
-)
+from flow_engine.utils.form_library_util import strip_form_library
 from . import schemas
 
 
 def build_flow_definition_detail(flow_def: FlowDefinition) -> schemas.FlowDefinitionDetailSchema:
     node_rows = list(FlowNode.objects.filter(flow=flow_def).order_by("order", "id"))
-    form_library = extract_form_library_from_nodes(node_rows)
     nodes = []
     for node in node_rows:
         groups = []
@@ -71,7 +67,7 @@ def build_flow_definition_detail(flow_def: FlowDefinition) -> schemas.FlowDefini
         is_active=flow_def.is_active,
         nodes=nodes,
         transitions=transitions,
-        form_library=form_library,
+        form_library=[],
     )
 
 

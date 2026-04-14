@@ -13,8 +13,12 @@ from .views import (
     flow_perm_pack_list_view,
     flow_user_list_view,
     flow_form_library_detail_view,
+    flow_form_library_global_list_view,
     flow_form_library_save_view,
+    flow_form_global_detail_view,
+    flow_form_global_save_view,
     flow_form_runtime_resolve_view,
+    field_data_source_metadata_view,
 )
 
 apis = {
@@ -33,5 +37,9 @@ apis = {
         ("A11", "form_library_detail", flow_form_library_detail_view.View, "flow form library detail"),
         ("A12", "form_library_save", flow_form_library_save_view.View, "save flow form library"),
         ("A13", "form_runtime_resolve", flow_form_runtime_resolve_view.View, "resolve runtime form data"),
+        ("A14", "field_data_source_metadata", field_data_source_metadata_view.View, "field data source metadata"),
+        ("A15", "form_library_global_list", flow_form_library_global_list_view.View, "global form library list"),
+        ("A16", "form_global_detail", flow_form_global_detail_view.View, "global form detail"),
+        ("A17", "form_global_save", flow_form_global_save_view.View, "global form save"),
     ],
 }
