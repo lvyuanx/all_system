@@ -266,6 +266,53 @@
         background: #fff;
     }
 
+    .fd-signature {
+        position: relative;
+        width: 100%;
+        border: 1px solid #d7deea;
+        border-radius: 8px;
+        background: #fff;
+        overflow: hidden;
+    }
+
+    .fd-signature.is-disabled {
+        background: #f8fafc;
+        opacity: 0.75;
+    }
+
+    .fd-signature-canvas {
+        display: block;
+        width: 100%;
+        height: 160px;
+        touch-action: none;
+        cursor: crosshair;
+        background: #fff;
+    }
+
+    .fd-signature.is-disabled .fd-signature-canvas {
+        cursor: not-allowed;
+    }
+
+    .fd-signature-placeholder {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #94a3b8;
+        font-size: 12px;
+        pointer-events: none;
+    }
+
+    .fd-signature-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+        padding: 8px;
+        border-top: 1px solid #eef2f7;
+        background: #f8fafc;
+    }
+
     .fd-preview-heading {
         margin: 0;
         line-height: 1.35;

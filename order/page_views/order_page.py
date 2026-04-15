@@ -1,4 +1,5 @@
 import json
+import re
 
 from django.http import Http404
 from django.shortcuts import render
@@ -10,6 +11,20 @@ from flow_engine.models import FlowLog, FlowTask
 from flow_engine.enums import FlowStatusChoices
 from flow_engine.utils.form_runtime_util import resolve_form_runtime
 from flow_engine.utils.form_library_util import FORM_REF_CODE_KEY, FORM_REF_NAME_KEY, resolve_form_ref_definition
+
+SIGNATURE_DATA_URL_RE = re.compile(
+    r"^data:image/(?:png|jpeg|jpg|webp|gif);base64,[a-zA-Z0-9+/=\s]+$",
+    re.IGNORECASE,
+)
+
+
+def _is_signature_data_url(value) -> bool:
+    if not isinstance(value, str):
+        return False
+    candidate = value.strip()
+    if not candidate:
+        return False
+    return bool(SIGNATURE_DATA_URL_RE.match(candidate))
 
 
 def _get_prev_url(request):
@@ -597,6 +612,7 @@ def order_flow_context(request, pk: int):
         key_str = str(key)
         raw_value = flow_context.get(key)
         is_complex = isinstance(raw_value, (dict, list))
+        is_signature = _is_signature_data_url(raw_value)
         if is_complex:
             display_value = json.dumps(raw_value, ensure_ascii=False, indent=2)
         else:
@@ -607,6 +623,8 @@ def order_flow_context(request, pk: int):
                 "name": field_name_map.get(key_str, key_str),
                 "value": display_value,
                 "is_complex": is_complex,
+                "is_signature": is_signature,
+                "signature_src": display_value if is_signature else "",
             }
         )
 

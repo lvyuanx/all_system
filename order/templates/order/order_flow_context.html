@@ -91,6 +91,26 @@
         padding: 8px;
     }
 
+    .flow-context-signature-wrap {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        max-width: 100%;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        background: #ffffff;
+        padding: 8px;
+    }
+
+    .flow-context-signature {
+        display: block;
+        max-width: min(360px, 100%);
+        max-height: 180px;
+        border-radius: 6px;
+        object-fit: contain;
+        background: #ffffff;
+    }
+
     .flow-context-empty {
         border: 1px dashed #cbd5e1;
         border-radius: 10px;
@@ -153,7 +173,11 @@
                     <td>{{ row.key }}</td>
                     <td>{{ row.name|default:"--" }}</td>
                     <td>
-                        {% if row.is_complex %}
+                        {% if row.is_signature %}
+                        <div class="flow-context-signature-wrap">
+                            <img class="flow-context-signature" src="{{ row.signature_src }}" alt="签名图像" />
+                        </div>
+                        {% elif row.is_complex %}
                         <pre class="flow-context-pre">{{ row.value }}</pre>
                         {% else %}
                         {{ row.value|default:"--" }}

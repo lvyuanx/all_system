@@ -1,4 +1,6 @@
-﻿export function mountFlowFormDesigner(options = {}) {
+import { createSignatureFieldComponent } from "./signature_field.js";
+
+export function mountFlowFormDesigner(options = {}) {
     const { reactive, ref, computed, onMounted, onBeforeUnmount, inject, watch } = Vue;
 
     const flowId = Number(options.flowId || 0);
@@ -82,6 +84,8 @@
         const custom = String(node?.css_text || "").trim();
         return custom ? `${base};${custom}` : base;
     };
+
+    const SignatureField = createSignatureFieldComponent();
 
     const ComponentPreview = {
         name: "ComponentPreview",
@@ -179,6 +183,10 @@
 
                 <div v-else-if="node.component === 'file'" class="fd-preview-text" :style="node.css_text || ''">
                     文件上传控件
+                </div>
+
+                <div v-else-if="node.component === 'signature'" class="fd-preview-text" :style="node.css_text || ''">
+                    手写签名控件
                 </div>
 
                 <el-radio-group
@@ -530,6 +538,14 @@
                         :disabled="!!node.disabled"
                         @change="onFileChange" />
 
+                    <signature-field
+                        v-else-if="node.component === 'signature'"
+                        v-model="formData[node.key]"
+                        :placeholder="node.placeholder || '请在此处手写签名'"
+                        :disabled="!!node.disabled"
+                        :style="node.css_text || ''"
+                        @change="onFieldChange($event)"></signature-field>
+
                     <el-radio-group
                         v-else-if="node.component === 'radio'"
                         v-model="formData[node.key]"
@@ -609,6 +625,7 @@
     };
     PreviewFieldRender.components = {
         PreviewFieldRender,
+        SignatureField,
     };
 
     window.createApp({
@@ -617,6 +634,7 @@
             ComponentPreview,
             DesignerNodeItem,
             PreviewFieldRender,
+            SignatureField,
         },
         setup() {
             const ElMessage = inject("ElMessage");
@@ -653,6 +671,7 @@
                         { value: "textarea", label: "多行文本", thumb: "TXT" },
                         { value: "number", label: "数字", thumb: "123" },
                         { value: "file", label: "文件上传", thumb: "FILE" },
+                        { value: "signature", label: "手写签名", thumb: "签" },
                     ],
                 },
                 {
@@ -708,6 +727,9 @@
                 integer: "number",
                 float: "number",
                 decimal: "number",
+                sign: "signature",
+                signpad: "signature",
+                signature_pad: "signature",
             };
 
             const forms = reactive([]);
@@ -1782,14 +1804,14 @@
             const showPlaceholder = (node) => {
                 if (!node || node.component === "container") return false;
                 if (DISPLAY_COMPONENTS.has(node.component)) return false;
-                return !["switch", "checkbox", "radio", "file"].includes(node.component);
+                return !["switch", "checkbox", "radio", "file", "signature"].includes(node.component);
             };
 
             const showDefaultField = (node) => {
                 if (!node || node.component === "container") return false;
                 if (DISPLAY_COMPONENTS.has(node.component)) return false;
                 if (node?.default_source_ui?.mode !== "fixed") return false;
-                return !["switch", "file", "checkbox"].includes(node.component);
+                return !["switch", "file", "checkbox", "signature"].includes(node.component);
             };
 
             const isTextComponent = (node) => !!node && TEXT_COMPONENTS.has(node.component);
@@ -2576,4 +2598,3 @@
         },
     });
 }
-

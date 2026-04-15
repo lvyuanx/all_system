@@ -628,6 +628,53 @@
         background: var(--wf-panel);
     }
 
+    .fd-signature {
+        position: relative;
+        width: 100%;
+        border: 1px solid var(--wf-border);
+        border-radius: var(--wf-radius-sm);
+        background: var(--wf-panel);
+        overflow: hidden;
+    }
+
+    .fd-signature.is-disabled {
+        opacity: 0.75;
+        background: var(--wf-muted-light);
+    }
+
+    .fd-signature-canvas {
+        display: block;
+        width: 100%;
+        height: 160px;
+        touch-action: none;
+        cursor: crosshair;
+        background: var(--wf-panel);
+    }
+
+    .fd-signature.is-disabled .fd-signature-canvas {
+        cursor: not-allowed;
+    }
+
+    .fd-signature-placeholder {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--wf-muted);
+        font-size: 12px;
+        pointer-events: none;
+    }
+
+    .fd-signature-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+        padding: 8px;
+        border-top: 1px solid var(--wf-border-light);
+        background: var(--wf-muted-light);
+    }
+
     /* 响应式调整 */
     @media (max-width: 768px) {
         .workflow-shell {
@@ -984,6 +1031,8 @@
 
 {% block extra_js %}
 <script type="module">
+    import { createSignatureFieldComponent } from "{% static 'flow_engine/js/signature_field.js' %}?v=20260414-01";
+
     const TEXT_COMPONENTS = new Set(["title_h1", "title_h2", "title_h3", "title_h4", "title_h5", "paragraph"]);
     const VARIABLE_COMPONENTS = new Set(["var_username", "var_phone", "var_full_name"]);
     const DISPLAY_COMPONENTS = new Set(["placeholder", ...TEXT_COMPONENTS, ...VARIABLE_COMPONENTS]);
@@ -992,6 +1041,7 @@
         var_phone: { key: "phone", label: "手机号" },
         var_full_name: { key: "full_name", label: "姓名" },
     };
+    const SignatureField = createSignatureFieldComponent();
 
     const PreviewFieldRender = {
         name: "PreviewFieldRender",
@@ -1171,6 +1221,14 @@
                         :disabled="!!node.disabled"
                         @change="onFileChange" />
 
+                    <signature-field
+                        v-else-if="node.component === 'signature'"
+                        v-model="formData[node.key]"
+                        :placeholder="node.placeholder || '请在此处手写签名'"
+                        :disabled="!!node.disabled"
+                        :style="node.css_text || node.cssText || ''"
+                        @change="onFieldChange($event)"></signature-field>
+
                     <el-radio-group
                         v-else-if="node.component === 'radio'"
                         v-model="formData[node.key]"
@@ -1250,11 +1308,13 @@
     };
     PreviewFieldRender.components = {
         PreviewFieldRender,
+        SignatureField,
     };
 
     window.initVueApp({
         components: {
             PreviewFieldRender,
+            SignatureField,
         },
         data() {
             return {
@@ -1402,6 +1462,10 @@
                     textarea: "textarea",
                     file: "file",
                     upload: "file",
+                    signature: "signature",
+                    sign: "signature",
+                    signpad: "signature",
+                    signature_pad: "signature",
                     radio: "radio",
                     checkbox: "checkbox",
                     number: "number",
@@ -1580,7 +1644,7 @@
             },
             resolveWorkflowFieldStyle(field) {
                 if (field?.cssText) return field.cssText;
-                if (["number", "select", "date", "datetime"].includes(field?.component)) {
+                if (["number", "select", "date", "datetime", "signature"].includes(field?.component)) {
                     return "width: 100%;";
                 }
                 return "";
