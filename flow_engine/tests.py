@@ -997,7 +997,7 @@ class BuiltinDataSourceExamplesTests(SimpleTestCase):
         self.assertNotIn("手工维护", content)
 
     def test_form_designer_options_source_only_shows_fixed_options_and_data_source(self):
-        content = get_template("flow_engine/form_designer.html").template.source
+        content = get_template("flow_engine/form_designer/index.html").template.source
 
         self.assertIn("选项来源", content)
         self.assertIn("固定选项", content)
@@ -1068,7 +1068,7 @@ class BuiltinDataSourceExamplesTests(SimpleTestCase):
 
         args, _ = mocked_render.call_args
         context = args[2]
-        self.assertEqual(args[1], "flow_engine/form_designer.html")
+        self.assertEqual(args[1], "flow_engine/form_designer/index.html")
         self.assertIn("builtin_data_source_examples", context)
         self.assertIn("field_data_source_metadata", context)
         codes = {item["code"] for item in context["builtin_data_source_examples"]}

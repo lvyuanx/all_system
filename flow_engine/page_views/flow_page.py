@@ -47,7 +47,7 @@ def flow_form_designer(request, fid: int):
         flow_id=fid,
         previous_url=f"/admin/flow_engine/definition/{fid}/change/",
     )
-    return render(request, "flow_engine/form_designer.html", context)
+    return render(request, "flow_engine/form_designer/index.html", context)
 
 
 def flow_form_global_designer(request):
@@ -56,7 +56,7 @@ def flow_form_global_designer(request):
         flow_id="",
         previous_url="/admin/flow_engine/form/list/",
     )
-    return render(request, "flow_engine/form_designer.html", context)
+    return render(request, "flow_engine/form_designer/index.html", context)
 
 
 def flow_form_list(request):

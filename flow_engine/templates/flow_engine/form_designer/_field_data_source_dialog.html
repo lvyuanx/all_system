@@ -1,0 +1,64 @@
+<el-dialog v-model="fieldDataSourcePicker.visible" :title="fieldDataSourcePicker.title" width="640px">
+    <div class="fd-source-modal">
+        <div class="fd-source-modal-current">
+            当前选择：[[ getFieldDataSourceKeyLabel(fieldDataSourcePicker.selectedKey, fieldDataSourcePicker.target, selectedNode) || '未选择' ]]
+        </div>
+        <el-input
+            v-model="fieldDataSourcePicker.keyword"
+            @input="onFieldDataSourcePickerKeywordChange"
+            clearable
+            placeholder="搜索数据源类名称、编码或数据类型"></el-input>
+        <div class="fd-source-modal-summary">
+            共 [[ getCurrentFieldDataSourceOptions().length ]] 条结果
+        </div>
+        <div class="fd-source-modal-list">
+            <div class="fd-source-table-wrap">
+                <table class="fd-source-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 26%;">名称</th>
+                            <th style="width: 28%;">编码</th>
+                            <th style="width: 16%;">数据类型</th>
+                            <th>支持组件</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr
+                            v-for="item in getCurrentFieldDataSourcePagedOptions()"
+                            :key="`picker-row-${fieldDataSourcePicker.target}-${item.key}`"
+                            :class="['clickable', { active: fieldDataSourcePicker.selectedKey === item.key }]"
+                            @click="chooseFieldDataSource(item)"
+                            @dblclick="chooseFieldDataSource(item); applyFieldDataSourceSelection()">
+                            <td>
+                                <div class="fd-source-modal-title">
+                                    <span>[[ item.label ]]</span>
+                                    <span v-if="fieldDataSourcePicker.selectedKey === item.key" class="fd-source-selected-tag">当前已选</span>
+                                </div>
+                            </td>
+                            <td><span class="fd-source-modal-code">[[ item.key ]]</span></td>
+                            <td>[[ item.data_type || '-' ]]</td>
+                            <td>[[ (item.support_components || []).join('、') || '全部' ]]</td>
+                        </tr>
+                        <tr v-if="!getCurrentFieldDataSourceOptions().length">
+                            <td colspan="4" class="fd-source-modal-empty">没有匹配的数据源类</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div v-if="getCurrentFieldDataSourceOptions().length" class="fd-source-modal-pagination">
+            <el-pagination
+                background
+                layout="total, prev, pager, next"
+                :total="getCurrentFieldDataSourceOptions().length"
+                :page-size="fieldDataSourcePicker.pageSize"
+                :current-page="fieldDataSourcePicker.page"
+                @current-change="fieldDataSourcePicker.page = $event" />
+        </div>
+    </div>
+    <template #footer>
+        <el-button @click="clearFieldDataSourceSelection">清空选择</el-button>
+        <el-button @click="closeFieldDataSourcePicker">关闭</el-button>
+        <el-button type="primary" :disabled="!fieldDataSourcePicker.selectedKey" @click="applyFieldDataSourceSelection">确定</el-button>
+    </template>
+</el-dialog>

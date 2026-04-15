@@ -1,0 +1,12 @@
+<el-dialog v-model="jsonDialog.visible" title="表单 JSON" width="68%">
+    <el-input
+        v-model="jsonDialog.content"
+        type="textarea"
+        class="fd-json"
+        :autosize="{ minRows: 16, maxRows: 24 }"
+        placeholder='{"flow_id": 1, "forms": []}' />
+    <div class="fd-dialog-actions">
+        <el-button @click="copyJsonText(jsonDialog.content)">复制</el-button>
+        <el-button type="primary" @click="applyJsonContent">应用 JSON</el-button>
+    </div>
+</el-dialog>

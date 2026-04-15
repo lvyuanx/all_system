@@ -1,0 +1,44 @@
+<el-dialog v-model="previewDialog.visible" title="表单预览" width="82%" top="5vh">
+    <div class="fd-preview-form">
+        <div class="fd-preview-context">
+            <div class="fd-preview-context-head">
+                <div>预览上下文（JSON）</div>
+                <el-button size="small" @click="applyPreviewContext">应用上下文</el-button>
+            </div>
+            <el-input
+                v-model="previewDialog.contextText"
+                type="textarea"
+                :rows="4"
+                placeholder="例如：{ &quot;form&quot;: { &quot;node&quot;: { &quot;field&quot;: &quot;value&quot; } } }"></el-input>
+        </div>
+        <el-form
+            ref="previewFormRef"
+            :model="previewDialog.formData"
+            :rules="previewDialog.rules"
+            label-width="100px"
+            v-if="previewHasNodes">
+            <preview-field-render
+                v-for="node in previewNodes"
+                :key="`preview-${node.id}`"
+                :node="node"
+                :form-data="previewDialog.formData"
+                :component-label="componentLabel"
+                :container-style="containerStyle"
+                :run-script="runFieldScript"
+                @file-change="onPreviewFileChange"></preview-field-render>
+        </el-form>
+        <div class="fd-preview-actions" v-if="previewHasNodes">
+            <el-button @click="resetPreviewForm">重置</el-button>
+            <el-button type="primary" @click="submitPreviewForm">提交预览</el-button>
+        </div>
+        <div class="fd-preview-result" v-if="previewDialog.submittedJson">
+            <el-input
+                :model-value="previewDialog.submittedJson"
+                type="textarea"
+                class="fd-json"
+                :autosize="{ minRows: 8, maxRows: 16 }"
+                readonly />
+        </div>
+        <div v-if="!previewHasNodes" class="fd-empty-text">暂无可预览内容。</div>
+    </div>
+</el-dialog>
