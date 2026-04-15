@@ -5,6 +5,15 @@ const STROKE_WIDTH = 2;
 
 const normalizeString = (value) => (typeof value === "string" ? value : "");
 
+const normalizeModelImageSource = (value) => {
+    if (typeof value === "string") return value.trim();
+    if (!value || typeof value !== "object") return "";
+    const candidate = typeof value.url === "string"
+        ? value.url
+        : (typeof value.path === "string" ? value.path : "");
+    return candidate.trim();
+};
+
 const clampCanvasSize = (value, fallback) => {
     const n = Number(value);
     if (!Number.isFinite(n) || n <= 0) return fallback;
@@ -16,7 +25,7 @@ export function createSignatureFieldComponent() {
         name: "SignatureField",
         props: {
             modelValue: {
-                type: String,
+                type: [String, Object],
                 default: "",
             },
             disabled: {
@@ -106,8 +115,8 @@ export function createSignatureFieldComponent() {
                 const ratio = Math.max(window.devicePixelRatio || 1, 1);
 
                 const restoreValue = initial
-                    ? normalizeString(this.modelValue)
-                    : (this.hasDrawn ? this.exportImage() : normalizeString(this.modelValue));
+                    ? normalizeModelImageSource(this.modelValue)
+                    : (this.hasDrawn ? this.exportImage() : normalizeModelImageSource(this.modelValue));
 
                 canvas.width = Math.max(1, Math.floor(width * ratio));
                 canvas.height = Math.max(1, Math.floor(height * ratio));
@@ -176,7 +185,7 @@ export function createSignatureFieldComponent() {
                 this.$emit("change", normalized);
             },
             syncFromModel(value) {
-                const normalized = normalizeString(value);
+                const normalized = normalizeModelImageSource(value);
                 if (normalized && normalized === this.lastEmittedValue) {
                     this.lastEmittedValue = "";
                     return;

@@ -1041,6 +1041,9 @@
         var_phone: { key: "phone", label: "手机号" },
         var_full_name: { key: "full_name", label: "姓名" },
     };
+    const WORKFLOW_FILE_UPLOAD_PREFIX = "wf_file__";
+    const WORKFLOW_SIGNATURE_UPLOAD_PREFIX = "wf_signature__";
+    const SIGNATURE_DATA_URL_RE = /^data:image\/(?:png|jpeg|jpg|webp|gif);base64,[a-zA-Z0-9+/=\s]+$/i;
     const SignatureField = createSignatureFieldComponent();
 
     const PreviewFieldRender = {
@@ -1325,6 +1328,10 @@
                     form_data: {},
                     submitting: false,
                 },
+                workflowUploads: {
+                    files: {},
+                    signatures: {},
+                },
                 currentUser: {
                     username: "{{ request.user.username|default:''|escapejs }}",
                     phone: "{{ request.user.phone|default:''|escapejs }}",
@@ -1344,6 +1351,7 @@
         },
         created() {
             this.workflowSchemaFields = this.normalizeWorkflowSchema(this.workflowRawSchema);
+            this.resetWorkflowUploads();
             this.workflowForm.form_data = this.buildWorkflowFormData(
                 this.workflowSchemaFields,
                 this.workflowInitialFormData
@@ -1406,6 +1414,7 @@
                     const normalized = this.normalizeWorkflowSchema(schema);
                     if (normalized.length) {
                         this.workflowSchemaFields = normalized;
+                        this.resetWorkflowUploads();
                         this.workflowForm.form_data = this.buildWorkflowFormData(normalized, formData);
                     }
                 } catch (err) {
@@ -1649,6 +1658,111 @@
                 }
                 return "";
             },
+            resetWorkflowUploads() {
+                this.workflowUploads = {
+                    files: {},
+                    signatures: {},
+                };
+            },
+            cloneWorkflowFormData(source) {
+                const payload = source && typeof source === "object" ? source : {};
+                try {
+                    return JSON.parse(JSON.stringify(payload));
+                } catch {
+                    return { ...payload };
+                }
+            },
+            buildPendingUploadMeta(file) {
+                if (!file || typeof file !== "object") return "";
+                return {
+                    url: "",
+                    name: String(file.name || ""),
+                    stored_name: "",
+                    size: Number(file.size || 0),
+                };
+            },
+            isSignatureDataUrl(value) {
+                if (typeof value !== "string") return false;
+                const candidate = value.trim();
+                if (!candidate) return false;
+                return SIGNATURE_DATA_URL_RE.test(candidate);
+            },
+            signatureDataUrlToFile(value, key) {
+                if (!this.isSignatureDataUrl(value)) return null;
+                const candidate = String(value || "").trim();
+                const match = candidate.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,([a-zA-Z0-9+/=\s]+)$/i);
+                if (!match) return null;
+                const mime = String(match[1] || "image/png").toLowerCase();
+                const payload = String(match[2] || "").replace(/\s+/g, "");
+                if (!payload) return null;
+                try {
+                    const binary = window.atob(payload);
+                    const bytes = new Uint8Array(binary.length);
+                    for (let i = 0; i < binary.length; i += 1) {
+                        bytes[i] = binary.charCodeAt(i);
+                    }
+                    const extMap = {
+                        "image/png": "png",
+                        "image/jpeg": "jpg",
+                        "image/jpg": "jpg",
+                        "image/webp": "webp",
+                        "image/gif": "gif",
+                    };
+                    const ext = extMap[mime] || "png";
+                    const safeKey = String(key || "signature").replace(/[^a-zA-Z0-9_-]/g, "_");
+                    const filename = `${safeKey}-${Date.now()}.${ext}`;
+                    return new File([bytes], filename, { type: mime });
+                } catch (err) {
+                    console.warn("签名数据转换文件失败", err);
+                    return null;
+                }
+            },
+            buildWorkflowApproveRequestPayload() {
+                const payloadData = this.cloneWorkflowFormData(this.workflowForm.form_data);
+                const formData = new FormData();
+                formData.append("order_id", String(this.workflowForm.order_id || ""));
+                formData.append("action", "approve");
+                if (this.workflowForm.task_id !== null && this.workflowForm.task_id !== undefined && String(this.workflowForm.task_id) !== "") {
+                    formData.append("task_id", String(this.workflowForm.task_id));
+                }
+                formData.append("operator_memo", String(this.workflowForm.operator_memo || ""));
+
+                const fields = this.flattenWorkflowFields(this.workflowSchemaFields);
+                for (const field of fields) {
+                    const key = String(field?.key || "").trim();
+                    if (!key) continue;
+                    if (field.component === "file") {
+                        const selectedFiles = Array.isArray(this.workflowUploads?.files?.[key])
+                            ? this.workflowUploads.files[key].filter(Boolean)
+                            : [];
+                        if (selectedFiles.length) {
+                            for (const file of selectedFiles) {
+                                formData.append(`${WORKFLOW_FILE_UPLOAD_PREFIX}${key}`, file, file.name);
+                            }
+                            payloadData[key] = field.multiple
+                                ? selectedFiles.map((file) => this.buildPendingUploadMeta(file))
+                                : this.buildPendingUploadMeta(selectedFiles[0]);
+                        }
+                        continue;
+                    }
+                    if (field.component === "signature") {
+                        let signatureFile = this.workflowUploads?.signatures?.[key] || null;
+                        if (!signatureFile) {
+                            signatureFile = this.signatureDataUrlToFile(payloadData[key], key);
+                        }
+                        if (signatureFile) {
+                            formData.append(`${WORKFLOW_SIGNATURE_UPLOAD_PREFIX}${key}`, signatureFile, signatureFile.name);
+                            payloadData[key] = this.buildPendingUploadMeta(signatureFile);
+                            continue;
+                        }
+                        if (this.isSignatureDataUrl(payloadData[key])) {
+                            payloadData[key] = "";
+                        }
+                    }
+                }
+                formData.append("form_data", JSON.stringify(payloadData));
+                return formData;
+            },
             runWorkflowFieldScript(field, value) {
                 const script = (field?.jsText || field?.js_text || "").trim();
                 if (!script) return;
@@ -1677,20 +1791,38 @@
             },
             onWorkflowPreviewFileChange({ field, files }) {
                 if (!field?.key) return;
-                const values = (files || []).map((file) => file.name);
-                const value = field.multiple ? values : (values[0] || "");
+                const key = String(field.key || "").trim();
+                if (!key) return;
+                const selectedFiles = Array.isArray(files) ? files.filter(Boolean) : [];
+                if (!selectedFiles.length) {
+                    delete this.workflowUploads.files[key];
+                    const emptyValue = field.multiple ? [] : "";
+                    this.workflowForm.form_data[key] = emptyValue;
+                    this.runWorkflowFieldScript(field, emptyValue);
+                    return;
+                }
+                this.workflowUploads.files[key] = selectedFiles;
+                const value = field.multiple
+                    ? selectedFiles.map((file) => this.buildPendingUploadMeta(file))
+                    : this.buildPendingUploadMeta(selectedFiles[0]);
                 this.workflowForm.form_data[field.key] = value;
                 this.runWorkflowFieldScript(field, value);
             },
             onWorkflowFieldChange(field, value) {
                 if (!field?.key) return;
-                this.workflowForm.form_data[field.key] = value;
-                this.runWorkflowFieldScript(field, value);
-            },
-            onWorkflowFileChange(field, evt) {
-                const files = Array.from(evt?.target?.files || []);
-                const values = files.map((file) => file.name);
-                const value = field?.multiple ? values : (values[0] || "");
+                const key = String(field.key || "").trim();
+                if (field.component === "signature" && key) {
+                    if (this.isSignatureDataUrl(value)) {
+                        const signatureFile = this.signatureDataUrlToFile(value, key);
+                        if (signatureFile) {
+                            this.workflowUploads.signatures[key] = signatureFile;
+                        } else {
+                            delete this.workflowUploads.signatures[key];
+                        }
+                    } else {
+                        delete this.workflowUploads.signatures[key];
+                    }
+                }
                 this.workflowForm.form_data[field.key] = value;
                 this.runWorkflowFieldScript(field, value);
             },
@@ -1750,13 +1882,18 @@
                 if (!(await this.validateWorkflowForm(action))) return;
                 this.workflowForm.submitting = true;
                 try {
-                    await request.post("/order/workflow_action", {
-                        order_id: this.workflowForm.order_id,
-                        action,
-                        task_id: this.workflowForm.task_id,
-                        operator_memo: this.workflowForm.operator_memo,
-                        form_data: action === "approve" ? this.workflowForm.form_data : {},
-                    });
+                    if (action === "approve") {
+                        const submitPayload = this.buildWorkflowApproveRequestPayload();
+                        await request.post("/order/workflow_action", submitPayload);
+                    } else {
+                        await request.post("/order/workflow_action", {
+                            order_id: this.workflowForm.order_id,
+                            action,
+                            task_id: this.workflowForm.task_id,
+                            operator_memo: this.workflowForm.operator_memo,
+                            form_data: {},
+                        });
+                    }
                     this.$ElMessage.success(action === "approve" ? "流程处理成功" : "已驳回并退回当前节点");
                     if (window.parent && window.parent !== window) {
                         try {

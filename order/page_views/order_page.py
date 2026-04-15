@@ -4,6 +4,7 @@ import re
 from django.http import Http404
 from django.shortcuts import render
 from django.urls import reverse
+from core.conf import settings
 from core.utils import time_util
 from order.models import Order, OrderCa, OrderStatusChoices, OrderPayStatusChoices, OrderPayMehtodChoices
 from order.machine import OrderStateMachine
@@ -25,6 +26,27 @@ def _is_signature_data_url(value) -> bool:
     if not candidate:
         return False
     return bool(SIGNATURE_DATA_URL_RE.match(candidate))
+
+
+def _extract_signature_src(value) -> str:
+    candidate = ""
+    if isinstance(value, dict):
+        candidate = str(value.get("url") or "").strip()
+    elif isinstance(value, str):
+        candidate = value.strip()
+    if not candidate:
+        return ""
+    if _is_signature_data_url(candidate):
+        return candidate
+    media_prefix = str(getattr(settings, "MEDIA_URL", "/media/") or "/media/")
+    if not media_prefix.startswith("/"):
+        media_prefix = f"/{media_prefix}"
+    media_prefix = media_prefix.rstrip("/")
+    if candidate.startswith(f"{media_prefix}/") or candidate == media_prefix:
+        return candidate
+    if candidate.startswith("http://") or candidate.startswith("https://"):
+        return candidate
+    return ""
 
 
 def _get_prev_url(request):
@@ -612,7 +634,8 @@ def order_flow_context(request, pk: int):
         key_str = str(key)
         raw_value = flow_context.get(key)
         is_complex = isinstance(raw_value, (dict, list))
-        is_signature = _is_signature_data_url(raw_value)
+        signature_src = _extract_signature_src(raw_value)
+        is_signature = bool(signature_src)
         if is_complex:
             display_value = json.dumps(raw_value, ensure_ascii=False, indent=2)
         else:
@@ -624,7 +647,7 @@ def order_flow_context(request, pk: int):
                 "value": display_value,
                 "is_complex": is_complex,
                 "is_signature": is_signature,
-                "signature_src": display_value if is_signature else "",
+                "signature_src": signature_src,
             }
         )
 
