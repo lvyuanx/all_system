@@ -14,6 +14,8 @@ const COMPONENT_VALUE_TYPES = {
     title_h4: "text",
     title_h5: "text",
     paragraph: "text",
+    section_header: "text",
+    card_block: "text",
     select: "options",
     radio: "options",
     checkbox: "options",

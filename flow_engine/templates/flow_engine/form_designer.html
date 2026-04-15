@@ -357,6 +357,67 @@
         font-size: 13px;
     }
 
+    .fd-preview-divider {
+        border: 0;
+        border-top: 1px solid #d7deea;
+        margin: 12px 0;
+    }
+
+    .fd-preview-spacer {
+        width: 100%;
+        min-height: 1px;
+        border-radius: 6px;
+        background: repeating-linear-gradient(
+            -45deg,
+            #f8faff,
+            #f8faff 8px,
+            #f2f6ff 8px,
+            #f2f6ff 16px
+        );
+    }
+
+    .fd-preview-section-header {
+        padding: 8px 0;
+    }
+
+    .fd-preview-section-title {
+        margin: 0;
+        color: #1f2a44;
+        font-size: 16px;
+        font-weight: 700;
+        line-height: 1.45;
+    }
+
+    .fd-preview-section-sub {
+        margin: 4px 0 0;
+        color: #66738d;
+        font-size: 12px;
+        line-height: 1.6;
+        white-space: pre-wrap;
+    }
+
+    .fd-preview-card-block {
+        border: 1px solid #d7deea;
+        border-radius: 10px;
+        padding: 12px;
+        background: #fff;
+    }
+
+    .fd-preview-card-title {
+        color: #1f2a44;
+        font-size: 14px;
+        font-weight: 700;
+        line-height: 1.45;
+    }
+
+    .fd-preview-card-content {
+        margin: 8px 0 0;
+        color: #4a566f;
+        font-size: 13px;
+        line-height: 1.7;
+        white-space: pre-wrap;
+    }
+
     .fd-preview-inline {
         display: flex;
         align-items: center;
@@ -1031,6 +1092,188 @@
                                         <el-form-item label="文本高度">
                                             <el-input-number v-model="selectedNode.text_min_height" :min="0" :max="500" />
                                         </el-form-item>
+                                    </template>
+
+                                    <template v-else-if="isStructureDisplayComponent(selectedNode)">
+                                        <template v-if="selectedNode.component === 'divider'">
+                                            <el-form-item label="线条样式">
+                                                <el-select v-model="selectedNode.line_style">
+                                                    <el-option label="实线" value="solid"></el-option>
+                                                    <el-option label="虚线" value="dashed"></el-option>
+                                                    <el-option label="点线" value="dotted"></el-option>
+                                                </el-select>
+                                            </el-form-item>
+                                            <el-form-item label="线条颜色">
+                                                <el-input v-model="selectedNode.line_color" placeholder="#d7deea" />
+                                            </el-form-item>
+                                            <el-form-item label="线条粗细">
+                                                <el-input-number v-model="selectedNode.line_thickness" :min="1" :max="12" />
+                                            </el-form-item>
+                                            <el-form-item label="上下间距">
+                                                <el-input-number v-model="selectedNode.line_margin" :min="0" :max="80" />
+                                            </el-form-item>
+                                        </template>
+
+                                        <template v-if="selectedNode.component === 'spacer'">
+                                            <el-form-item label="高度">
+                                                <el-input-number v-model="selectedNode.height" :min="0" :max="500" />
+                                            </el-form-item>
+                                        </template>
+
+                                        <template v-if="selectedNode.component === 'section_header'">
+                                            <el-form-item label="标题方式">
+                                                <el-select v-model="selectedNode.default_source_ui.mode">
+                                                    <el-option label="固定值" value="fixed"></el-option>
+                                                    <el-option v-if="hasCompatibleFieldDataSources(selectedNode, 'default')" label="数据源类" value="data_source"></el-option>
+                                                </el-select>
+                                            </el-form-item>
+                                            <el-form-item label="标题" v-if="selectedNode.default_source_ui.mode === 'fixed'">
+                                                <el-input v-model="selectedNode.content" placeholder="请输入区块标题" />
+                                            </el-form-item>
+                                            <template v-if="selectedNode.default_source_ui.mode === 'data_source'">
+                                                <el-form-item label="数据源类">
+                                                    <div class="fd-source-picker-row">
+                                                        <div class="fd-source-picker-trigger" @click="openFieldDataSourcePicker(selectedNode, 'default')">
+                                                            <span
+                                                                :class="[
+                                                                    'fd-source-picker-value',
+                                                                    { 'fd-source-picker-placeholder': !selectedNode.default_source_ui.source_key }
+                                                                ]">
+                                                                [[ getFieldDataSourceKeyLabel(selectedNode.default_source_ui.source_key, 'default', selectedNode) || buildFieldDataSourcePlaceholder('default') ]]
+                                                            </span>
+                                                            <span class="fd-source-picker-action">点击选择</span>
+                                                        </div>
+                                                        <el-button
+                                                            v-if="selectedNode.default_source_ui.source_key"
+                                                            @click="clearFieldDataSource(selectedNode, 'default')">清空</el-button>
+                                                    </div>
+                                                </el-form-item>
+                                                <el-form-item
+                                                    v-for="param in getSourceParamsSchema(selectedNode, 'default')"
+                                                    :key="`section-default-${param.name}`"
+                                                    :label="param.label">
+                                                    <el-switch
+                                                        v-if="param.component === 'switch'"
+                                                        v-model="selectedNode.default_source_ui.source_params[param.name]" />
+                                                    <el-input-number
+                                                        v-else-if="param.component === 'number'"
+                                                        v-model="selectedNode.default_source_ui.source_params[param.name]"
+                                                        style="width:100%" />
+                                                    <el-select
+                                                        v-else-if="param.component === 'select'"
+                                                        v-model="selectedNode.default_source_ui.source_params[param.name]"
+                                                        :placeholder="param.placeholder || '请选择'">
+                                                        <el-option
+                                                            v-for="option in (param.options || [])"
+                                                            :key="`${param.name}-${option.value}`"
+                                                            :label="option.label"
+                                                            :value="option.value" />
+                                                    </el-select>
+                                                    <el-input
+                                                        v-else-if="param.component === 'textarea'"
+                                                        v-model="selectedNode.default_source_ui.source_params[param.name]"
+                                                        type="textarea"
+                                                        :autosize="{ minRows: 2, maxRows: 4 }"
+                                                        :placeholder="param.placeholder || ''" />
+                                                    <el-input
+                                                        v-else
+                                                        v-model="selectedNode.default_source_ui.source_params[param.name]"
+                                                        :placeholder="param.placeholder || ''" />
+                                                </el-form-item>
+                                                <el-form-item label="失败回退值">
+                                                    <el-input v-model="selectedNode.default_source_ui.fallback_value" placeholder="可选" />
+                                                </el-form-item>
+                                            </template>
+                                            <el-form-item label="副标题">
+                                                <el-input
+                                                    v-model="selectedNode.sub_content"
+                                                    type="textarea"
+                                                    :autosize="{ minRows: 1, maxRows: 4 }"
+                                                    placeholder="可选" />
+                                            </el-form-item>
+                                        </template>
+
+                                        <template v-if="selectedNode.component === 'card_block'">
+                                            <el-form-item label="卡片标题">
+                                                <el-input v-model="selectedNode.title" placeholder="请输入卡片标题" />
+                                            </el-form-item>
+                                            <el-form-item label="内容方式">
+                                                <el-select v-model="selectedNode.default_source_ui.mode">
+                                                    <el-option label="固定值" value="fixed"></el-option>
+                                                    <el-option v-if="hasCompatibleFieldDataSources(selectedNode, 'default')" label="数据源类" value="data_source"></el-option>
+                                                </el-select>
+                                            </el-form-item>
+                                            <el-form-item label="卡片内容" v-if="selectedNode.default_source_ui.mode === 'fixed'">
+                                                <el-input
+                                                    v-model="selectedNode.content"
+                                                    type="textarea"
+                                                    :autosize="{ minRows: 2, maxRows: 6 }"
+                                                    placeholder="请输入卡片说明内容" />
+                                            </el-form-item>
+                                            <template v-if="selectedNode.default_source_ui.mode === 'data_source'">
+                                                <el-form-item label="数据源类">
+                                                    <div class="fd-source-picker-row">
+                                                        <div class="fd-source-picker-trigger" @click="openFieldDataSourcePicker(selectedNode, 'default')">
+                                                            <span
+                                                                :class="[
+                                                                    'fd-source-picker-value',
+                                                                    { 'fd-source-picker-placeholder': !selectedNode.default_source_ui.source_key }
+                                                                ]">
+                                                                [[ getFieldDataSourceKeyLabel(selectedNode.default_source_ui.source_key, 'default', selectedNode) || buildFieldDataSourcePlaceholder('default') ]]
+                                                            </span>
+                                                            <span class="fd-source-picker-action">点击选择</span>
+                                                        </div>
+                                                        <el-button
+                                                            v-if="selectedNode.default_source_ui.source_key"
+                                                            @click="clearFieldDataSource(selectedNode, 'default')">清空</el-button>
+                                                    </div>
+                                                </el-form-item>
+                                                <el-form-item
+                                                    v-for="param in getSourceParamsSchema(selectedNode, 'default')"
+                                                    :key="`card-default-${param.name}`"
+                                                    :label="param.label">
+                                                    <el-switch
+                                                        v-if="param.component === 'switch'"
+                                                        v-model="selectedNode.default_source_ui.source_params[param.name]" />
+                                                    <el-input-number
+                                                        v-else-if="param.component === 'number'"
+                                                        v-model="selectedNode.default_source_ui.source_params[param.name]"
+                                                        style="width:100%" />
+                                                    <el-select
+                                                        v-else-if="param.component === 'select'"
+                                                        v-model="selectedNode.default_source_ui.source_params[param.name]"
+                                                        :placeholder="param.placeholder || '请选择'">
+                                                        <el-option
+                                                            v-for="option in (param.options || [])"
+                                                            :key="`${param.name}-${option.value}`"
+                                                            :label="option.label"
+                                                            :value="option.value" />
+                                                    </el-select>
+                                                    <el-input
+                                                        v-else-if="param.component === 'textarea'"
+                                                        v-model="selectedNode.default_source_ui.source_params[param.name]"
+                                                        type="textarea"
+                                                        :autosize="{ minRows: 2, maxRows: 4 }"
+                                                        :placeholder="param.placeholder || ''" />
+                                                    <el-input
+                                                        v-else
+                                                        v-model="selectedNode.default_source_ui.source_params[param.name]"
+                                                        :placeholder="param.placeholder || ''" />
+                                                </el-form-item>
+                                                <el-form-item label="失败回退值">
+                                                    <el-input v-model="selectedNode.default_source_ui.fallback_value" placeholder="可选" />
+                                                </el-form-item>
+                                            </template>
+                                            <el-form-item label="内边距">
+                                                <el-input-number v-model="selectedNode.card_padding" :min="0" :max="80" />
+                                            </el-form-item>
+                                            <el-form-item label="圆角">
+                                                <el-input-number v-model="selectedNode.card_radius" :min="0" :max="40" />
+                                            </el-form-item>
+                                            <el-form-item label="阴影">
+                                                <el-switch v-model="selectedNode.card_shadow" />
+                                            </el-form-item>
+                                        </template>
                                     </template>
 
                                     <template v-else-if="isVariableComponent(selectedNode)">

@@ -30,8 +30,15 @@ export function mountFlowFormDesigner(options = {}) {
     const DRAFT_STORAGE_PREFIX = "flow_form_designer_draft";
     const PLACEHOLDER_COMPONENTS = new Set(["placeholder"]);
     const TEXT_COMPONENTS = new Set(["title_h1", "title_h2", "title_h3", "title_h4", "title_h5", "paragraph"]);
+    const STRUCTURE_DISPLAY_COMPONENTS = new Set(["divider", "spacer", "section_header", "card_block"]);
+    const SOURCE_AWARE_DISPLAY_COMPONENTS = new Set(["section_header", "card_block"]);
     const VARIABLE_COMPONENTS = new Set(["var_username", "var_phone", "var_full_name"]);
-    const DISPLAY_COMPONENTS = new Set([...PLACEHOLDER_COMPONENTS, ...TEXT_COMPONENTS, ...VARIABLE_COMPONENTS]);
+    const DISPLAY_COMPONENTS = new Set([
+        ...PLACEHOLDER_COMPONENTS,
+        ...TEXT_COMPONENTS,
+        ...STRUCTURE_DISPLAY_COMPONENTS,
+        ...VARIABLE_COMPONENTS,
+    ]);
     const VARIABLE_META_MAP = {
         var_username: {
             key: "username",
@@ -85,6 +92,64 @@ export function mountFlowFormDesigner(options = {}) {
         return custom ? `${base};${custom}` : base;
     };
 
+    const buildDividerStyle = (node) => {
+        const lineStyle = String(node?.line_style || "solid").trim() || "solid";
+        const lineColor = String(node?.line_color || "#d7deea").trim() || "#d7deea";
+        const thicknessRaw = Number(node?.line_thickness);
+        const marginRaw = Number(node?.line_margin);
+        const thickness = Number.isFinite(thicknessRaw) ? Math.max(1, thicknessRaw) : 1;
+        const margin = Number.isFinite(marginRaw) ? Math.max(0, marginRaw) : 12;
+        const base = [
+            "border:0",
+            `border-top:${thickness}px ${lineStyle} ${lineColor}`,
+            `margin:${margin}px 0`,
+            "width:100%",
+        ].join(";");
+        const custom = String(node?.css_text || "").trim();
+        return custom ? `${base};${custom}` : base;
+    };
+
+    const buildSpacerStyle = (node) => {
+        const heightRaw = Number(node?.height);
+        const height = Number.isFinite(heightRaw) ? Math.max(0, heightRaw) : 24;
+        const base = [
+            "display:block",
+            "width:100%",
+            `height:${height}px`,
+            "min-height:1px",
+        ].join(";");
+        const custom = String(node?.css_text || "").trim();
+        return custom ? `${base};${custom}` : base;
+    };
+
+    const buildCardBlockStyle = (node) => {
+        const paddingRaw = Number(node?.card_padding);
+        const radiusRaw = Number(node?.card_radius);
+        const padding = Number.isFinite(paddingRaw) ? Math.max(0, paddingRaw) : 12;
+        const radius = Number.isFinite(radiusRaw) ? Math.max(0, radiusRaw) : 10;
+        const shadow = !!node?.card_shadow
+            ? "0 8px 24px rgba(15, 23, 42, 0.08)"
+            : "0 1px 2px rgba(15, 23, 42, 0.06)";
+        const base = [
+            `padding:${padding}px`,
+            `border-radius:${radius}px`,
+            "border:1px solid #d7deea",
+            "background:#fff",
+            `box-shadow:${shadow}`,
+        ].join(";");
+        const custom = String(node?.css_text || "").trim();
+        return custom ? `${base};${custom}` : base;
+    };
+
+    const resolveSourceAwareDisplayContent = (node, fallback = "") => {
+        const fixed = String(node?.content || fallback || "");
+        const mode = String(node?.default_source_ui?.mode || "fixed").trim();
+        if (mode === "fixed") return fixed;
+        const fallbackValue = String(node?.default_source_ui?.fallback_value || "").trim();
+        if (fallbackValue) return fallbackValue;
+        return fixed;
+    };
+
     const SignatureField = createSignatureFieldComponent();
 
     const ComponentPreview = {
@@ -107,6 +172,18 @@ export function mountFlowFormDesigner(options = {}) {
             },
             withAlignStyle(node) {
                 return buildTextDisplayStyle(node);
+            },
+            withDividerStyle(node) {
+                return buildDividerStyle(node);
+            },
+            withSpacerStyle(node) {
+                return buildSpacerStyle(node);
+            },
+            withCardStyle(node) {
+                return buildCardBlockStyle(node);
+            },
+            resolveDisplayContent(node, fallback) {
+                return resolveSourceAwareDisplayContent(node, fallback);
             },
         },
         template: `
@@ -153,6 +230,32 @@ export function mountFlowFormDesigner(options = {}) {
                     class="fd-preview-placeholder"
                     :style="node.css_text || ''">
                     [[ node.content || '占位符' ]]
+                </div>
+
+                <hr
+                    v-else-if="node.component === 'divider'"
+                    class="fd-preview-divider"
+                    :style="withDividerStyle(node)" />
+
+                <div
+                    v-else-if="node.component === 'spacer'"
+                    class="fd-preview-spacer"
+                    :style="withSpacerStyle(node)"></div>
+
+                <div
+                    v-else-if="node.component === 'section_header'"
+                    class="fd-preview-section-header"
+                    :style="node.css_text || ''">
+                    <h4 class="fd-preview-section-title">[[ resolveDisplayContent(node, node.label || '区块标题') || '区块标题' ]]</h4>
+                    <p v-if="node.sub_content" class="fd-preview-section-sub">[[ node.sub_content ]]</p>
+                </div>
+
+                <div
+                    v-else-if="node.component === 'card_block'"
+                    class="fd-preview-card-block"
+                    :style="withCardStyle(node)">
+                    <div class="fd-preview-card-title">[[ node.title || '信息卡片' ]]</div>
+                    <p class="fd-preview-card-content">[[ resolveDisplayContent(node, '请填写说明内容') || '请填写说明内容' ]]</p>
                 </div>
 
                 <el-input
@@ -429,6 +532,18 @@ export function mountFlowFormDesigner(options = {}) {
             withAlignStyle(node) {
                 return buildTextDisplayStyle(node);
             },
+            withDividerStyle(node) {
+                return buildDividerStyle(node);
+            },
+            withSpacerStyle(node) {
+                return buildSpacerStyle(node);
+            },
+            withCardStyle(node) {
+                return buildCardBlockStyle(node);
+            },
+            resolveDisplayContent(node, fallback) {
+                return resolveSourceAwareDisplayContent(node, fallback);
+            },
             onFileChange(evt) {
                 this.$emit("file-change", {
                     field: this.node,
@@ -480,6 +595,32 @@ export function mountFlowFormDesigner(options = {}) {
                     class="fd-preview-placeholder"
                     :style="node.css_text || ''">
                     [[ node.content || '' ]]
+                </div>
+
+                <hr
+                    v-else-if="node.component === 'divider'"
+                    class="fd-preview-divider"
+                    :style="withDividerStyle(node)" />
+
+                <div
+                    v-else-if="node.component === 'spacer'"
+                    class="fd-preview-spacer"
+                    :style="withSpacerStyle(node)"></div>
+
+                <div
+                    v-else-if="node.component === 'section_header'"
+                    class="fd-preview-section-header"
+                    :style="node.css_text || ''">
+                    <h4 class="fd-preview-section-title">[[ resolveDisplayContent(node, node.label || '区块标题') || '区块标题' ]]</h4>
+                    <p v-if="node.sub_content" class="fd-preview-section-sub">[[ node.sub_content ]]</p>
+                </div>
+
+                <div
+                    v-else-if="node.component === 'card_block'"
+                    class="fd-preview-card-block"
+                    :style="withCardStyle(node)">
+                    <div class="fd-preview-card-title">[[ node.title || '信息卡片' ]]</div>
+                    <p class="fd-preview-card-content">[[ resolveDisplayContent(node, '请填写说明内容') || '请填写说明内容' ]]</p>
                 </div>
 
                 <div v-else-if="node.component === 'container'" class="workflow-form-container-block" style="margin-bottom: 12px;">
@@ -691,6 +832,9 @@ export function mountFlowFormDesigner(options = {}) {
                     title: "布局类组件",
                     list: [
                         { value: "container", label: "容器", thumb: "GRID" },
+                        { value: "card_block", label: "信息卡片", thumb: "CARD" },
+                        { value: "divider", label: "分割线", thumb: "---" },
+                        { value: "spacer", label: "间距块", thumb: "SPC" },
                         { value: "placeholder", label: "占位符", thumb: "___" },
                     ],
                 },
@@ -698,6 +842,7 @@ export function mountFlowFormDesigner(options = {}) {
                     key: "text",
                     title: "文本组件",
                     list: [
+                        { value: "section_header", label: "区块标题", thumb: "SEC" },
                         { value: "title_h1", label: "一级标题", thumb: "H1" },
                         { value: "title_h2", label: "二级标题", thumb: "H2" },
                         { value: "title_h3", label: "三级标题", thumb: "H3" },
@@ -730,6 +875,15 @@ export function mountFlowFormDesigner(options = {}) {
                 sign: "signature",
                 signpad: "signature",
                 signature_pad: "signature",
+                hr: "divider",
+                line: "divider",
+                divider_line: "divider",
+                space: "spacer",
+                blank: "spacer",
+                sectiontitle: "section_header",
+                section_title: "section_header",
+                info_card: "card_block",
+                display_card: "card_block",
             };
 
             const forms = reactive([]);
@@ -1151,6 +1305,62 @@ export function mountFlowFormDesigner(options = {}) {
                     };
                 }
 
+                if (component === "divider") {
+                    return {
+                        id: nextId("node"),
+                        component: "divider",
+                        label: componentLabelMap[component] || "分割线",
+                        line_style: "solid",
+                        line_color: "#d7deea",
+                        line_thickness: 1,
+                        line_margin: 12,
+                        css_text: "",
+                        js_text: "",
+                    };
+                }
+
+                if (component === "spacer") {
+                    return {
+                        id: nextId("node"),
+                        component: "spacer",
+                        label: componentLabelMap[component] || "间距块",
+                        height: 24,
+                        css_text: "",
+                        js_text: "",
+                    };
+                }
+
+                if (component === "section_header") {
+                    const content = componentLabelMap[component] || "区块标题";
+                    return {
+                        id: nextId("node"),
+                        component,
+                        label: componentLabelMap[component] || "区块标题",
+                        content,
+                        sub_content: "",
+                        default_source_ui: normalizeDefaultSourceUi({}, content),
+                        css_text: "",
+                        js_text: "",
+                    };
+                }
+
+                if (component === "card_block") {
+                    const content = "请填写说明内容";
+                    return {
+                        id: nextId("node"),
+                        component,
+                        label: componentLabelMap[component] || "信息卡片",
+                        title: "信息卡片",
+                        content,
+                        card_padding: 12,
+                        card_radius: 10,
+                        card_shadow: false,
+                        default_source_ui: normalizeDefaultSourceUi({}, content),
+                        css_text: "",
+                        js_text: "",
+                    };
+                }
+
                 if (TEXT_COMPONENTS.has(component)) {
                     return {
                         id: nextId("node"),
@@ -1294,6 +1504,70 @@ export function mountFlowFormDesigner(options = {}) {
                         component: "placeholder",
                         label: String(rawNode.label || componentLabelMap[component] || "占位符"),
                         content: String(rawNode.content || rawNode.text || ""),
+                        css_text: rawNode.css_text || rawNode.css || rawNode.style || "",
+                        js_text: rawNode.js_text || rawNode.js || rawNode.script || "",
+                    };
+                }
+
+                if (component === "divider") {
+                    return {
+                        id: nextId("node"),
+                        component: "divider",
+                        label: String(rawNode.label || componentLabelMap[component] || "分割线"),
+                        line_style: String(rawNode.line_style || rawNode.style_type || "solid"),
+                        line_color: String(rawNode.line_color || rawNode.color || "#d7deea"),
+                        line_thickness: Number.isFinite(Number(rawNode.line_thickness))
+                            ? Number(rawNode.line_thickness)
+                            : 1,
+                        line_margin: Number.isFinite(Number(rawNode.line_margin))
+                            ? Number(rawNode.line_margin)
+                            : 12,
+                        css_text: rawNode.css_text || rawNode.css || rawNode.style || "",
+                        js_text: rawNode.js_text || rawNode.js || rawNode.script || "",
+                    };
+                }
+
+                if (component === "spacer") {
+                    return {
+                        id: nextId("node"),
+                        component: "spacer",
+                        label: String(rawNode.label || componentLabelMap[component] || "间距块"),
+                        height: Number.isFinite(Number(rawNode.height)) ? Number(rawNode.height) : 24,
+                        css_text: rawNode.css_text || rawNode.css || rawNode.style || "",
+                        js_text: rawNode.js_text || rawNode.js || rawNode.script || "",
+                    };
+                }
+
+                if (component === "section_header") {
+                    const content = String(rawNode.content || rawNode.text || rawNode.label || componentLabelMap[component] || "");
+                    return {
+                        id: nextId("node"),
+                        component,
+                        label: String(rawNode.label || componentLabelMap[component] || "区块标题"),
+                        content,
+                        sub_content: String(rawNode.sub_content || rawNode.subTitle || rawNode.subtitle || ""),
+                        default_source_ui: normalizeDefaultSourceUi(rawNode, content),
+                        css_text: rawNode.css_text || rawNode.css || rawNode.style || "",
+                        js_text: rawNode.js_text || rawNode.js || rawNode.script || "",
+                    };
+                }
+
+                if (component === "card_block") {
+                    const content = String(rawNode.content || rawNode.text || "");
+                    return {
+                        id: nextId("node"),
+                        component,
+                        label: String(rawNode.label || componentLabelMap[component] || "信息卡片"),
+                        title: String(rawNode.title || rawNode.label || "信息卡片"),
+                        content,
+                        card_padding: Number.isFinite(Number(rawNode.card_padding))
+                            ? Number(rawNode.card_padding)
+                            : 12,
+                        card_radius: Number.isFinite(Number(rawNode.card_radius))
+                            ? Number(rawNode.card_radius)
+                            : 10,
+                        card_shadow: !!rawNode.card_shadow,
+                        default_source_ui: normalizeDefaultSourceUi(rawNode, content),
                         css_text: rawNode.css_text || rawNode.css || rawNode.style || "",
                         js_text: rawNode.js_text || rawNode.js || rawNode.script || "",
                     };
@@ -1815,6 +2089,8 @@ export function mountFlowFormDesigner(options = {}) {
             };
 
             const isTextComponent = (node) => !!node && TEXT_COMPONENTS.has(node.component);
+            const isStructureDisplayComponent = (node) => !!node && STRUCTURE_DISPLAY_COMPONENTS.has(node.component);
+            const hasSourceAwareDisplayContent = (node) => !!node && SOURCE_AWARE_DISPLAY_COMPONENTS.has(node.component);
             const isVariableComponent = (node) => !!node && VARIABLE_COMPONENTS.has(node.component);
             const resolveVariablePreviewText = (node) => {
                 if (!node || !VARIABLE_COMPONENTS.has(node.component)) return "";
@@ -1939,6 +2215,44 @@ export function mountFlowFormDesigner(options = {}) {
                     payload.text_v_align = String(node.text_v_align || "top");
                     payload.text_min_height = Math.max(0, Number(node.text_min_height || 0));
                     return payload;
+                }
+
+                if (STRUCTURE_DISPLAY_COMPONENTS.has(node.component)) {
+                    if (node.component === "divider") {
+                        const lineThicknessRaw = Number(node.line_thickness);
+                        const lineMarginRaw = Number(node.line_margin);
+                        payload.line_style = String(node.line_style || "solid");
+                        payload.line_color = String(node.line_color || "#d7deea");
+                        payload.line_thickness = Number.isFinite(lineThicknessRaw) ? Math.max(1, lineThicknessRaw) : 1;
+                        payload.line_margin = Number.isFinite(lineMarginRaw) ? Math.max(0, lineMarginRaw) : 12;
+                        return payload;
+                    }
+                    if (node.component === "spacer") {
+                        const heightRaw = Number(node.height);
+                        payload.height = Number.isFinite(heightRaw) ? Math.max(0, heightRaw) : 24;
+                        return payload;
+                    }
+                    if (node.component === "section_header") {
+                        if (node?.default_source_ui?.mode === "fixed") {
+                            payload.content = String(node.content || node.label || "").trim();
+                        }
+                        payload.sub_content = String(node.sub_content || "").trim();
+                        Object.assign(payload, buildDefaultSourcePayload(node));
+                        return payload;
+                    }
+                    if (node.component === "card_block") {
+                        const paddingRaw = Number(node.card_padding);
+                        const radiusRaw = Number(node.card_radius);
+                        payload.title = String(node.title || node.label || "信息卡片").trim();
+                        if (node?.default_source_ui?.mode === "fixed") {
+                            payload.content = String(node.content || "").trim();
+                        }
+                        payload.card_padding = Number.isFinite(paddingRaw) ? Math.max(0, paddingRaw) : 12;
+                        payload.card_radius = Number.isFinite(radiusRaw) ? Math.max(0, radiusRaw) : 10;
+                        payload.card_shadow = !!node.card_shadow;
+                        Object.assign(payload, buildDefaultSourcePayload(node));
+                        return payload;
+                    }
                 }
 
                 if (VARIABLE_COMPONENTS.has(node.component)) {
@@ -2578,6 +2892,8 @@ export function mountFlowFormDesigner(options = {}) {
                 showPlaceholder,
                 showDefaultField,
                 isTextComponent,
+                isStructureDisplayComponent,
+                hasSourceAwareDisplayContent,
                 isVariableComponent,
                 resolveVariablePreviewText,
                 saveFormLibrary,

@@ -744,6 +744,67 @@
         font-size: 14px;
     }
 
+    .fd-preview-divider {
+        border: 0;
+        border-top: 1px solid var(--wf-border);
+        margin: 12px 0;
+    }
+
+    .fd-preview-spacer {
+        width: 100%;
+        min-height: 1px;
+        border-radius: var(--wf-radius-sm);
+        background: repeating-linear-gradient(
+            -45deg,
+            #f8fafc,
+            #f8fafc 8px,
+            #eef2f7 8px,
+            #eef2f7 16px
+        );
+    }
+
+    .fd-preview-section-header {
+        padding: 8px 0;
+    }
+
+    .fd-preview-section-title {
+        margin: 0;
+        color: var(--wf-ink);
+        font-size: 16px;
+        font-weight: 700;
+        line-height: 1.45;
+    }
+
+    .fd-preview-section-sub {
+        margin: 4px 0 0;
+        color: var(--wf-subtle);
+        font-size: 13px;
+        line-height: 1.6;
+        white-space: pre-wrap;
+    }
+
+    .fd-preview-card-block {
+        border: 1px solid var(--wf-border);
+        border-radius: var(--wf-radius-sm);
+        padding: 12px;
+        background: var(--wf-panel);
+    }
+
+    .fd-preview-card-title {
+        color: var(--wf-ink);
+        font-size: 14px;
+        font-weight: 700;
+        line-height: 1.45;
+    }
+
+    .fd-preview-card-content {
+        margin: 8px 0 0;
+        color: var(--wf-subtle);
+        font-size: 14px;
+        line-height: 1.7;
+        white-space: pre-wrap;
+    }
+
     .fd-preview-inline {
         display: flex;
         align-items: center;
@@ -1034,8 +1095,9 @@
     import { createSignatureFieldComponent } from "{% static 'flow_engine/js/signature_field.js' %}?v=20260414-01";
 
     const TEXT_COMPONENTS = new Set(["title_h1", "title_h2", "title_h3", "title_h4", "title_h5", "paragraph"]);
+    const STRUCTURE_DISPLAY_COMPONENTS = new Set(["divider", "spacer", "section_header", "card_block"]);
     const VARIABLE_COMPONENTS = new Set(["var_username", "var_phone", "var_full_name"]);
-    const DISPLAY_COMPONENTS = new Set(["placeholder", ...TEXT_COMPONENTS, ...VARIABLE_COMPONENTS]);
+    const DISPLAY_COMPONENTS = new Set(["placeholder", ...TEXT_COMPONENTS, ...STRUCTURE_DISPLAY_COMPONENTS, ...VARIABLE_COMPONENTS]);
     const VARIABLE_META_MAP = {
         var_username: { key: "username", label: "用户名" },
         var_phone: { key: "phone", label: "手机号" },
@@ -1111,6 +1173,60 @@
                 const custom = String(node?.css_text || node?.cssText || "").trim();
                 return custom ? `${base};${custom}` : base;
             },
+            buildDividerStyle(node) {
+                const lineStyle = String(node?.line_style || node?.lineStyle || "solid").trim() || "solid";
+                const lineColor = String(node?.line_color || node?.lineColor || "#d7deea").trim() || "#d7deea";
+                const thicknessRaw = Number(node?.line_thickness ?? node?.lineThickness);
+                const marginRaw = Number(node?.line_margin ?? node?.lineMargin);
+                const thickness = Number.isFinite(thicknessRaw) ? Math.max(1, thicknessRaw) : 1;
+                const margin = Number.isFinite(marginRaw) ? Math.max(0, marginRaw) : 12;
+                const base = [
+                    "border:0",
+                    `border-top:${thickness}px ${lineStyle} ${lineColor}`,
+                    `margin:${margin}px 0`,
+                    "width:100%",
+                ].join(";");
+                const custom = String(node?.css_text || node?.cssText || "").trim();
+                return custom ? `${base};${custom}` : base;
+            },
+            buildSpacerStyle(node) {
+                const heightRaw = Number(node?.height);
+                const height = Number.isFinite(heightRaw) ? Math.max(0, heightRaw) : 24;
+                const base = [
+                    "display:block",
+                    "width:100%",
+                    `height:${height}px`,
+                    "min-height:1px",
+                ].join(";");
+                const custom = String(node?.css_text || node?.cssText || "").trim();
+                return custom ? `${base};${custom}` : base;
+            },
+            buildCardStyle(node) {
+                const paddingRaw = Number(node?.card_padding ?? node?.cardPadding);
+                const radiusRaw = Number(node?.card_radius ?? node?.cardRadius);
+                const padding = Number.isFinite(paddingRaw) ? Math.max(0, paddingRaw) : 12;
+                const radius = Number.isFinite(radiusRaw) ? Math.max(0, radiusRaw) : 10;
+                const shadow = !!(node?.card_shadow ?? node?.cardShadow)
+                    ? "0 8px 24px rgba(15, 23, 42, 0.08)"
+                    : "0 1px 2px rgba(15, 23, 42, 0.06)";
+                const base = [
+                    `padding:${padding}px`,
+                    `border-radius:${radius}px`,
+                    `box-shadow:${shadow}`,
+                    "border:1px solid var(--wf-border)",
+                    "background:var(--wf-panel)",
+                ].join(";");
+                const custom = String(node?.css_text || node?.cssText || "").trim();
+                return custom ? `${base};${custom}` : base;
+            },
+            resolveDisplayContent(node, fallback = "") {
+                const fixed = String(node?.content || fallback || "");
+                const mode = String(node?.default_source_ui?.mode || "fixed").trim();
+                if (mode === "fixed") return fixed;
+                const fallbackValue = String(node?.default_source_ui?.fallback_value || "").trim();
+                if (fallbackValue) return fallbackValue;
+                return fixed;
+            },
             onFileChange(evt) {
                 this.$emit("file-change", {
                     field: this.node,
@@ -1162,6 +1278,32 @@
                     class="fd-preview-placeholder"
                     :style="node.css_text || node.cssText || ''">
                     [[ node.content || '' ]]
+                </div>
+
+                <hr
+                    v-else-if="node.component === 'divider'"
+                    class="fd-preview-divider"
+                    :style="buildDividerStyle(node)" />
+
+                <div
+                    v-else-if="node.component === 'spacer'"
+                    class="fd-preview-spacer"
+                    :style="buildSpacerStyle(node)"></div>
+
+                <div
+                    v-else-if="node.component === 'section_header'"
+                    class="fd-preview-section-header"
+                    :style="node.css_text || node.cssText || ''">
+                    <h4 class="fd-preview-section-title">[[ resolveDisplayContent(node, node.label || '区块标题') || '区块标题' ]]</h4>
+                    <p v-if="node.sub_content || node.subContent" class="fd-preview-section-sub">[[ node.sub_content || node.subContent ]]</p>
+                </div>
+
+                <div
+                    v-else-if="node.component === 'card_block'"
+                    class="fd-preview-card-block"
+                    :style="buildCardStyle(node)">
+                    <div class="fd-preview-card-title">[[ node.title || '信息卡片' ]]</div>
+                    <p class="fd-preview-card-content">[[ resolveDisplayContent(node, '请填写说明内容') || '请填写说明内容' ]]</p>
                 </div>
 
                 <div v-else-if="node.component === 'container'" class="workflow-form-container-block" style="margin-bottom: 12px;">
@@ -1497,6 +1639,18 @@
                     title_h5: "title_h5",
                     paragraph: "paragraph",
                     placeholder: "placeholder",
+                    divider: "divider",
+                    hr: "divider",
+                    line: "divider",
+                    spacer: "spacer",
+                    space: "spacer",
+                    blank: "spacer",
+                    section_header: "section_header",
+                    section_title: "section_header",
+                    sectiontitle: "section_header",
+                    card_block: "card_block",
+                    info_card: "card_block",
+                    display_card: "card_block",
                     var_username: "var_username",
                     var_phone: "var_phone",
                     var_full_name: "var_full_name",
@@ -1519,6 +1673,9 @@
                 const key = rawKey || (normalizedComponent === "container" ? `container_${index}` : null);
                 if (!key && normalizedComponent !== "container" && !isDisplay) return null;
                 const uid = field.id || key || `${normalizedComponent}_${index}`;
+                const defaultSourceConfig = field?.default_source_config && typeof field.default_source_config === "object"
+                    ? field.default_source_config
+                    : {};
                 return {
                     uid,
                     key: rawKey || (normalizedComponent === "container" ? key : null),
@@ -1531,6 +1688,14 @@
                     defaultValue: Object.prototype.hasOwnProperty.call(field, "default")
                         ? field.default
                         : field.default_value,
+                    default_source_ui: {
+                        mode: defaultSourceConfig.mode === "data_source" && defaultSourceConfig.source_key ? "data_source" : "fixed",
+                        source_key: String(defaultSourceConfig.source_key || "").trim().toLowerCase(),
+                        source_params: defaultSourceConfig.source_params && typeof defaultSourceConfig.source_params === "object"
+                            ? defaultSourceConfig.source_params
+                            : {},
+                        fallback_value: defaultSourceConfig.fallback_value ?? "",
+                    },
                     rows: field.rows,
                     maxRows: field.maxRows || field.max_rows,
                     min: field.min,
@@ -1549,6 +1714,17 @@
                     grid_columns: parseInt(field.grid_columns || (field.layout || {}).grid_columns, 10) || null,
                     padding: parseInt(field.padding || 0, 10) || 0,
                     content: field.content,
+                    sub_content: field.sub_content || field.subContent,
+                    subContent: field.sub_content || field.subContent,
+                    title: field.title || field.label,
+                    line_style: field.line_style || field.lineStyle,
+                    line_color: field.line_color || field.lineColor,
+                    line_thickness: field.line_thickness ?? field.lineThickness,
+                    line_margin: field.line_margin ?? field.lineMargin,
+                    height: field.height,
+                    card_padding: field.card_padding ?? field.cardPadding,
+                    card_radius: field.card_radius ?? field.cardRadius,
+                    card_shadow: !!(field.card_shadow ?? field.cardShadow),
                     variable_key: field.variable_key,
                     variable_label: field.variable_label,
                     text_align: field.text_align,
