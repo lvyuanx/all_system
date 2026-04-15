@@ -1,0 +1,22 @@
+    <el-dialog v-model="importDialog.visible" title="导入流程 JSON" width="50%">
+        <el-form label-width="96px">
+            <el-form-item label="覆盖同编码">
+                <el-switch v-model="importDialog.overwrite" />
+            </el-form-item>
+            <el-form-item label="JSON文本">
+                <el-input
+                    v-model="importDialog.text"
+                    type="textarea"
+                    :autosize="{ minRows: 8, maxRows: 16 }"
+                    placeholder="粘贴导出的流程 JSON"
+                />
+            </el-form-item>
+        </el-form>
+        <div style="display:flex;gap:8px;justify-content:flex-end;">
+            <el-button @click="triggerImportFile">选择JSON文件</el-button>
+        </div>
+        <template #footer>
+            <el-button @click="importDialog.visible = false">取消</el-button>
+            <el-button type="primary" @click="confirmImportJson">导入</el-button>
+        </template>
+    </el-dialog>

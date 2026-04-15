@@ -1,0 +1,239 @@
+{% extends "vue_setup_base.html" %}
+{% load i18n %}
+{% load static %}
+{% load simpletags %}
+
+{% block title %}
+{{ title }}
+{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'flow_engine/css/flow_designer.css' %}?v=20260416-01">
+{% endblock %}
+
+{% block content %}
+<div id="app">
+    <div class="page-header">
+        <el-page-header title="{% trans 'Back' %}" @back="goBack" content="{{title}}"></el-page-header>
+        <div class="header-right">
+            <span v-if="pageData.saving || pageData.publishing" class="status-hint" style="padding:0 8px 0 0;">
+                [[ pageData.publishing ? '正在保存并发布...' : '正在保存...' ]]
+            </span>
+            <el-button @click="refreshFormLibrary" :disabled="!flowId || pageData.saving || pageData.publishing">刷新表单库</el-button>
+            <el-button @click="openImportDialog" :disabled="pageData.saving || pageData.publishing">导入JSON</el-button>
+            <el-button @click="exportFlowJson" :disabled="!flowId || pageData.saving || pageData.publishing">导出JSON</el-button>
+            <el-button type="primary" @click="saveFlow" :loading="pageData.saving" :disabled="pageData.publishing">
+                [[ pageData.saving ? '保存中...' : '保存' ]]
+            </el-button>
+            <el-button type="success" @click="publishFlow" :loading="pageData.publishing" :disabled="pageData.saving">
+                [[ pageData.publishing ? '发布中...' : '发布版本' ]]
+            </el-button>
+        </div>
+    </div>
+
+    <div
+        class="page-container"
+        v-loading="pageData.pageLoading || pageData.saving || pageData.publishing"
+        :element-loading-text="pageData.publishing ? '正在保存并发布流程，请稍候...' : (pageData.saving ? '正在保存流程，请稍候...' : '正在加载...')"
+    >
+        <div class="designer-root">
+            <div class="designer-panel">
+                <div class="panel-head">节点库</div>
+                <div class="panel-body">
+                    <el-button class="palette-btn" type="primary" plain @click="addNodeFromPalette('start')">开始节点</el-button>
+                    <el-button class="palette-btn" type="primary" plain @click="addNodeFromPalette('task')">任务节点</el-button>
+                    <el-button class="palette-btn" type="primary" plain @click="addNodeFromPalette('condition')">条件节点</el-button>
+                    <el-button class="palette-btn" type="primary" plain @click="addNodeFromPalette('end')">结束节点</el-button>
+                    <div class="status-hint">双击节点可进入高级配置。</div>
+                    <div class="status-hint">拖动节点可自由排布。</div>
+                    <div class="status-hint">连线: 仅支持端点连接（右侧输出端点 -> 左侧输入端点）。</div>
+                </div>
+            </div>
+
+            <div class="designer-panel">
+                <div class="canvas-toolbar">
+                    <div>
+                        <el-tag type="info">节点 [[ nodes.length ]]</el-tag>
+                        <el-tag type="success" style="margin-left:8px;">连线 [[ transitions.length ]]</el-tag>
+                    </div>
+                    <div>
+                        <el-button size="small" @click="autoLayout">自动排布</el-button>
+                        <el-button size="small" :type="connectMode ? 'primary' : 'default'" @click="toggleConnectMode">
+                            [[ connectMode ? '连线模式中' : '连线模式' ]]
+                        </el-button>
+                    </div>
+                </div>
+                <div class="canvas-wrap" ref="canvasWrapRef" @mousedown.self="clearSelection">
+                    <div class="canvas-board" ref="canvasBoardRef">
+                        <svg class="edge-layer" @mousedown.self="clearSelection">
+                            <rect class="edge-blank-hit" x="0" y="0" width="100%" height="100%" @mousedown.stop="clearSelection" />
+                            <template v-for="(edge, edgeIndex) in transitions" :key="'edge-'+edgeIndex">
+                                <g @mouseenter="hoveredEdgeIndex = edgeIndex" @mouseleave="hoveredEdgeIndex = -1">
+                                    <path
+                                        v-if="getEdgePath(edge)"
+                                        :d="getEdgePath(edge)"
+                                        class="edge-path"
+                                        :class="{ 'edge-active': selectedEdgeIndex === edgeIndex }"
+                                    />
+                                    <path
+                                        v-if="getEdgePath(edge)"
+                                        :d="getEdgePath(edge)"
+                                        class="edge-hit"
+                                        @click.stop="selectEdge(edgeIndex)"
+                                    />
+                                    <g
+                                        v-if="getEdgeDeletePoint(edge)"
+                                        class="edge-delete"
+                                        :class="{ visible: hoveredEdgeIndex === edgeIndex }"
+                                        :transform="`translate(${getEdgeDeletePoint(edge).x}, ${getEdgeDeletePoint(edge).y})`"
+                                        @click.stop="removeTransition(edgeIndex)"
+                                    >
+                                        <circle r="9" />
+                                        <path d="M -3.6 -3.6 L 3.6 3.6 M 3.6 -3.6 L -3.6 3.6" />
+                                    </g>
+                                </g>
+                            </template>
+                            <path v-if="previewPath" :d="previewPath" class="edge-path edge-active" />
+                        </svg>
+
+                        <div
+                            v-for="(node, index) in nodes"
+                            :key="node.code + '-' + index"
+                            class="node-card"
+                            :class="{ 'node-active': selectedNodeIndex === index }"
+                            :style="{ left: node.x + 'px', top: node.y + 'px' }"
+                            :ref="(el) => setNodeRef(node, el)"
+                            @click.stop="selectNode(index)"
+                            @dblclick.stop="openNodeDialog(index)"
+                        >
+                            <div class="handle in" @click.stop="onTargetHandleClick(index)"></div>
+                            <div class="handle out" :class="{ connecting: connectState.fromIndex === index }" @click.stop="onSourceHandleClick(index)"></div>
+                            <div class="node-head" @mousedown.stop="startDragNode(index, $event)">
+                                <div>
+                                    <p class="node-title">[[ node.name || '未命名节点' ]]</p>
+                                    <div class="node-code">[[ node.code ]]</div>
+                                </div>
+                                <el-tag size="small">[[ nodeTypeLabel(node.node_type) ]]</el-tag>
+                            </div>
+                            <div class="node-body">
+                                <div class="node-type">模式: [[ node.approval_mode === 'all' ? '全部满足' : '任意满足' ]]</div>
+                                <div class="node-row">自动: [[ node.is_auto ? '是' : '否' ]]</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="designer-panel">
+                <div class="panel-head">属性面板</div>
+                <div class="panel-body">
+                    <template v-if="selectedNodeIndex >= 0">
+                        <el-form :model="selectedNode" label-width="84px">
+                            <el-form-item label="编码">
+                                <el-input v-model="selectedNode.code" />
+                            </el-form-item>
+                            <el-form-item label="名称">
+                                <el-input v-model="selectedNode.name" />
+                            </el-form-item>
+                            <el-form-item label="节点类型">
+                                <el-select v-model="selectedNode.node_type">
+                                    <el-option v-for="item in nodeTypeOptions" :key="item.value" :label="item.label" :value="item.value" />
+                                </el-select>
+                            </el-form-item>
+                            <el-form-item label="审批模式">
+                                <el-select v-model="selectedNode.approval_mode">
+                                    <el-option v-for="item in approvalModeOptions" :key="item.value" :label="item.label" :value="item.value" />
+                                </el-select>
+                            </el-form-item>
+                            <el-form-item label="自动节点">
+                                <el-switch v-model="selectedNode.is_auto" />
+                            </el-form-item>
+                            <el-form-item label="坐标">
+                                <div>[[ selectedNode.x ]], [[ selectedNode.y ]]</div>
+                            </el-form-item>
+                        </el-form>
+                        <el-button type="primary" plain @click="openNodeDialog(selectedNodeIndex)">高级配置</el-button>
+                        <div class="danger-zone">
+                            <el-button type="danger" plain @click="removeNode(selectedNodeIndex)">删除节点</el-button>
+                        </div>
+                    </template>
+
+                    <template v-else-if="selectedEdgeIndex >= 0">
+                        <el-form :model="selectedEdge" label-width="84px">
+                            <el-form-item label="起点">
+                                <div>[[ selectedEdge.source_code ]]</div>
+                            </el-form-item>
+                            <el-form-item label="终点">
+                                <div>[[ selectedEdge.target_code ]]</div>
+                            </el-form-item>
+                            <el-form-item label="条件JSON">
+                                <el-input v-model="selectedEdge.condition_expr" type="textarea" :autosize="{ minRows: 3, maxRows: 6 }" />
+                            </el-form-item>
+                            <el-form-item label="描述">
+                                <el-input v-model="selectedEdge.description" />
+                            </el-form-item>
+                        </el-form>
+                        <div class="danger-zone">
+                            <el-button type="danger" plain @click="removeTransition(selectedEdgeIndex)">删除连线</el-button>
+                        </div>
+                    </template>
+
+                    <template v-else>
+                        <el-form :model="flowForm" :rules="flowRules" ref="flowFormRef" label-width="84px">
+                            <el-form-item label="编码" prop="code">
+                                <el-input v-model="flowForm.code" />
+                            </el-form-item>
+                            <el-form-item label="名称" prop="name">
+                                <el-input v-model="flowForm.name" />
+                            </el-form-item>
+                            <el-form-item label="启用">
+                                <el-switch v-model="flowForm.is_active" />
+                            </el-form-item>
+                            <el-form-item label="描述">
+                                <el-input v-model="flowForm.description" type="textarea" :autosize="{ minRows: 3, maxRows: 6 }" />
+                            </el-form-item>
+                        </el-form>
+                        <div class="status-hint">先选节点或连线可编辑其属性。</div>
+                        <div style="margin-top: 12px;">
+                            <div style="font-size: 12px; color: #64748b; margin-bottom: 8px;">连线列表（兜底删除）</div>
+                            <el-table :data="transitions" size="small" border style="width: 100%;">
+                                <el-table-column label="连线" min-width="140">
+                                    <template #default="scope">
+                                        [[ scope.row.source_code ]] -> [[ scope.row.target_code ]]
+                                    </template>
+                                </el-table-column>
+                                <el-table-column label="操作" width="72" align="center">
+                                    <template #default="scope">
+                                        <el-button link type="danger" @click="removeTransition(scope.$index)">删除</el-button>
+                                    </template>
+                                </el-table-column>
+                            </el-table>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </div>
+    </div>
+    <input ref="importFileRef" type="file" accept=".json,application/json" style="display:none;" @change="onImportFileChange" />
+
+    {% include "flow_engine/flow_designer/_import_dialog.html" %}
+    {% include "flow_engine/flow_designer/_field_data_source_dialog.html" %}
+    {% include "flow_engine/flow_designer/_node_dialog.html" %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{{ builtin_data_source_examples|json_script:"builtin-data-source-examples" }}
+{{ field_data_source_metadata|json_script:"field-data-source-metadata" }}
+<script type="module">
+    import { mountFlowDesigner } from "{% static 'flow_engine/js/flow_designer.js' %}?v=20260416-01";
+
+    mountFlowDesigner({
+        flowId: "{{ flow_id|escapejs }}",
+        previousUrl: "{% get_previous_url %}",
+        fieldDataSourceMetadata: JSON.parse(
+            document.getElementById("field-data-source-metadata")?.textContent || "[]"
+        ),
+    });
+</script>
+{% endblock %}
+

@@ -26,7 +26,7 @@ def flow_definition_add(request):
         title="流程设计器",
         flow_id="",
     )
-    return render(request, "flow_engine/flow_designer.html", context)
+    return render(request, "flow_engine/flow_designer/index.html", context)
 
 
 def flow_definition_change(request, fid: int):
@@ -34,7 +34,7 @@ def flow_definition_change(request, fid: int):
         title="流程设计器",
         flow_id=fid,
     )
-    return render(request, "flow_engine/flow_designer.html", context)
+    return render(request, "flow_engine/flow_designer/index.html", context)
 
 
 def flow_definition_list(request):

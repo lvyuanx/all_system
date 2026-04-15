@@ -1,0 +1,448 @@
+    <el-dialog v-model="nodeDialog.visible" title="节点高级配置" width="60%">
+        <el-form :model="nodeDialog.form" label-width="auto">
+            <el-row :gutter="16">
+                <el-col :span="8">
+                    <el-form-item label="编码" required>
+                        <el-input v-model="nodeDialog.form.code" placeholder="node_code" />
+                    </el-form-item>
+                </el-col>
+                <el-col :span="8">
+                    <el-form-item label="名称" required>
+                        <el-input v-model="nodeDialog.form.name" />
+                    </el-form-item>
+                </el-col>
+                <el-col :span="8">
+                    <el-form-item label="类型">
+                        <el-select v-model="nodeDialog.form.node_type">
+                            <el-option v-for="item in nodeTypeOptions" :key="item.value" :label="item.label" :value="item.value" />
+                        </el-select>
+                    </el-form-item>
+                </el-col>
+            </el-row>
+            <el-row :gutter="16">
+                <el-col :span="8">
+                    <el-form-item label="审批模式">
+                        <el-select v-model="nodeDialog.form.approval_mode">
+                            <el-option v-for="item in approvalModeOptions" :key="item.value" :label="item.label" :value="item.value" />
+                        </el-select>
+                    </el-form-item>
+                </el-col>
+                <el-col :span="8">
+                    <el-form-item label="自动节点">
+                        <el-switch v-model="nodeDialog.form.is_auto" />
+                    </el-form-item>
+                </el-col>
+            </el-row>
+            <el-form-item label="节点表单">
+                <div style="width: 100%;">
+                    <el-row :gutter="12" style="margin-bottom: 8px;">
+                        <el-col :span="24">
+                            <el-form-item label="表单来源">
+                                <el-select v-model="nodeDialog.form.form_ref_code" clearable placeholder="自定义节点表单" @change="onNodeFormRefChange">
+                                    <el-option v-for="item in formLibraryOptions" :key="item.code" :label="item.name" :value="item.code" />
+                                </el-select>
+                            </el-form-item>
+                        </el-col>
+                    </el-row>
+                    <el-alert
+                        v-if="nodeDialog.form.form_ref_code"
+                        :title="`当前节点引用表单: ${currentNodeFormRefName || nodeDialog.form.form_ref_code}`"
+                        type="info"
+                        :closable="false"
+                        style="margin-bottom: 12px;"
+                    />
+                    <el-alert
+                        v-if="nodeDialog.form.legacy_form_schema && !nodeDialog.form.form_fields.length"
+                        title="当前节点存在旧版 JSON 表单配置，暂时无法直接可视化编辑。你可以新增字段开始迁移，保存后将切换为可视化结构。"
+                        type="warning"
+                        :closable="false"
+                        style="margin-bottom: 12px;"
+                    />
+                    <div v-if="!nodeDialog.form.form_fields.length" class="form-builder-empty">
+                        这个节点还没有表单字段。点击上面的按钮添加字段，然后拖动字段卡片即可调整顺序。
+                    </div>
+                    <div v-else class="form-field-list">
+                        <div
+                            v-for="(field, fieldIndex) in nodeDialog.form.form_fields"
+                            :key="field.id || field.key || fieldIndex"
+                            class="form-field-card"
+                            :class="{ dragging: nodeDialog.dragIndex === fieldIndex }"
+                            :draggable="!nodeDialog.form.form_ref_code"
+                            @dragstart="onFormFieldDragStart(fieldIndex)"
+                            @dragover.prevent
+                            @drop="onFormFieldDrop(fieldIndex)"
+                            @dragend="onFormFieldDragEnd"
+                        >
+                            <div class="form-field-head">
+                                <div class="form-field-title">
+                                    <span class="form-drag-handle">拖动</span>
+                                    <span>[[ field.label || field.key || ('字段' + (fieldIndex + 1)) ]]</span>
+                                </div>
+                                <el-button link type="danger" :disabled="!!nodeDialog.form.form_ref_code" @click="removeFormField(fieldIndex)">删除字段</el-button>
+                            </div>
+                            <el-row :gutter="12">
+                                <el-col :span="8">
+                                    <el-form-item label="字段标识">
+                                        <el-input v-model="field.key" :disabled="!!nodeDialog.form.form_ref_code" placeholder="如: quality_note" />
+                                    </el-form-item>
+                                </el-col>
+                                <el-col :span="8">
+                                    <el-form-item label="字段名称">
+                                        <el-input v-model="field.label" :disabled="!!nodeDialog.form.form_ref_code" placeholder="如: 质检说明" />
+                                    </el-form-item>
+                                </el-col>
+                                <el-col :span="8">
+                                    <el-form-item label="字段类型">
+                                        <el-select v-model="field.component" :disabled="!!nodeDialog.form.form_ref_code">
+                                            <el-option label="单行输入" value="input" />
+                                            <el-option label="多行文本" value="textarea" />
+                                            <el-option label="数字" value="number" />
+                                            <el-option label="文件上传" value="file" />
+                                            <el-option label="手写签名" value="signature" />
+                                            <el-option label="单选" value="radio" />
+                                            <el-option label="多选" value="checkbox" />
+                                            <el-option label="下拉选择" value="select" />
+                                            <el-option label="开关" value="switch" />
+                                            <el-option label="日期" value="date" />
+                                            <el-option label="日期时间" value="datetime" />
+                                        </el-select>
+                                    </el-form-item>
+                                </el-col>
+                            </el-row>
+                            <el-row :gutter="12">
+                                <el-col :span="8">
+                                    <el-form-item label="占位提示">
+                                        <el-input v-model="field.placeholder" :disabled="!!nodeDialog.form.form_ref_code" placeholder="可选" />
+                                    </el-form-item>
+                                </el-col>
+                                <el-col :span="5">
+                                    <el-form-item label="必填">
+                                        <el-switch v-model="field.required" :disabled="!!nodeDialog.form.form_ref_code" />
+                                    </el-form-item>
+                                </el-col>
+                                <el-col :span="5" v-if="field.component === 'textarea'">
+                                    <el-form-item label="行数">
+                                        <el-input-number v-model="field.rows" :disabled="!!nodeDialog.form.form_ref_code" :min="2" :max="10" />
+                                    </el-form-item>
+                                </el-col>
+                            </el-row>
+                            <el-row :gutter="12">
+                                <el-col :span="8">
+                                    <el-form-item label="默认值方式">
+                                        <el-select v-model="field.default_source_ui.mode" :disabled="!!nodeDialog.form.form_ref_code">
+                                            <el-option label="固定值" value="fixed" />
+                                            <el-option label="数据源类" value="data_source" />
+                                        </el-select>
+                                    </el-form-item>
+                                </el-col>
+                            </el-row>
+                            <el-row :gutter="12" v-if="field.default_source_ui.mode === 'fixed'">
+                                <el-col :span="8">
+                                    <el-form-item label="默认值">
+                                        <el-input v-model="field.default" :disabled="!!nodeDialog.form.form_ref_code" placeholder="可选" />
+                                    </el-form-item>
+                                </el-col>
+                            </el-row>
+                            <template v-if="field.default_source_ui.mode === 'data_source'">
+                                <el-row :gutter="12">
+                                    <el-col :span="12">
+                                        <el-form-item label="数据源类">
+                                            <div class="data-source-picker-row">
+                                                <div
+                                                    class="data-source-picker-trigger"
+                                                    @click="!nodeDialog.form.form_ref_code && openFieldDataSourcePicker(field, 'default')">
+                                                    <span
+                                                        :class="[
+                                                            'data-source-picker-value',
+                                                            { 'data-source-picker-placeholder': !field.default_source_ui.source_key }
+                                                        ]">
+                                                        [[ getFieldDataSourceKeyLabel(field.default_source_ui.source_key, 'default', field) || buildFieldDataSourcePlaceholder('default') ]]
+                                                    </span>
+                                                    <span class="data-source-picker-action">点击选择</span>
+                                                </div>
+                                                <el-button
+                                                    v-if="field.default_source_ui.source_key"
+                                                    :disabled="!!nodeDialog.form.form_ref_code"
+                                                    @click="field.default_source_ui.source_key = ''; onFieldDataSourceChange(field, 'default')">清空</el-button>
+                                            </div>
+                                        </el-form-item>
+                                    </el-col>
+                                    <el-col :span="12">
+                                        <el-form-item label="失败回退值">
+                                            <el-input v-model="field.default_source_ui.fallback_value" :disabled="!!nodeDialog.form.form_ref_code" placeholder="可选" />
+                                        </el-form-item>
+                                    </el-col>
+                                </el-row>
+                                <el-row :gutter="12">
+                                    <el-col
+                                        v-for="param in getSourceParamsSchema(field, 'default')"
+                                        :key="`default-${param.name}`"
+                                        :span="12">
+                                        <el-form-item :label="param.label">
+                                            <el-switch
+                                                v-if="param.component === 'switch'"
+                                                v-model="field.default_source_ui.source_params[param.name]"
+                                                :disabled="!!nodeDialog.form.form_ref_code" />
+                                            <el-input-number
+                                                v-else-if="param.component === 'number'"
+                                                v-model="field.default_source_ui.source_params[param.name]"
+                                                :disabled="!!nodeDialog.form.form_ref_code"
+                                                style="width:100%" />
+                                            <el-select
+                                                v-else-if="param.component === 'select'"
+                                                v-model="field.default_source_ui.source_params[param.name]"
+                                                :disabled="!!nodeDialog.form.form_ref_code"
+                                                :placeholder="param.placeholder || '请选择'">
+                                                <el-option
+                                                    v-for="option in (param.options || [])"
+                                                    :key="`${param.name}-${option.value}`"
+                                                    :label="option.label"
+                                                    :value="option.value" />
+                                            </el-select>
+                                            <el-input
+                                                v-else-if="param.component === 'textarea'"
+                                                v-model="field.default_source_ui.source_params[param.name]"
+                                                :disabled="!!nodeDialog.form.form_ref_code"
+                                                type="textarea"
+                                                :autosize="{ minRows: 2, maxRows: 4 }"
+                                                :placeholder="param.placeholder || ''" />
+                                            <el-input
+                                                v-else
+                                                v-model="field.default_source_ui.source_params[param.name]"
+                                                :disabled="!!nodeDialog.form.form_ref_code"
+                                                :placeholder="param.placeholder || ''" />
+                                        </el-form-item>
+                                    </el-col>
+                                </el-row>
+                            </template>
+                            <el-row :gutter="12">
+                                <el-col :span="8">
+                                    <el-form-item label="写入位置">
+                                        <el-select v-model="field.context_binding.write_target" :disabled="!!nodeDialog.form.form_ref_code">
+                                            <el-option label="不写入上下文" value="none" />
+                                            <el-option label="仅写入流程上下文" value="flow" />
+                                            <el-option label="仅写入当前节点上下文" value="node" />
+                                            <el-option label="同时写入流程和当前节点上下文" value="both" />
+                                        </el-select>
+                                    </el-form-item>
+                                </el-col>
+                                <el-col :span="8" v-if="field.context_binding.write_target !== 'none'">
+                                    <el-form-item label="写入策略">
+                                        <el-select v-model="field.context_binding.write_mode" :disabled="!!nodeDialog.form.form_ref_code">
+                                            <el-option label="覆盖写入" value="overwrite" />
+                                            <el-option label="仅空值写入" value="merge_if_absent" />
+                                        </el-select>
+                                    </el-form-item>
+                                </el-col>
+                            </el-row>
+                            <el-row v-if="field.component === 'number'" :gutter="12">
+                                <el-col :span="8">
+                                    <el-form-item label="最小值">
+                                        <el-input-number v-model="field.min" :disabled="!!nodeDialog.form.form_ref_code" />
+                                    </el-form-item>
+                                </el-col>
+                                <el-col :span="8">
+                                    <el-form-item label="最大值">
+                                        <el-input-number v-model="field.max" :disabled="!!nodeDialog.form.form_ref_code" />
+                                    </el-form-item>
+                                </el-col>
+                                <el-col :span="8">
+                                    <el-form-item label="步长">
+                                        <el-input-number v-model="field.step" :disabled="!!nodeDialog.form.form_ref_code" :min="1" />
+                                    </el-form-item>
+                                </el-col>
+                            </el-row>
+                            <el-row v-if="field.component === 'file'" :gutter="12">
+                                <el-col :span="12">
+                                    <el-form-item label="accept">
+                                        <el-input v-model="field.accept" :disabled="!!nodeDialog.form.form_ref_code" placeholder="如: .pdf,.jpg 或 image/*" />
+                                    </el-form-item>
+                                </el-col>
+                                <el-col :span="12">
+                                    <el-form-item label="多文件">
+                                        <el-switch v-model="field.multiple" :disabled="!!nodeDialog.form.form_ref_code" />
+                                    </el-form-item>
+                                </el-col>
+                            </el-row>
+                            <div v-if="['select', 'radio', 'checkbox'].includes(field.component)">
+                                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                                    <span style="font-weight:600;color:#334155;">选项配置</span>
+                                    <el-button
+                                        size="small"
+                                        type="primary"
+                                        plain
+                                        :disabled="!!nodeDialog.form.form_ref_code || !usesManualOptions(field)"
+                                        @click="addFormFieldOption(field)"
+                                    >新增选项</el-button>
+                                </div>
+                                <el-row :gutter="12" style="margin-bottom: 8px;">
+                                    <el-col :span="8">
+                                        <el-form-item label="选项来源">
+                                            <el-select v-model="field.options_source_ui.mode" :disabled="!!nodeDialog.form.form_ref_code">
+                                                <el-option label="固定选项" value="manual" />
+                                                <el-option label="数据源类" value="data_source" />
+                                            </el-select>
+                                        </el-form-item>
+                                    </el-col>
+                                </el-row>
+                                <template v-if="field.options_source_ui.mode === 'data_source'">
+                                    <el-row :gutter="12" style="margin-bottom: 8px;">
+                                        <el-col :span="12">
+                                            <el-form-item label="数据源类">
+                                                <div class="data-source-picker-row">
+                                                    <div
+                                                        class="data-source-picker-trigger"
+                                                        @click="!nodeDialog.form.form_ref_code && openFieldDataSourcePicker(field, 'options')">
+                                                        <span
+                                                            :class="[
+                                                                'data-source-picker-value',
+                                                                { 'data-source-picker-placeholder': !field.options_source_ui.source_key }
+                                                            ]">
+                                                            [[ getFieldDataSourceKeyLabel(field.options_source_ui.source_key, 'options', field) || buildFieldDataSourcePlaceholder('options') ]]
+                                                        </span>
+                                                        <span class="data-source-picker-action">点击选择</span>
+                                                    </div>
+                                                    <el-button
+                                                        v-if="field.options_source_ui.source_key"
+                                                        :disabled="!!nodeDialog.form.form_ref_code"
+                                                        @click="field.options_source_ui.source_key = ''; onFieldDataSourceChange(field, 'options')">清空</el-button>
+                                                </div>
+                                            </el-form-item>
+                                        </el-col>
+                                        <el-col :span="12">
+                                            <el-form-item label="失败回退固定选项">
+                                                <el-switch
+                                                    v-model="field.options_source_ui.fallback_to_manual"
+                                                    :disabled="!!nodeDialog.form.form_ref_code" />
+                                            </el-form-item>
+                                        </el-col>
+                                    </el-row>
+                                    <el-row :gutter="12" style="margin-bottom: 8px;">
+                                        <el-col
+                                            v-for="param in getSourceParamsSchema(field, 'options')"
+                                            :key="`options-${param.name}`"
+                                            :span="12">
+                                            <el-form-item :label="param.label">
+                                                <el-switch
+                                                    v-if="param.component === 'switch'"
+                                                    v-model="field.options_source_ui.source_params[param.name]"
+                                                    :disabled="!!nodeDialog.form.form_ref_code" />
+                                                <el-input-number
+                                                    v-else-if="param.component === 'number'"
+                                                    v-model="field.options_source_ui.source_params[param.name]"
+                                                    :disabled="!!nodeDialog.form.form_ref_code"
+                                                    style="width:100%" />
+                                                <el-select
+                                                    v-else-if="param.component === 'select'"
+                                                    v-model="field.options_source_ui.source_params[param.name]"
+                                                    :disabled="!!nodeDialog.form.form_ref_code"
+                                                    :placeholder="param.placeholder || '请选择'">
+                                                    <el-option
+                                                        v-for="option in (param.options || [])"
+                                                        :key="`${param.name}-${option.value}`"
+                                                        :label="option.label"
+                                                        :value="option.value" />
+                                                </el-select>
+                                                <el-input
+                                                    v-else-if="param.component === 'textarea'"
+                                                    v-model="field.options_source_ui.source_params[param.name]"
+                                                    :disabled="!!nodeDialog.form.form_ref_code"
+                                                    type="textarea"
+                                                    :autosize="{ minRows: 2, maxRows: 4 }"
+                                                    :placeholder="param.placeholder || ''" />
+                                                <el-input
+                                                    v-else
+                                                    v-model="field.options_source_ui.source_params[param.name]"
+                                                    :disabled="!!nodeDialog.form.form_ref_code"
+                                                    :placeholder="param.placeholder || ''" />
+                                            </el-form-item>
+                                        </el-col>
+                                    </el-row>
+                                </template>
+                                <div
+                                    v-if="usesManualOptions(field) && !field.options.length"
+                                    class="form-builder-empty"
+                                >请至少添加一个选项。</div>
+                                <div v-else-if="usesManualOptions(field)">
+                                    <div v-for="(option, optionIndex) in field.options" :key="option.id || optionIndex" class="form-option-row">
+                                        <el-input v-model="option.label" :disabled="!!nodeDialog.form.form_ref_code" placeholder="显示名" />
+                                        <el-input v-model="option.value" :disabled="!!nodeDialog.form.form_ref_code" placeholder="提交值" />
+                                        <el-button link type="danger" :disabled="!!nodeDialog.form.form_ref_code" @click="removeFormFieldOption(field, optionIndex)">删除</el-button>
+                                    </div>
+                                </div>
+                            </div>
+                            <el-row :gutter="12">
+                                <el-col :span="12">
+                                    <el-form-item label="CSS样式">
+                                        <el-input
+                                            v-model="field.css_text"
+                                            :disabled="!!nodeDialog.form.form_ref_code"
+                                            type="textarea"
+                                            :autosize="{ minRows: 2, maxRows: 4 }"
+                                            placeholder="例如: width:280px; border:1px solid #dbeafe;" />
+                                    </el-form-item>
+                                </el-col>
+                                <el-col :span="12">
+                                    <el-form-item label="JS脚本">
+                                        <el-input
+                                            v-model="field.js_text"
+                                            :disabled="!!nodeDialog.form.form_ref_code"
+                                            type="textarea"
+                                            :autosize="{ minRows: 2, maxRows: 4 }"
+                                            placeholder="可访问 value、formData、field、helpers；return 可覆盖当前值" />
+                                    </el-form-item>
+                                </el-col>
+                            </el-row>
+                        </div>
+                    </div>
+                </div>
+            </el-form-item>
+
+            <div class="panel-head" style="border:0;padding:8px 0;">审批组</div>
+            <div style="margin-bottom:8px;">
+                <el-button type="primary" plain @click="addGroup">新增审批组</el-button>
+            </div>
+            <el-card v-for="(group, gIndex) in nodeDialog.form.groups" :key="gIndex" class="group-card">
+                <el-row :gutter="16">
+                    <el-col :span="6">
+                        <el-form-item label="组Key">
+                            <el-input v-model="group.key" placeholder="A/B/C" />
+                        </el-form-item>
+                    </el-col>
+                    <el-col :span="8">
+                        <el-form-item label="名称">
+                            <el-input v-model="group.name" />
+                        </el-form-item>
+                    </el-col>
+                    <el-col :span="6">
+                        <el-form-item label="最小通过数">
+                            <el-input-number v-model="group.min_approve_count" :min="1" />
+                        </el-form-item>
+                    </el-col>
+                    <el-col :span="4" style="text-align:right;">
+                        <el-button link type="danger" @click="removeGroup(gIndex)">删除组</el-button>
+                    </el-col>
+                </el-row>
+                <div style="margin-bottom:8px;">
+                    <el-button size="small" type="primary" plain @click="addRule(gIndex)">新增规则</el-button>
+                </div>
+                <div v-for="(rule, rIndex) in group.rules" :key="rIndex" class="rule-row">
+                    <el-select v-model="rule.rule_type" style="width:120px">
+                        <el-option v-for="item in ruleTypeOptions" :key="item.value" :label="item.label" :value="item.value" />
+                    </el-select>
+                    <el-select v-if="rule.rule_type === 'perm_pack'" v-model="rule.perm_pack_id" style="min-width:220px">
+                        <el-option v-for="p in permPackOptions" :key="p.pack_id" :label="p.pack_name" :value="p.pack_id" />
+                    </el-select>
+                    <el-select v-else v-model="rule.user_id" filterable remote :remote-method="searchUsers" :loading="userLoading" style="min-width:240px">
+                        <el-option v-for="u in userOptions" :key="u.user_id" :label="formatUserLabel(u)" :value="u.user_id" />
+                    </el-select>
+                    <el-button link type="danger" @click="removeRule(gIndex, rIndex)">删除</el-button>
+                </div>
+            </el-card>
+        </el-form>
+
+        <template #footer>
+            <el-button @click="nodeDialog.visible = false">取消</el-button>
+            <el-button type="primary" @click="confirmNode">确定</el-button>
+        </template>
+    </el-dialog>
