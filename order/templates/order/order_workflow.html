@@ -38,25 +38,32 @@
         line-height: 1.5;
     }
 
-    /* 确保在iframe中能正常显示 */
-    html, body, #app {
+    html, body {
         height: 100%;
         width: 100%;
         margin: 0;
         padding: 0;
-        /* 允许页面内容滚动，避免被遮挡 */
         overflow: auto;
     }
 
+    #app {
+        width: 100%;
+    }
+
+    .workflow-page-header {
+        margin-bottom: 10px;
+        align-items: center;
+    }
+
     .workflow-shell {
-        padding: 24px 24px 32px;
+        padding: 0;
         box-sizing: border-box;
-        height: 100%;
         display: flex;
         flex-direction: column;
-        overflow: auto; /* 允许整个内容区域滚动 */
-        max-width: 1400px; /* 外层留白，避免紧贴容器 */
-        margin: 0 auto;
+        overflow: visible;
+        width: 100%;
+        max-width: none;
+        margin: 0;
     }
 
     .workflow-stack {
@@ -70,7 +77,7 @@
 
     .workflow-grid {
         display: grid;
-        grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+        grid-template-columns: minmax(0, 30fr) minmax(0, 70fr);
         gap: 20px;
         flex: 1;
         min-height: 0;
@@ -86,7 +93,7 @@
         min-height: 0;
     }
 
-    /* 防止Element UI组件在iframe中产生滚动问题 */
+    /* 防止 Element Plus 组件溢出 */
     .el-form, .el-form-item, .el-input, .el-select, .el-date-editor {
         max-width: 100%;
     }
@@ -181,7 +188,7 @@
     /* 主内容区域 */
     .workflow-grid {
         display: grid;
-        grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+        grid-template-columns: minmax(0, 30fr) minmax(0, 70fr);
         gap: 20px;
         flex: 1;
         min-height: 0;
@@ -558,10 +565,22 @@
         min-height: 0;
     }
 
+    .workflow-form-main {
+        padding: 16px 0;
+        border-top: 1px solid var(--wf-border-light);
+        border-bottom: 1px solid var(--wf-border-light);
+    }
+
+    .workflow-form-main > .fd-preview-form,
+    .workflow-form-main > .workflow-form-block {
+        width: min(100%, 820px);
+        margin: 0 auto;
+    }
+
     .workflow-form-actions {
-        margin-top: 20px;
+        margin-top: 0;
         padding-top: 16px;
-        border-top: 1px solid var(--wf-border);
+        border-top: none;
         display: flex;
         justify-content: flex-end;
         gap: 12px;
@@ -580,7 +599,7 @@
     .workflow-form-block {
         margin-top: 16px;
         padding: 16px;
-        background: var(--wf-muted-light);
+        background: transparent;
         border: 1px solid var(--wf-border);
         border-radius: var(--wf-radius-sm);
     }
@@ -607,6 +626,10 @@
         margin-top: 16px;
     }
 
+    .workflow-toolbar.workflow-form-actions {
+        margin-top: 0;
+    }
+
     /* 表单预览相关样式 */
     .fd-preview-form {
         padding: 8px 0;
@@ -617,6 +640,11 @@
         padding: 0;
         background: transparent;
         border: none;
+    }
+
+    .workflow-form-main .fd-container,
+    .workflow-form-main .fd-container-empty {
+        background: transparent;
     }
 
     .workflow-native-file {
@@ -677,10 +705,6 @@
 
     /* 响应式调整 */
     @media (max-width: 768px) {
-        .workflow-shell {
-            padding: 12px;
-        }
-
         .workflow-header {
             padding: 16px;
         }
@@ -849,243 +873,234 @@
 {% endblock %}
 
 {% block content %}
-<div id="app" class="workflow-shell">
-    <div class="workflow-stack">
-        <section class="workflow-header">
-            <div class="workflow-header-top">
-                <div>
-                    <h1 class="workflow-title">订单流程工作台</h1>
-                    <p class="workflow-subtitle">聚焦当前节点快速处理，左侧填单并提交，右侧随时查看任务状态、流程路径和最近动作。</p>
-                    <div class="workflow-tags">
-                        <span class="workflow-tag">订单号：{{ order_no }}</span>
-                        <span class="workflow-tag">流程：{{ flow_definition_name|default:"未绑定" }}</span>
-                        <span class="workflow-tag">订单状态：{{ order_status_label|default:"--" }}</span>
-                    </div>
-                </div>
-                <div class="workflow-metrics">
-                    <div class="workflow-metric">
-                        <div class="workflow-metric-label">流程状态</div>
-                        <div class="workflow-metric-value">{{ flow_status_label|default:"未启动" }}</div>
-                    </div>
-                    <div class="workflow-metric">
-                        <div class="workflow-metric-label">当前节点</div>
-                        <div class="workflow-metric-value">{{ current_node_name|default:"--" }}</div>
-                    </div>
-                    <div class="workflow-metric">
-                        <div class="workflow-metric-label">待处理任务</div>
-                        <div class="workflow-metric-value">{{ pending_task_total }}</div>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <section class="workflow-grid">
-            <div class="workflow-column workflow-column-left">
-                {% if workflow_action %}
-                <div class="workflow-card">
-                    <div class="workflow-card-head">
-                        <div>
-                            <div class="workflow-card-title">节点表单</div>
-                            <div class="workflow-card-subtitle" style="display: none;">这里展示的是当前节点高级配置里的表单字段，点击“通过”时会一并提交。</div>
+<div id="app">
+    <div class="page-header workflow-page-header">
+        <el-page-header title="返回" @back="goBack" content="{{ title }}"></el-page-header>
+        <div class="header-right">
+            <el-button plain @click="openLogPage">查看操作日志</el-button>
+        </div>
+    </div>
+    <div class="workflow-shell">
+        <div class="workflow-stack">
+            <section class="workflow-header">
+                <div class="workflow-header-top">
+                    <div>
+                        <h1 class="workflow-title">订单流程工作台</h1>
+                        <p class="workflow-subtitle">右侧填写流程表单，左侧处理任务、流程路径和最近动作。</p>
+                        <div class="workflow-tags">
+                            <span class="workflow-tag">订单号：{{ order_no }}</span>
+                            <span class="workflow-tag">流程：{{ flow_definition_name|default:"未绑定" }}</span>
+                            <span class="workflow-tag">订单状态：{{ order_status_label|default:"--" }}</span>
+                            <span class="workflow-tag">客户：{{ receiver_name|default:"--" }}</span>
+                            <span class="workflow-tag">客户公司：{{ receiver_company|default:"--" }}</span>
+                            <span class="workflow-tag">创建时间：{{ create_time_str|default:"--" }}</span>
                         </div>
                     </div>
-                    <div class="workflow-card-body">
-                        <div class="workflow-form-shell">
-                    <el-form
-                        ref="workflowFormRef"
-                        :model="workflowForm.form_data"
-                        :rules="workflowRules"
-                        label-width="100px"
-                        class="fd-preview-form"
-                        novalidate>
-                                <div v-if="workflowSchemaFields.length" class="workflow-form-block">
-                                    <preview-field-render
-                                        v-for="node in workflowSchemaFields"
-                                        :key="node.uid"
-                                        :node="node"
-                                        :form-data="workflowForm.form_data"
-                                        :current-user="currentUser"
-                                        :container-style="resolveWorkflowContainerStyle"
-                                        :run-script="runWorkflowFieldScript"
-                                        @file-change="onWorkflowPreviewFileChange"></preview-field-render>
-                                </div>
-                                <div v-else class="workflow-form-block">
-                                    <div class="workflow-form-title">该节点未配置表单</div>
-                                    <div class="workflow-form-tip">如果需要收集信息，请在流程设计器为当前节点添加表单字段。</div>
-                                </div>
-                            </el-form>
-                            <div class="workflow-toolbar workflow-form-actions">
-                                <el-button type="primary" :loading="workflowForm.submitting" @click="submitWorkflowAction('approve')">通过并进入下一步</el-button>
-                                <el-button type="danger" plain :loading="workflowForm.submitting" @click="submitWorkflowAction('reject')">驳回并退回当前节点</el-button>
+                    <div class="workflow-metrics">
+                        <div class="workflow-metric">
+                            <div class="workflow-metric-label">流程状态</div>
+                            <div class="workflow-metric-value">{{ flow_status_label|default:"未启动" }}</div>
+                        </div>
+                        <div class="workflow-metric">
+                            <div class="workflow-metric-label">当前节点</div>
+                            <div class="workflow-metric-value">{{ current_node_name|default:"--" }}</div>
+                        </div>
+                        <div class="workflow-metric">
+                            <div class="workflow-metric-label">待处理任务</div>
+                            <div class="workflow-metric-value">{{ pending_task_total }}</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="workflow-grid">
+                <div class="workflow-column workflow-column-left">
+                    <div class="workflow-card compact workflow-action-card">
+                        <div class="workflow-card-head">
+                            <div>
+                                <div class="workflow-card-title">处理面板</div>
+                                <div class="workflow-card-subtitle">在这里直接完成当前流程节点；如果节点被驳回，系统会自动退回当前节点并重新生成待办。</div>
                             </div>
-                        </div>
-                    </div>
-                </div>
-                {% endif %}
-            </div>
-
-            <div class="workflow-column workflow-column-right">
-                <div class="workflow-card compact workflow-action-card">
-                    <div class="workflow-card-head">
-                        <div>
-                            <div class="workflow-card-title">处理面板</div>
-                            <div class="workflow-card-subtitle">在这里直接完成当前流程节点；如果节点被驳回，系统会自动退回当前节点并重新生成待办。</div>
-                        </div>
-                        {% if workflow_action %}
-                        {% if rework_note %}
-                        <span class="workflow-badge danger">已退回待重做</span>
-                        {% else %}
-                        <span class="workflow-badge brand">待我处理 {{ active_task_count }} 项</span>
-                        {% endif %}
-                        {% elif flow_status_label == "已完成" %}
-                        <span class="workflow-badge success">流程已完成</span>
-                        {% elif flow_status_label == "已驳回" %}
-                        <span class="workflow-badge danger">流程已驳回</span>
-                        {% else %}
-                        <span class="workflow-badge muted">当前无可操作任务</span>
-                        {% endif %}
-                    </div>
-                    <div class="workflow-card-body">
-                        {% if workflow_action %}
-                        {% if rework_note %}
-                        <div class="workflow-rework-note">
-                            <div class="workflow-rework-title">上一轮处理已被驳回，当前节点已重新打开，等待重新处理。</div>
-                            <div class="workflow-rework-meta">{{ rework_note.operator_name|default:"系统" }} · {{ rework_note.time|default:"--" }}</div>
-                            {% if rework_note.memo %}
-                            <div class="workflow-rework-memo">{{ rework_note.memo }}</div>
+                            {% if workflow_action %}
+                            {% if rework_note %}
+                            <span class="workflow-badge danger">已退回待重做</span>
+                            {% else %}
+                            <span class="workflow-badge brand">待我处理 {{ active_task_count }} 项</span>
+                            {% endif %}
+                            {% elif flow_status_label == "已完成" %}
+                            <span class="workflow-badge success">流程已完成</span>
+                            {% elif flow_status_label == "已驳回" %}
+                            <span class="workflow-badge danger">流程已驳回</span>
+                            {% else %}
+                            <span class="workflow-badge muted">当前无可操作任务</span>
                             {% endif %}
                         </div>
-                        {% endif %}
-                        <div class="workflow-kv workflow-kv-tight">
-                            <div class="workflow-kv-item">
-                                <div class="workflow-kv-label">当前节点</div>
-                                <div class="workflow-kv-value">{{ workflow_action.current_node_name|default:"--" }}</div>
-                            </div>
-                            <div class="workflow-kv-item">
-                                <div class="workflow-kv-label">可处理任务数</div>
-                                <div class="workflow-kv-value">{{ active_task_count }}</div>
-                            </div>
-                        </div>
-
-                        <div class="workflow-task-list">
-                            {% for task in workflow_action.tasks %}
-                            <div
-                                class="workflow-task-item"
-                                :class="{ 'is-active': workflowForm.task_id === {{ task.task_id }} }"
-                                @click="workflowForm.task_id = {{ task.task_id }}">
-                                <div class="workflow-task-name">
-                                    {% if task.group_key %}{{ task.group_key }} / {% endif %}{{ task.assignee_name|default:"待分配" }}
-                                </div>
-                                <div class="workflow-task-meta">
-                                    节点：{{ task.node_name|default:workflow_action.current_node_name }}
-                                </div>
-                            </div>
-                            {% endfor %}
-                        </div>
-
-                        {% else %}
-                        <div class="workflow-empty">
-                            当前流程没有分配给你的待处理任务。你可以先查看右侧最近动作，确认流程目前是在等待他人处理，还是已经顺利结束。
-                        </div>
-                        {% endif %}
-                    </div>
-                </div>
-                <div class="workflow-card">
-                    <div class="workflow-card-head">
-                        <div>
-                            <div class="workflow-card-title">订单摘要</div>
-                            <div class="workflow-card-subtitle">方便处理流程时顺手确认订单是谁的、什么时候建的。</div>
-                        </div>
-                    </div>
-                    <div class="workflow-card-body">
-                        <div class="workflow-kv">
-                            <div class="workflow-kv-item">
-                                <div class="workflow-kv-label">订单号</div>
-                                <div class="workflow-kv-value">{{ order_no }}</div>
-                            </div>
-                            <div class="workflow-kv-item">
-                                <div class="workflow-kv-label">客户</div>
-                                <div class="workflow-kv-value">{{ receiver_name|default:"--" }}</div>
-                            </div>
-                            <div class="workflow-kv-item">
-                                <div class="workflow-kv-label">客户公司</div>
-                                <div class="workflow-kv-value">{{ receiver_company|default:"--" }}</div>
-                            </div>
-                            <div class="workflow-kv-item">
-                                <div class="workflow-kv-label">创建时间</div>
-                                <div class="workflow-kv-value">{{ create_time_str|default:"--" }}</div>
-                            </div>
-                        </div>
-                        <div class="workflow-toolbar">
-                            <el-button plain @click="openLogPage">查看操作日志</el-button>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="workflow-card compact">
-                    <div class="workflow-card-head">
-                        <div>
-                            <div class="workflow-card-title">最近动作</div>
-                            <div class="workflow-card-subtitle">只展示和流程直接相关的动作记录，不再把整个订单流水混在一起。</div>
-                        </div>
-                    </div>
-                    <div class="workflow-card-body">
-                        {% if recent_logs %}
-                        <div class="workflow-log-list">
-                            {% for item in recent_logs %}
-                            <div class="workflow-log-item {{ item.tone }}">
-                                <div class="workflow-log-title">{{ item.title }}</div>
-                                <div class="workflow-log-meta">{{ item.operator_name|default:"系统" }} · {{ item.time|default:"--" }}</div>
-                                {% if item.memo %}
-                                <div class="workflow-log-memo">{{ item.memo }}</div>
+                        <div class="workflow-card-body">
+                            {% if workflow_action %}
+                            {% if rework_note %}
+                            <div class="workflow-rework-note">
+                                <div class="workflow-rework-title">上一轮处理已被驳回，当前节点已重新打开，等待重新处理。</div>
+                                <div class="workflow-rework-meta">{{ rework_note.operator_name|default:"系统" }} · {{ rework_note.time|default:"--" }}</div>
+                                {% if rework_note.memo %}
+                                <div class="workflow-rework-memo">{{ rework_note.memo }}</div>
                                 {% endif %}
                             </div>
-                            {% endfor %}
-                        </div>
-                        {% else %}
-                        <div class="workflow-empty">当前还没有流程动作记录。</div>
-                        {% endif %}
-                    </div>
-                </div>
+                            {% endif %}
+                            <div class="workflow-kv workflow-kv-tight">
+                                <div class="workflow-kv-item">
+                                    <div class="workflow-kv-label">当前节点</div>
+                                    <div class="workflow-kv-value">{{ workflow_action.current_node_name|default:"--" }}</div>
+                                </div>
+                                <div class="workflow-kv-item">
+                                    <div class="workflow-kv-label">可处理任务数</div>
+                                    <div class="workflow-kv-value">{{ active_task_count }}</div>
+                                </div>
+                            </div>
 
-                <div class="workflow-card compact">
-                    <div class="workflow-card-head">
-                        <div>
-                            <div class="workflow-card-title">流程路径</div>
-                            <div class="workflow-card-subtitle">从开始到结束的完整节点路径，一眼就能看清现在卡在哪一步。</div>
-                        </div>
-                    </div>
-                    <div class="workflow-card-body">
-                        {% if workflow_steps %}
-                        <div class="workflow-step-list">
-                            {% for step in workflow_steps %}
-                            <div class="workflow-step-item {{ step.state }}">
-                                <div class="workflow-step-index">{{ forloop.counter }}</div>
-                                <div class="workflow-step-content">
-                                    <div class="workflow-step-name">{{ step.node_name }}</div>
-                                    <div class="workflow-step-meta">
-                                        {{ step.node_type_label }}{% if step.is_auto %} / 自动节点{% endif %}
+                            <div class="workflow-task-list">
+                                {% for task in workflow_action.tasks %}
+                                <div
+                                    class="workflow-task-item"
+                                    :class="{ 'is-active': workflowForm.task_id === {{ task.task_id }} }"
+                                    @click="workflowForm.task_id = {{ task.task_id }}">
+                                    <div class="workflow-task-name">
+                                        {% if task.group_key %}{{ task.group_key }} / {% endif %}{{ task.assignee_name|default:"待分配" }}
+                                    </div>
+                                    <div class="workflow-task-meta">
+                                        节点：{{ task.node_name|default:workflow_action.current_node_name }}
                                     </div>
                                 </div>
-                                {% if step.state == "done" %}
-                                <span class="workflow-badge success">{{ step.state_label }}</span>
-                                {% elif step.state == "current" %}
-                                <span class="workflow-badge brand">{{ step.state_label }}</span>
-                                {% elif step.state == "rejected" %}
-                                <span class="workflow-badge danger">{{ step.state_label }}</span>
-                                {% else %}
-                                <span class="workflow-badge muted">{{ step.state_label }}</span>
-                                {% endif %}
+                                {% endfor %}
                             </div>
-                            {% endfor %}
+
+                            {% else %}
+                            <div class="workflow-empty">
+                                当前流程没有分配给你的待处理任务。你可以先查看左侧下方最近动作，确认流程目前是在等待他人处理，还是已经顺利结束。
+                            </div>
+                            {% endif %}
                         </div>
-                        {% else %}
-                        <div class="workflow-empty">当前订单还没有可展示的流程节点。</div>
-                        {% endif %}
+                    </div>
+
+                    <div class="workflow-card compact">
+                        <div class="workflow-card-head">
+                            <div>
+                                <div class="workflow-card-title">流程路径</div>
+                                <div class="workflow-card-subtitle">从开始到结束的完整节点路径，一眼就能看清现在卡在哪一步。</div>
+                            </div>
+                        </div>
+                        <div class="workflow-card-body">
+                            {% if workflow_steps %}
+                            <div class="workflow-step-list">
+                                {% for step in workflow_steps %}
+                                <div class="workflow-step-item {{ step.state }}">
+                                    <div class="workflow-step-index">{{ forloop.counter }}</div>
+                                    <div class="workflow-step-content">
+                                        <div class="workflow-step-name">{{ step.node_name }}</div>
+                                        <div class="workflow-step-meta">
+                                            {{ step.node_type_label }}{% if step.is_auto %} / 自动节点{% endif %}
+                                        </div>
+                                    </div>
+                                    {% if step.state == "done" %}
+                                    <span class="workflow-badge success">{{ step.state_label }}</span>
+                                    {% elif step.state == "current" %}
+                                    <span class="workflow-badge brand">{{ step.state_label }}</span>
+                                    {% elif step.state == "rejected" %}
+                                    <span class="workflow-badge danger">{{ step.state_label }}</span>
+                                    {% else %}
+                                    <span class="workflow-badge muted">{{ step.state_label }}</span>
+                                    {% endif %}
+                                </div>
+                                {% endfor %}
+                            </div>
+                            {% else %}
+                            <div class="workflow-empty">当前订单还没有可展示的流程节点。</div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="workflow-card compact">
+                        <div class="workflow-card-head">
+                            <div>
+                                <div class="workflow-card-title">最近动作</div>
+                                <div class="workflow-card-subtitle">只展示和流程直接相关的动作记录，不再把整个订单流水混在一起。</div>
+                            </div>
+                        </div>
+                        <div class="workflow-card-body">
+                            {% if recent_logs %}
+                            <div class="workflow-log-list">
+                                {% for item in recent_logs %}
+                                <div class="workflow-log-item {{ item.tone }}">
+                                    <div class="workflow-log-title">{{ item.title }}</div>
+                                    <div class="workflow-log-meta">{{ item.operator_name|default:"系统" }} · {{ item.time|default:"--" }}</div>
+                                    {% if item.memo %}
+                                    <div class="workflow-log-memo">{{ item.memo }}</div>
+                                    {% endif %}
+                                </div>
+                                {% endfor %}
+                            </div>
+                            {% else %}
+                            <div class="workflow-empty">当前还没有流程动作记录。</div>
+                            {% endif %}
+                        </div>
                     </div>
                 </div>
-            </div>
-        </section>
+
+                <div class="workflow-column workflow-column-right">
+                    <div class="workflow-card workflow-form-card">
+                        <div class="workflow-card-head">
+                            <div>
+                                <div class="workflow-card-title">流程表单</div>
+                                <div class="workflow-card-subtitle">当前节点表单独立渲染，可在本块内直接完成并提交。</div>
+                            </div>
+                        </div>
+                        <div class="workflow-card-body">
+                            {% if workflow_action %}
+                            <div class="workflow-form-shell">
+                                <div class="workflow-form-main">
+                                    <el-form
+                                        ref="workflowFormRef"
+                                        :model="workflowForm.form_data"
+                                        :rules="workflowRules"
+                                        label-width="100px"
+                                        class="fd-preview-form"
+                                        novalidate>
+                                        <div v-if="workflowSchemaFields.length" class="workflow-form-block">
+                                            <preview-field-render
+                                                v-for="node in workflowSchemaFields"
+                                                :key="node.uid"
+                                                :node="node"
+                                                :form-data="workflowForm.form_data"
+                                                :current-user="currentUser"
+                                                :container-style="resolveWorkflowContainerStyle"
+                                                :run-script="runWorkflowFieldScript"
+                                                @file-change="onWorkflowPreviewFileChange"></preview-field-render>
+                                        </div>
+                                        <div v-else class="workflow-form-block">
+                                            <div class="workflow-form-title">该节点未配置表单</div>
+                                            <div class="workflow-form-tip">如果需要收集信息，请在流程设计器为当前节点添加表单字段。</div>
+                                        </div>
+                                    </el-form>
+                                </div>
+                                <div class="workflow-toolbar workflow-form-actions">
+                                    <el-button type="primary" :loading="workflowForm.submitting" @click="submitWorkflowAction('approve')">通过并进入下一步</el-button>
+                                    <el-button type="danger" plain :loading="workflowForm.submitting" @click="submitWorkflowAction('reject')">驳回并退回当前节点</el-button>
+                                </div>
+                            </div>
+                            {% else %}
+                            <div class="workflow-form-shell">
+                                <div class="workflow-form-main">
+                                    <div class="workflow-form-block">
+                                        <div class="workflow-form-title">当前无可提交表单</div>
+                                        <div class="workflow-form-tip">该订单当前没有分配给你的流程任务，或流程尚未进入可处理节点。</div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
     </div>
 </div>
 {% endblock %}
@@ -1484,6 +1499,7 @@
                 workflowRawSchema: JSON.parse('{{ workflow_form_schema_json|escapejs }}'),
                 workflowInitialFormData: JSON.parse('{{ workflow_form_data_json|escapejs }}'),
                 logPageUrl: "{{ log_page_url|escapejs }}",
+                prevUrl: "{{ prev_url|escapejs }}",
             }
         },
         computed: {
@@ -2084,6 +2100,17 @@
                 } finally {
                     this.workflowForm.submitting = false;
                 }
+            },
+            goBack() {
+                if (this.prevUrl) {
+                    window.location.href = this.prevUrl;
+                    return;
+                }
+                if (window.history.length > 1) {
+                    window.history.back();
+                    return;
+                }
+                window.location.href = "/admin/order/order/";
             },
             openLogPage() {
                 if (!this.logPageUrl) return;

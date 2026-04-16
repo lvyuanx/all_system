@@ -530,11 +530,8 @@
                 return pageData.deliveryMethodOptions.find((item) => item.value == pageData.fromData.delivery_method)?.label
             })
             const showWorkflowEntry = computed(() => {
-                return Boolean(
-                    isEditMode &&
-                    pageData.fromData.flow_definition_id &&
-                    Number(pageData.fromData.order_status) === 40
-                )
+                // 流程入口统一到订单列表，编辑页先隐藏该入口
+                return false
             })
 
             const initPage = async () => {

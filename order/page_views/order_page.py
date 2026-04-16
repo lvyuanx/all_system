@@ -543,6 +543,7 @@ def order_workflow(request, pk: int):
     context = {
         "title": "订单流程工作台",
         "order_id": pk,
+        "prev_url": _get_prev_url(request),
         "order_no": order.order_no,
         "order_status_label": OrderStatusChoices(order.order_status).label if getattr(order, "order_status", None) is not None else "",
         "receiver_name": order.receiver_name or "",

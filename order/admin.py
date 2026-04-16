@@ -142,10 +142,8 @@ class OrderAdmin(
                 {
                     "name": "流程",
                     "type": "text",
-                    "mode": "modal",
+                    "mode": "link",
                     "icon": "el-icon-share",
-                    "modal_width": "70vw",
-                    "modal_height": "85vh",
                     "url": lambda obj: reverse("order_workflow", kwargs={"pk": obj.pk}),
                 }
             ] + operate_buttons_config
