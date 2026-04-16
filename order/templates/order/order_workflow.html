@@ -876,9 +876,6 @@
 <div id="app">
     <div class="page-header workflow-page-header">
         <el-page-header title="返回" @back="goBack" content="{{ title }}"></el-page-header>
-        <div class="header-right">
-            <el-button plain @click="openLogPage">查看操作日志</el-button>
-        </div>
     </div>
     <div class="workflow-shell">
         <div class="workflow-stack">
@@ -1498,7 +1495,6 @@
                 workflowSchemaFields: [],
                 workflowRawSchema: JSON.parse('{{ workflow_form_schema_json|escapejs }}'),
                 workflowInitialFormData: JSON.parse('{{ workflow_form_data_json|escapejs }}'),
-                logPageUrl: "{{ log_page_url|escapejs }}",
                 prevUrl: "{{ prev_url|escapejs }}",
             }
         },
@@ -2111,10 +2107,6 @@
                     return;
                 }
                 window.location.href = "/admin/order/order/";
-            },
-            openLogPage() {
-                if (!this.logPageUrl) return;
-                window.location.href = this.logPageUrl;
             }
         }
     });
