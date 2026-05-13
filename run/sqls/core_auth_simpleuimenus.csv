@@ -27,6 +27,7 @@
 "28","地址管理","fas fa-list","/admin/site_mgmt/siteaddress/","0","站点管理/地址管理","1","1","0"
 "29","版式管理","fas fa-list",,"0","版式管理","0","1","0"
 "30","版式库","fas fa-list","/admin/pattern_library/pattern/","0","版式管理/版式库","1","1","0"
+"48","版式类别","fas fa-tags","/admin/pattern_library/patterncategory/","0","版式管理/版式类别","1","1","1"
 "31","已取消","fas fa-list","/admin/order/order/filter/?order_status=0","0","订单管理/已取消","1","1","99"
 "32","待排产","fas fa-list","/admin/order/order/filter/?order_status=20","0","订单管理/待排产","1","1","2"
 "33","待生产","fas fa-list","/admin/order/order/filter/?order_status=30","0","订单管理/待生产","1","1","3"

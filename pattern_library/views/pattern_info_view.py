@@ -8,7 +8,6 @@
 from core.exceptions.base_exceptions import BusinessException
 from core.ninja_extra.api_extra import BaseApi, HttpRequest, Query
 from pattern_library.models import Pattern
-from django.db.models import Prefetch
 from . import schemas
 
 
@@ -32,7 +31,7 @@ class View(BaseApi):
             raise BusinessException("001")
 
         pattern = (
-            await manager.select_related("main_image")
+            await manager.select_related("main_image", "category")
             .prefetch_related("images")
             .afirst()
         )
@@ -55,6 +54,8 @@ class View(BaseApi):
         return {
             "id": pattern.pk,
             "code": pattern.code,
+            "category_id": pattern.category_id,
+            "category_name": pattern.category.name if pattern.category else None,
             "memo": pattern.memo,  # 允许 None，你 schema 已经写成 str | None
             "is_active": pattern.is_active,
             "tags": pattern.tags_lst,  # 自动转 list[str]

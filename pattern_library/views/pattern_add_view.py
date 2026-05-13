@@ -3,18 +3,18 @@ from typing import List, Optional
 from core.exceptions.base_exceptions import BusinessException
 from core.ninja_extra.api_extra import BaseApi, HttpRequest, Form, UploadedFile, File
 from main.enums import ResCategoryEnum
-from pattern_library.models import Pattern
-from core.common.models import Resource
+from pattern_library.models import Pattern, PatternCategory
 from django.db import transaction
 from django.contrib.contenttypes.models import ContentType
-import uuid, mimetypes, os
 from core.common.utils import res_util
 from pattern_library.utils import image_util
+from pattern_library.services import consume_next_pattern_code
 
 
 @transaction.atomic
 def do(
     request: HttpRequest,
+    category: PatternCategory,
     code: str,
     memo: Optional[str],
     tags: Optional[List[str]],
@@ -24,7 +24,13 @@ def do(
 ):
     
     # 创建 Pattern
-    pattern = Pattern(code=code, memo=memo, tags=Pattern.generate_tags(*tags), is_active=is_active)
+    pattern = Pattern(
+        code=code,
+        category=category,
+        memo=memo,
+        tags=Pattern.generate_tags(*(tags or [])),
+        is_active=is_active,
+    )
     pattern.save()  # 先保存，不然 M2M 不能添加
 
     # 处理主图
@@ -61,24 +67,44 @@ class View(BaseApi):
     methods = ["POST"]
     finally_code = "000", "添加版式失败"
     response_schema = None
-    error_codes = [("001", "版式[{code}]已经存在")]
+    error_codes = [
+        ("001", "版式[{code}]已经存在"),
+        ("002", "版式类别不存在"),
+        ("003", "category_id 不能为空"),
+    ]
 
     @staticmethod
     async def api(
         request: HttpRequest,
-        code: str = Form(..., description="版号"),
+        category_id: int = Form(..., description="类别ID"),
+        code: Optional[str] = Form(None, description="版号"),
         memo: Optional[str] = Form(None, description="备注"),
         tags: Optional[List[str]] = Form(None, description="标签"),
         main_image: Optional[UploadedFile] = File(None, description="主图"),
         is_active: Optional[bool] = Form(True, description="是否启用"),
         images: Optional[List[UploadedFile]] = File(None, description="辅图"),
     ):
-        if await Pattern.objects.filter(code=code, is_delete=False).aexists():
-            raise BusinessException("001", {"code": code})
+        if not category_id:
+            raise BusinessException("003")
+        category_manager = PatternCategory.objects.filter(
+            pk=category_id,
+            is_delete=False,
+            is_active=True,
+        )
+        if not await category_manager.aexists():
+            raise BusinessException("002")
+        category = await category_manager.afirst()
+
+        final_code = (code or "").strip()
+        if not final_code:
+            final_code = await sync_to_async(consume_next_pattern_code)(category)
+        elif await Pattern.objects.filter(code=final_code).aexists():
+            raise BusinessException("001", {"code": final_code})
 
         await sync_to_async(do)(
             request=request,
-            code=code,
+            category=category,
+            code=final_code,
             memo=memo,
             main_image=main_image,
             images=images,

@@ -43,6 +43,8 @@ class Pagination(AsyncLimitOffsetPagination):
                         item.get("main_image__file", "")
                     ),
                     "pattern_code": item.get("code", ""),
+                    "category_id": item.get("category_id"),
+                    "category_name": item.get("category__name"),
                     "pattern_memo": item.get("memo", ""),
                     "tags": [t for t in (item.get("tags", "") or "").split(",") if t],
                 }
@@ -64,5 +66,5 @@ class View(BaseApi):
     @staticmethod
     async def api(request: HttpRequest):
         return Pattern.objects.filter(is_active=True, is_delete=False).values(
-            "id", "code", "memo", "tags", "main_image__file"
+            "id", "code", "memo", "tags", "main_image__file", "category_id", "category__name"
         )

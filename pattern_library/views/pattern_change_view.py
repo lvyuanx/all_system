@@ -18,16 +18,16 @@ from core.exceptions.base_exceptions import BusinessException
 from core.ninja_extra.api_extra import (BaseApi, File, Form, HttpRequest,
                                         UploadedFile)
 from main.enums import ResCategoryEnum
-from pattern_library.models import Pattern
+from pattern_library.models import Pattern, PatternCategory
 from pattern_library.utils import image_util
-
-from . import schemas
 
 
 @transaction.atomic
 def do(
     request: HttpRequest,
     pattern: Pattern,
+    code: Optional[str],
+    category: Optional[PatternCategory],
     memo: Optional[str],
     tags: Optional[List[str]],
     main_image: Optional[UploadedFile],
@@ -46,6 +46,10 @@ def do(
             pattern.images.remove(image)
     
     # 修改
+    if code:
+        pattern.code = code
+    if category is not None:
+        pattern.category = category
     pattern.memo = memo
     pattern.tags = Pattern.generate_tags(*(tags or [])) or ""
     pattern.is_active = is_active
@@ -87,13 +91,18 @@ class View(BaseApi):
     finally_code = "000", "更新版式信息失败"
     response_schema = None
     error_codes = [
-        ("001", "版式不存在")
+        ("001", "版式不存在"),
+        ("002", "版式类别不存在"),
+        ("003", "版式[{code}]已经存在"),
+        ("004", "pattern_id 或 code 至少传一个"),
     ]
 
     @staticmethod
     async def api(
         request: HttpRequest,
-        code: str = Form(..., description="版号"),
+        code: Optional[str] = Form(None, description="版号"),
+        pattern_id: Optional[int] = Form(None, description="版式ID"),
+        category_id: Optional[int] = Form(None, description="类别ID"),
         memo: Optional[str] = Form(None, description="备注"),
         tags: Optional[List[str]] = Form(None, description="标签"),
         main_image: Optional[UploadedFile | int] = File(None, description="主图"),
@@ -102,13 +111,40 @@ class View(BaseApi):
         image_ids: Optional[List[int]] = Form(None, description="辅图ids"),
         main_image_id: Optional[int] = Form(None, description="主图id"),
     ):
-        manager = Pattern.objects.filter(code=code, is_delete=False)
+        clean_code = (code or "").strip()
+        if not pattern_id and not clean_code:
+            raise BusinessException("004")
+
+        if pattern_id:
+            manager = Pattern.objects.filter(pk=pattern_id, is_delete=False)
+        else:
+            manager = Pattern.objects.filter(code=clean_code, is_delete=False)
         if not await manager.aexists():
-            raise BusinessException("001", {"code": code})
+            raise BusinessException("001", {"code": clean_code})
+
+        pattern = await manager.afirst()
+        new_code = None
+        if clean_code and clean_code != pattern.code:
+            if await Pattern.objects.filter(code=clean_code, is_delete=False).exclude(pk=pattern.pk).aexists():
+                raise BusinessException("003", {"code": clean_code})
+            new_code = clean_code
+
+        category = None
+        if category_id:
+            category_manager = PatternCategory.objects.filter(
+                pk=category_id,
+                is_delete=False,
+                is_active=True,
+            )
+            if not await category_manager.aexists():
+                raise BusinessException("002")
+            category = await category_manager.afirst()
         
         await sync_to_async(do)(
-            pattern=await manager.afirst(),
+            pattern=pattern,
             request=request,
+            code=new_code,
+            category=category,
             memo=memo,
             main_image=main_image,
             images=images,

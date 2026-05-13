@@ -32,7 +32,7 @@ class View(BaseApi):
             raise BusinessException("001")
 
         pattern = (
-            await manager.select_related("main_image")
+            await manager.select_related("main_image", "category")
             .prefetch_related("images")
             .afirst()
         )
@@ -51,6 +51,8 @@ class View(BaseApi):
         return {
             "id": pattern.pk,
             "code": pattern.code,
+            "category_id": pattern.category_id,
+            "category_name": pattern.category.name if pattern.category else None,
             "memo": pattern.memo,
             "is_active": pattern.is_active,
             "tags": pattern.tags_lst,

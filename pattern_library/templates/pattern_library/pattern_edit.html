@@ -9,7 +9,6 @@
 
 {% block extra_css %}
 <style>
-
 </style>
 {% endblock %}
 
@@ -22,11 +21,33 @@
         <el-row justify="center">
             <el-col :span="12">
                 <el-form :model="formData" ref="formRef" label-width="auto" :rules="formConf.rules">
+                    <el-form-item label="类别" prop="category_id">
+                        <el-select v-model="formData.category_id" placeholder="请选择类别" style="width: 100%;">
+                            <el-option
+                                v-for="item in pageData.categories"
+                                :key="item.id"
+                                :label="item.name"
+                                :value="item.id" />
+                        </el-select>
+                    </el-form-item>
                     <el-form-item label="版号" prop="code">
-                        <el-input v-model="formData.code" placeholder="请输入版号" :disabled="patternId != ''" />
+                        <el-input
+                            v-model="formData.code"
+                            placeholder="请选择类别后自动生成，可手动覆盖"
+                            @input="onCodeInput">
+                            <template #append>
+                                <el-button
+                                    :icon="RefreshRight"
+                                    @click="onRegenerateCode"
+                                    :disabled="!formData.category_id"
+                                    :loading="pageData.codeGenerating">
+                                    重新生成
+                                </el-button>
+                            </template>
+                        </el-input>
                     </el-form-item>
                     <el-form-item label="标签" prop="tags">
-                        <el-input-tag v-model="formData.tags" placeholder="请输入版号" aria-label="输入后请点击回车键创建标签" />
+                        <el-input-tag v-model="formData.tags" placeholder="请输入标签" aria-label="输入后请点击回车键创建标签" />
                     </el-form-item>
                     <el-form-item label="是否启用" prop="is_active">
                         <el-switch v-model="formData.is_active" class="ml-2" inline-prompt
@@ -57,7 +78,8 @@
 <script type="module">
     import CommonImageUpload from "{% static 'vue/js/CommonImageUpload.js' %}";
     import useHideUploadButton from "{% static 'vue/js/useHideUploadButton.js' %}";
-    const { reactive, onMounted, ref, inject } = Vue;
+    const { reactive, onMounted, ref, inject, watch } = Vue;
+    const { RefreshRight } = ElementPlusIconsVue;
     window.createApp({
         components: { CommonImageUpload },
         setup() {
@@ -76,21 +98,66 @@
             /** 页面数据 */
             const pageData = reactive({
                 pageLoading: true,
+                categories: [],
+                codeGenerating: false,
             });
 
             // ---------------------- 初始化页面 ----------------------
 
+            const autoCodeState = reactive({
+                codeOverridden: false,
+            })
+
+            const fetchCategoryList = async () => {
+                pageData.categories = await request.get("/pattern_library/pattern_categories")
+                if (!patternId && !formData.category_id && pageData.categories.length > 0) {
+                    formData.category_id = pageData.categories[0].id
+                }
+            }
+
+            const fetchCodePreview = async () => {
+                if (!formData.category_id) return
+                const res = await request.get("/pattern_library/pattern_code_preview", {
+                    category_id: formData.category_id
+                })
+                if (!autoCodeState.codeOverridden || !formData.code) {
+                    formData.code = res.preview_code || ""
+                }
+            }
+
+            const onRegenerateCode = async () => {
+                if (!formData.category_id) {
+                    ElMessage.warning("请先选择类别")
+                    return
+                }
+                try {
+                    pageData.codeGenerating = true
+                    const res = await request.get("/pattern_library/pattern_code_preview", {
+                        category_id: formData.category_id
+                    })
+                    formData.code = res.preview_code || ""
+                    autoCodeState.codeOverridden = true
+                } finally {
+                    pageData.codeGenerating = false
+                }
+            }
+
             /** 异步初始化页面 */
             const asyncInit = async () => {
+                await fetchCategoryList()
                 pageData.pageLoading = false;
                 if (patternId) {
                     const res = await request.get("/pattern_library/pattern_info", { pattern_id: patternId })
                     formData.code = res.code
+                    formData.category_id = res.category_id || null
                     formData.memo = res.memo
                     formData.tags = res.tags
                     formData.is_active = res.is_active
                     mainImage.value = [res.main_image]
                     images.value = res.images || []
+                    autoCodeState.codeOverridden = true
+                } else {
+                    await fetchCodePreview()
                 }
             };
 
@@ -102,6 +169,7 @@
 
             const formRef = ref(null)
             const formData = reactive({
+                category_id: null,
                 code: '',
                 memo: '',
                 tags: [],
@@ -111,8 +179,14 @@
             })
             const formConf = reactive({
                 rules: {
+                    category_id: [
+                        { validator: validateCategory, trigger: 'change' },
+                    ],
                     code: [
                         { required: true, message: '请输入版号', trigger: 'blur' },
+                    ],
+                    tags: [
+                        { required: false, message: '请输入标签', trigger: 'blur' },
                     ],
                     main_image: [
                         { required: true, validator: validateMainImage, trigger: 'blur' },
@@ -127,6 +201,20 @@
             useHideUploadButton(mainImageRef, mainImage, 1);
             useHideUploadButton(imagesRef, images, 3);
 
+            watch(() => formData.category_id, async () => {
+                if (patternId) return
+                await fetchCodePreview()
+            })
+
+            /** 主图验证 */
+            function validateCategory(rule, value, callback) {
+                if (!patternId && !value) {
+                    callback(new Error('请选择类别'))
+                } else {
+                    callback()
+                }
+            }
+
             /** 主图验证 */
             function validateMainImage(rule, value, callback) {
                 if (!value) {
@@ -135,6 +223,11 @@
                     callback()
                 }
 
+            }
+
+            const onCodeInput = () => {
+                if (patternId) return
+                autoCodeState.codeOverridden = !!formData.code
             }
 
             /** 提交表单 */
@@ -157,6 +250,7 @@
                 const fd = new FormData()
 
                 // 文本字段
+                fd.append("category_id", formData.category_id)
                 fd.append("code", formData.code)
                 fd.append("memo", formData.memo ?? "")
                 fd.append("tags", formData.tags)
@@ -195,6 +289,7 @@
                 patternId,
                 pageData,
                 goBack,
+                RefreshRight,
 
                 // form表单相关
                 formRef,
@@ -204,6 +299,8 @@
                 mainImageRef,
                 imagesRef,
                 images,
+                onCodeInput,
+                onRegenerateCode,
                 onSubmit,
 
             };

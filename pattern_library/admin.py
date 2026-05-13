@@ -11,7 +11,7 @@ from core.admin_extra.mixins import AdminListImagePreviewMixin, AuditAdminMixin
 from core.common.utils import res_util
 from main.enums import ResCategoryEnum
 
-from .models import Pattern
+from .models import Pattern, PatternCategory, PatternCategorySerial
 
 
 @admin.register(Pattern)
@@ -60,13 +60,15 @@ class PatternAdmin(AdminListImagePreviewMixin, AuditAdminMixin, admin.ModelAdmin
     image_preview = {"main_image": "主图"}
     list_display = (
         "code",
+        "category",
         "memo",
         "tags_display",
         "is_active",
         "main_image_preview",
     )
     
-    search_fields = ("code", "tags", "memo")
+    search_fields = ("code", "tags", "memo", "category__name")
+    list_filter = ("category", "is_active")
     
     @admin.display(description="标签")
     def tags_display(self, obj: Pattern):
@@ -78,3 +80,25 @@ class PatternAdmin(AdminListImagePreviewMixin, AuditAdminMixin, admin.ModelAdmin
             '<span style="display:inline-block; background:#ccc; color:#000; border-radius:4px; padding:4px 6px; margin:2px; font-size:12px;">{}</span>',
             ((tag,) for tag in tags_lst)
         )
+
+
+@admin.register(PatternCategory)
+class PatternCategoryAdmin(AuditAdminMixin, admin.ModelAdmin):
+    list_display = (
+        "name",
+        "code_prefix",
+        "date_mode",
+        "serial_digits",
+        "is_active",
+        "update_time",
+    )
+    search_fields = ("name", "code_prefix")
+    list_filter = ("date_mode", "is_active")
+
+
+@admin.register(PatternCategorySerial)
+class PatternCategorySerialAdmin(admin.ModelAdmin):
+    list_display = ("category", "date_key", "current_serial", "update_time")
+    search_fields = ("category__name", "date_key")
+    list_filter = ("category",)
+    readonly_fields = ("category", "date_key", "current_serial", "update_time")

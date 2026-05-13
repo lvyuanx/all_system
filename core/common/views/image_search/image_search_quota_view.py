@@ -10,7 +10,9 @@
 
 from core.ninja_extra.api_extra import BaseApi, HttpRequest
 from core.common.image_search import  image_search_adapter
+import logging
 
+logger = logging.getLogger(__name__)
 
 
 class View(BaseApi):
@@ -23,5 +25,12 @@ class View(BaseApi):
 
     @staticmethod
     async def api(request: HttpRequest):
-        res = await image_search_adapter.get_quota()
-        return res.get("search_quota", 0)
+        try:
+            res = await image_search_adapter.get_quota()
+        except Exception as exc:
+            logger.warning(
+                "fetch image search quota failed, fallback to 0: %s",
+                exc,
+            )
+            return 0
+        return (res or {}).get("search_quota", 0)

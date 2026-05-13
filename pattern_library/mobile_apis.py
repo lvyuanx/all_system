@@ -5,6 +5,8 @@ from .views import (
     mobile_pattern_activate_view,
     mobile_pattern_add_view,
     mobile_pattern_change_view,
+    pattern_category_list_view,
+    pattern_code_preview_view,
 )
 
 apis = {
@@ -15,5 +17,7 @@ apis = {
         ("A3", "change/", mobile_pattern_change_view.View, "移动端编辑版式"),
         ("A4", "activate/", mobile_pattern_activate_view.View, "mobile activate pattern"),
         ("A5", "add/", mobile_pattern_add_view.View, "mobile add pattern"),
+        ("A6", "categories/", pattern_category_list_view.View, "mobile list pattern categories"),
+        ("A7", "code_preview/", pattern_code_preview_view.View, "mobile preview pattern code"),
     ],
 }

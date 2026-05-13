@@ -4,11 +4,20 @@ import logging
 from typing import Any, Dict, Optional
 
 import httpx
-from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
+from tenacity import retry, retry_if_exception, stop_after_attempt, wait_exponential
 
 from core.utils import time_util
 
 logger = logging.getLogger(__name__)
+
+
+def _retry_for_server_error(exc: BaseException) -> bool:
+    if isinstance(exc, (httpx.TimeoutException, httpx.ConnectError)):
+        return True
+    if isinstance(exc, httpx.HTTPStatusError):
+        status_code = getattr(exc.response, "status_code", 0)
+        return int(status_code) >= 500
+    return False
 
 
 class HttpClient:
@@ -38,10 +47,7 @@ class HttpClient:
         await self.client.aclose()
 
     @retry(
-        retry=retry_if_exception_type((
-            httpx.TimeoutException,
-            httpx.ConnectError,
-        )),
+        retry=retry_if_exception(_retry_for_server_error),
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, min=1, max=5),
         reraise=True,
@@ -122,6 +128,6 @@ class HttpClient:
 
     async def delete(self, url: str, **kwargs):
         return await self.request("DELETE", url, **kwargs)
-    
-    
+
+
 http_client = HttpClient()

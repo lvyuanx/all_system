@@ -1,4 +1,12 @@
-from .views import pattern_list_view, pattern_add_view, pattern_info_view, pattern_change_view, pattern_search_view
+from .views import (
+    pattern_list_view,
+    pattern_add_view,
+    pattern_info_view,
+    pattern_change_view,
+    pattern_search_view,
+    pattern_category_list_view,
+    pattern_code_preview_view,
+)
 
 apis = {
     "": [
@@ -31,6 +39,18 @@ apis = {
             "pattern_search",
             pattern_search_view.View,
             "以图搜图板式信息",
+        ),
+        (
+            "A5",
+            "pattern_categories",
+            pattern_category_list_view.View,
+            "查询版式类别列表",
+        ),
+        (
+            "A6",
+            "pattern_code_preview",
+            pattern_code_preview_view.View,
+            "预览自动版号",
         )
     ]
 }

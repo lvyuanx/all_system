@@ -9,6 +9,7 @@ logger = logging.getLogger(__name__)
 
 menus_perm_dict = {
     "版式管理/版式库": ["view_pattern"],
+    "版式管理/版式类别": ["view_patterncategory"],
     "版式管理/图库搜索": ["view_pattern"],
     
     "站点管理/地址管理": ["view_siteaddress"],
@@ -51,6 +52,7 @@ menus_perm_dict = {
 
 mobile_menus_perm_dict = {
     "版式管理/版式库": ["view_pattern"],
+    "版式管理/版式类别": ["view_patterncategory"],
     "版式管理/图库搜索": ["view_pattern"],
     "版式管理/添加板式": ["change_pattern"],
     

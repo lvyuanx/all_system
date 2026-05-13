@@ -11,7 +11,8 @@ from asgiref.sync import sync_to_async
 
 from core.exceptions.base_exceptions import BusinessException
 from core.ninja_extra.api_extra import BaseApi, File, Form, HttpRequest, UploadedFile
-from pattern_library.models import Pattern
+from pattern_library.models import Pattern, PatternCategory
+from pattern_library.services import consume_next_pattern_code
 from pattern_library.views.pattern_add_view import do
 
 
@@ -21,20 +22,39 @@ class View(BaseApi):
     methods = ["POST"]
     finally_code = "000", "add pattern failed"
     response_schema = None
-    error_codes = [("001", "pattern [{code}] already exists")]
+    error_codes = [
+        ("001", "pattern [{code}] already exists"),
+        ("002", "pattern category not exists"),
+        ("003", "category_id is required"),
+    ]
 
     @staticmethod
     async def api(
         request: HttpRequest,
-        code: str = Form(..., description="pattern code"),
+        category_id: int = Form(..., description="category id"),
+        code: Optional[str] = Form(None, description="pattern code"),
         memo: Optional[str] = Form(None, description="memo"),
         tags: Optional[List[str]] = Form(None, description="tags"),
         main_image: Optional[UploadedFile | int] = File(None, description="main image"),
         is_active: Optional[bool] = Form(True, description="is active"),
         images: Optional[List[UploadedFile | int]] = File(None, description="images"),
     ):
-        if await Pattern.objects.filter(code=code, is_delete=False).aexists():
-            raise BusinessException("001", {"code": code})
+        if not category_id:
+            raise BusinessException("003")
+        category_manager = PatternCategory.objects.filter(
+            pk=category_id,
+            is_delete=False,
+            is_active=True,
+        )
+        if not await category_manager.aexists():
+            raise BusinessException("002")
+        category = await category_manager.afirst()
+
+        final_code = (code or "").strip()
+        if not final_code:
+            final_code = await sync_to_async(consume_next_pattern_code)(category)
+        elif await Pattern.objects.filter(code=final_code).aexists():
+            raise BusinessException("001", {"code": final_code})
 
         # mobile may pass existing resource ids in file fields; normalize to id lists
         if isinstance(main_image, int):
@@ -59,7 +79,8 @@ class View(BaseApi):
 
         pattern = await sync_to_async(do)(
             request=request,
-            code=code,
+            category=category,
+            code=final_code,
             memo=memo,
             main_image=main_image,
             images=normalized_images,
