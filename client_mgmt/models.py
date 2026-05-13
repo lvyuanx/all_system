@@ -9,10 +9,21 @@ class Client(model_util.PermissionHelperMixin, models.Model):
         MALE = 'M', "男"
         FEMALE = 'F', "女"
         UNKNOWN = 'U', "未知"
+
+    class SettlementMethod(models.TextChoices):
+        MONTHLY = "MONTHLY", "月结"
+        PER_TIME = "PER_TIME", "次结"
+
     client_name = models.CharField(max_length=255, verbose_name="客户名称")
     client_phone = models.CharField(max_length=255, null=True, blank=True, default=None, verbose_name="客户电话")
     client_sex = models.CharField(max_length=1, choices=Gender.choices, default=Gender.UNKNOWN, verbose_name="性别")
     client_age = models.IntegerField(null=True, blank=True, default=None, verbose_name="客户年龄")
+    settlement_method = models.CharField(
+        max_length=20,
+        choices=SettlementMethod.choices,
+        default=SettlementMethod.MONTHLY,
+        verbose_name="结款方式",
+    )
     company_name = models.CharField(max_length=255, null=True, blank=True, default=None, verbose_name="公司名称")
     company_phone = models.CharField(max_length=255, null=True, blank=True, default=None, verbose_name="公司电话")
     address_province = models.ForeignKey(
@@ -43,4 +54,3 @@ class Client(model_util.PermissionHelperMixin, models.Model):
     
     def __str__(self):
         return f"客户名称：{self.client_name}; 客户电话：{self.client_phone};"
-

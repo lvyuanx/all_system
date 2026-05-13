@@ -2,12 +2,18 @@ import os
 import re
 from urllib.parse import urlparse
 
+import httpx
+
 from core.exceptions.base_exceptions import BaseException
 from core.utils.http_client import http_client
 from .sign_util import SignUtil
 from django.conf import settings
 
 sign_util = SignUtil(settings.IMAGE_SEARCH_APPID, settings.IMAGE_SEARCH_SECRET_KEY)
+
+
+def _image_search_unavailable():
+    raise BaseException("图片搜索服务不可用，请稍后重试或检查服务配置")
 
 
 def _http_response(res, url_path):
@@ -31,10 +37,13 @@ async def image_list(group, page=1, page_size=20, keyword="", order="desc"):
         "url": url_path,
     }
     sign_params = sign_util.create_sign(params)
-    res = await http_client.get(
-        url,
-        params=sign_params,
-    )
+    try:
+        res = await http_client.get(
+            url,
+            params=sign_params,
+        )
+    except httpx.HTTPError:
+        _image_search_unavailable()
 
     return _http_response(res, url_path)
 
@@ -53,11 +62,14 @@ async def image_add(file, md5, group, filename, content_type):
         "file": (filename, file, content_type)
     }
 
-    res = await http_client.post(
-        url,
-        params=sign_params,
-        files=files,
-    )
+    try:
+        res = await http_client.post(
+            url,
+            params=sign_params,
+            files=files,
+        )
+    except httpx.HTTPError:
+        _image_search_unavailable()
 
     _http_response(res, url_path)
 
@@ -68,7 +80,10 @@ async def rebuild():
     url_path = urlparse(url).path
     params = {"url": url_path}
     sign_params = sign_util.create_sign(params)
-    res = await http_client.get(url, params=sign_params)
+    try:
+        res = await http_client.get(url, params=sign_params)
+    except httpx.HTTPError:
+        _image_search_unavailable()
     _http_response(res, url_path)
 
 
@@ -79,7 +94,10 @@ async def image_clear(group):
     url_path = urlparse(url).path
     params = {"group": group, "url": url_path}
     sign_params = sign_util.create_sign(params)
-    res = await http_client.delete(url, params=sign_params)
+    try:
+        res = await http_client.delete(url, params=sign_params)
+    except httpx.HTTPError:
+        _image_search_unavailable()
     _http_response(res, url_path)
 
 
@@ -90,7 +108,10 @@ async def image_delete(name):
     url_path = urlparse(url).path
     params = {"origin_name": name, "url": url_path}
     sign_params = sign_util.create_sign(params)
-    res = await http_client.delete(url, params=sign_params)
+    try:
+        res = await http_client.delete(url, params=sign_params)
+    except httpx.HTTPError:
+        _image_search_unavailable()
     _http_response(res, url_path)
 
 
@@ -102,17 +123,20 @@ async def image_search(file, md5, group):
     params = {"md5": md5, "group": group, "url": url_path}
     sign_params = sign_util.create_sign(params)
     filename = os.path.basename(urlparse(file.name).path)
-    res = await http_client.post(
-        url,
-        files={
-            "file": (
-                filename,
-                file.file,
-                file.content_type or "image/jpeg",
-            )
-        },
-        params=sign_params,
-    )
+    try:
+        res = await http_client.post(
+            url,
+            files={
+                "file": (
+                    filename,
+                    file.file,
+                    file.content_type or "image/jpeg",
+                )
+            },
+            params=sign_params,
+        )
+    except httpx.HTTPError:
+        _image_search_unavailable()
     return _http_response(res, url_path)
 
 async def get_quota():
@@ -122,10 +146,13 @@ async def get_quota():
     url_path = urlparse(url).path
     params = {"url": url_path}
     sign_params = sign_util.create_sign(params)
-    res = await http_client.post(
-        url,
-        params=sign_params,
-    )
+    try:
+        res = await http_client.post(
+            url,
+            params=sign_params,
+        )
+    except httpx.HTTPError:
+        _image_search_unavailable()
     return _http_response(res, url_path)
 
 
@@ -136,8 +163,11 @@ async def redeem_jdk(code: str):
     url_path = urlparse(url).path
     params = {"url": url_path, "code": code}
     sign_params = sign_util.create_sign(params)
-    res = await http_client.post(
-        url,
-        params=sign_params,
-    )
+    try:
+        res = await http_client.post(
+            url,
+            params=sign_params,
+        )
+    except httpx.HTTPError:
+        _image_search_unavailable()
     _http_response(res, url_path)

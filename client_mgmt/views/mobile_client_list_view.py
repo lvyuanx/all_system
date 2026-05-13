@@ -74,6 +74,11 @@ class Pagination(AsyncLimitOffsetPagination):
                 sex_str = Client.Gender(sex).label
             except Exception:
                 sex_str = ""
+            settlement_method = item.get("settlement_method") or Client.SettlementMethod.MONTHLY
+            try:
+                settlement_method_str = Client.SettlementMethod(settlement_method).label
+            except Exception:
+                settlement_method_str = ""
 
             rst.append(
                 {
@@ -83,6 +88,8 @@ class Pagination(AsyncLimitOffsetPagination):
                     "client_sex": sex,
                     "client_sex_str": sex_str,
                     "client_age": item.get("client_age"),
+                    "settlement_method": settlement_method,
+                    "settlement_method_str": settlement_method_str,
                     "company_name": item.get("company_name"),
                     "company_phone": item.get("company_phone"),
                     "company_logo": common_util.media_url(item.get("company_logo_file", "")),
@@ -124,6 +131,7 @@ class View(BaseApi):
             "client_phone",
             "client_sex",
             "client_age",
+            "settlement_method",
             "company_name",
             "company_phone",
             "address_province__name",

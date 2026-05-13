@@ -114,6 +114,7 @@ class ClientAdmin(AdminBaseMixin, AdminListImagePreviewMixin, SiteFilterMixin, a
         "client_name",
         "client_phone",
         "client_sex",
+        "settlement_method_display",
         "company_name",
         "full_address",
         "total_amount",
@@ -137,6 +138,10 @@ class ClientAdmin(AdminBaseMixin, AdminListImagePreviewMixin, SiteFilterMixin, a
     @admin.display(description="未结束订单数")
     def unfinished_order_total(self, obj):
         return obj.total_order_count - obj.total_end_order_count
+
+    @admin.display(description="结款方式")
+    def settlement_method_display(self, obj):
+        return obj.get_settlement_method_display()
 
     
     @admin.display(description="所属站点")

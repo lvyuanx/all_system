@@ -51,6 +51,7 @@ class View(BaseApi):
             "client_phone",
             "client_sex",
             "client_age",
+            "settlement_method",
             "company_name",
             "company_phone",
             "address_province__name",
@@ -73,6 +74,11 @@ class View(BaseApi):
             sex_str = Client.Gender(sex).label
         except Exception:
             sex_str = ""
+        settlement_method = client_obj.get("settlement_method") or Client.SettlementMethod.MONTHLY
+        try:
+            settlement_method_str = Client.SettlementMethod(settlement_method).label
+        except Exception:
+            settlement_method_str = ""
 
         province = client_obj.get("address_province__name", "") or ""
         city = client_obj.get("address_city__name", "") or ""
@@ -94,6 +100,8 @@ class View(BaseApi):
             client_sex=sex,
             client_sex_str=sex_str,
             client_age=client_obj.get("client_age"),
+            settlement_method=settlement_method,
+            settlement_method_str=settlement_method_str,
             company_name=client_obj.get("company_name"),
             company_phone=client_obj.get("company_phone"),
             company_logo=common_util.media_url(client_obj.get("company_logo_file", "")),
