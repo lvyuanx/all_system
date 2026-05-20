@@ -10,6 +10,8 @@ from core.utils import admin_util
 from order.enums import OrderStatusChoices
 from order.machine import OrderStateMachine
 from order.models import Order
+from order.services import ensure_order_confirm_user
+from site_mgmt.utils import site_util
 from django.db import transaction
 from .signals.signals import order_canceled_signal, order_complete_signal
 
@@ -23,6 +25,7 @@ class OrderAdmin(
         "order_no",
         "order_type",
         "order_status",
+        "confirm_user",
         "payable_amount",
         "receiver_name",
         "create_time",
@@ -36,6 +39,10 @@ class OrderAdmin(
     def get_status_by_request(self, request: HttpRequest):
         status = request.GET.getlist("order_status")
         return [int(item) for item in status]
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        return site_util.admin_filter_site(request, qs)
 
     # ------------------------------ 基础按钮权限配置 ------------------------------
     def has_delete_permission(self, request, obj=None):
@@ -218,7 +225,10 @@ class OrderAdmin(
         ):
             del actions["batch_cancel"]
 
-        if OrderStatusChoices.CREATED not in status:
+        if (
+            OrderStatusChoices.CREATED not in status
+            or not request.user.has_perm(Order.get_perms(["confirm"])[0])
+        ):
             del actions["batch_confirm"]
 
         if OrderStatusChoices.CONFIRMED not in status:
@@ -249,7 +259,6 @@ class OrderAdmin(
                 "只有订单未排产前才能批量取消,请检查勾选项！",
             )
             return
-
         count = 0
         with transaction.atomic():
             for obj in queryset:
@@ -262,6 +271,7 @@ class OrderAdmin(
                 order_canceled_signal.send(sender=Order, instance=obj)
                 
         messages.success(request, f"{count} 条记录已批量取消。")
+        return redirect(request.get_full_path())
 
     @admin_util.btn(
         short_description="批量确认",
@@ -279,16 +289,26 @@ class OrderAdmin(
                 "只有[已创建]状态的订单才能确认订单,请检查勾选项！",
             )
             return
+        if queryset.filter(order_status=OrderStatusChoices.CREATED, confirm_user__isnull=True).exists():
+            messages.warning(request, "存在未分配确认人的订单，请先分配确认人。")
+            return
+        if queryset.filter(order_status=OrderStatusChoices.CREATED).exclude(confirm_user=request.user).exists():
+            messages.warning(request, "只有订单指定确认人可以确认订单，请检查勾选项！")
+            return
 
         count = 0
         with transaction.atomic():
             for obj in queryset:
+                if obj.order_status != OrderStatusChoices.CREATED:
+                    continue
+                ensure_order_confirm_user(obj, request.user)
                 sm = OrderStateMachine(obj, request.user)
                 sm.confirm()
                 sm.save_state()
                 count += 1
                 admin_util.log_custom_actions(request, [obj], "订单确认", 2)
         messages.success(request, f"{count} 条记录已批量确认。")
+        return redirect(request.get_full_path())
 
     @admin_util.btn(
         short_description="批量排产",
@@ -408,4 +428,3 @@ class OrderAdmin(
 
                 order_complete_signal.send(sender=Order, instance=obj)
         messages.success(request, f"{count} 条记录已批量签收完成。")
-

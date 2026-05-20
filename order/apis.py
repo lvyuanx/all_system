@@ -6,6 +6,9 @@ from .views import (
     order_ship_view,
     order_workflow_action_view,
     order_list_by_pattern_view,
+    order_confirm_user_options_view,
+    order_create_habit_view,
+    mobile_order_action_views,
 )
 from .views.dashboard import (
     DashboardSummaryView,
@@ -69,6 +72,24 @@ apis = {
             order_workflow_action_view.View,
             "订单流程操作",
         ),
+        (
+            "A7",
+            "confirm_user_options",
+            order_confirm_user_options_view.View,
+            "订单确认人选项",
+        ),
+        (
+            "A8",
+            "confirm",
+            mobile_order_action_views.ConfirmView,
+            "订单确认",
+        ),
+        (
+            "A9",
+            "create_habit",
+            order_create_habit_view.View,
+            "查询订单创建习惯",
+        ),
     ],
 
     "dashboard": [
@@ -104,4 +125,3 @@ apis = {
         ),
     ],
 }
-

@@ -12,6 +12,7 @@ from core.ninja_extra.api_extra import BaseApi, HttpRequest, Body
 from order.enums import OrderStatusChoices
 from order.machine import OrderStateMachine
 from order.models import Order
+from order.services import ensure_order_confirm_user
 from order.signals.signals import order_canceled_signal, order_complete_signal
 from site_mgmt.utils import site_util
 
@@ -62,6 +63,8 @@ class View(BaseApi):
         ("001", "未查询到订单信息"),
         ("002", "不支持的操作"),
         ("003", "当前订单状态[{status_name}]无法进行该操作"),
+        ("004", "该订单暂未分配确认人"),
+        ("005", "只有该订单指定确认人可以确认"),
     ]
 
     @staticmethod
@@ -84,6 +87,8 @@ class View(BaseApi):
                 "003",
                 {"status_name": OrderStatusChoices(order.order_status).label},
             )
+        if data.action == "confirm":
+            ensure_order_confirm_user(order, request.user)
 
         sm = OrderStateMachine(order, request.user, data.operator_memo)
         if data.action == "finish_production":

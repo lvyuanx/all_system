@@ -93,6 +93,10 @@ class View(BaseApi):
             "receiver_phone",
             "receiver_company",
             "receiver_address",
+            "confirm_user_id",
+            "confirm_user__full_name",
+            "confirm_user__phone",
+            "is_auto_assign_confirm_user",
             "memo",
             "create_time",
             order_id=F("pk"),
@@ -188,6 +192,8 @@ class View(BaseApi):
             if order_obj.get("create_time")
             else ""
         )
+        order_obj["confirm_user_name"] = order_obj.pop("confirm_user__full_name", None)
+        order_obj["confirm_user_phone"] = order_obj.pop("confirm_user__phone", None)
 
         item_manager = OrderItem.objects.filter(
             order_id=order_id,

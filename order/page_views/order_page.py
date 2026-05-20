@@ -12,6 +12,7 @@ from flow_engine.models import FlowLog, FlowTask
 from flow_engine.enums import FlowStatusChoices
 from flow_engine.utils.form_runtime_util import resolve_form_runtime
 from flow_engine.utils.form_library_util import FORM_REF_CODE_KEY, FORM_REF_NAME_KEY, resolve_form_ref_definition
+from site_mgmt.utils import site_util
 
 SIGNATURE_DATA_URL_RE = re.compile(
     r"^data:image/(?:png|jpeg|jpg|webp|gif);base64,[a-zA-Z0-9+/=\s]+$",
@@ -53,6 +54,17 @@ def _get_prev_url(request):
     return request.META.get("HTTP_REFERER") or reverse("admin:order_order_changelist")
 
 
+def _filter_order_site(request, queryset):
+    return site_util.admin_filter_site(request, queryset)
+
+
+def _get_order_or_404(request, queryset):
+    order = _filter_order_site(request, queryset).first()
+    if not order:
+        raise Http404()
+    return order
+
+
 def _display_operator_name(name: str | None, default: str = "系统"):
     return name or default
 
@@ -92,23 +104,22 @@ def _hydrate_form_schema(schema, node=None):
 def order_add(request):
     context = {
         "title": "订单创建",
+        "has_order_confirm_perm": 0,
     }
     return render(request, "order/order_add.html", {**context, "prev_url": _get_prev_url(request)})
 
 def order_change(request, oid: int):
-    order = Order.objects.get(id=oid)
+    order = _get_order_or_404(request, Order.objects.filter(id=oid))
     context = {
         "title": "订单编辑",
         "order_id": oid,            
         "is_disabled_mode": 0 if order.order_status in [OrderStatusChoices.CREATED] else 1,
+        "has_order_confirm_perm": 1 if request.user.has_perm(Order.get_perms(["confirm"])[0]) else 0,
     }
     return render(request, "order/order_add.html", {**context, "prev_url": _get_prev_url(request)})
 
 def order_ship(request, pk: int):
-    try:
-        order = Order.objects.get(pk=pk)
-    except Order.DoesNotExist:
-        raise Http404()
+    order = _get_order_or_404(request, Order.objects.filter(pk=pk))
     
     context = {
         "title": "订单发货",
@@ -128,10 +139,7 @@ def order_ship(request, pk: int):
 
 
 def order_pay(request, pk: int):
-    try:
-        order = Order.objects.get(pk=pk)
-    except Order.DoesNotExist:
-        raise Http404()
+    order = _get_order_or_404(request, Order.objects.filter(pk=pk))
     
     context = {
         "title": "订单发货",
@@ -215,10 +223,9 @@ def order_timeline(request, pk: int):
         "flow_instance",
         "flow_instance__current_node",
     ).filter(pk=pk)
-    if not manager.exists():
-        raise Http404()
+    manager = _filter_order_site(request, manager)
 
-    order = manager.first()
+    order = _get_order_or_404(request, manager)
     if (
         order.order_status == OrderStatusChoices.PRODUCING
         and order.flow_instance_id
@@ -524,10 +531,9 @@ def order_workflow(request, pk: int):
         "flow_instance__current_node",
         "flow_instance__flow_version",
     ).filter(pk=pk)
-    if not manager.exists():
-        raise Http404()
+    manager = _filter_order_site(request, manager)
 
-    order = _sync_order_workflow_state(manager.first(), request.user)
+    order = _sync_order_workflow_state(_get_order_or_404(request, manager), request.user)
     workflow_action = _build_workflow_action_payload(request, order)
     workflow_steps = _build_workflow_node_steps(order)
     recent_logs = _build_workflow_recent_logs(order)
@@ -578,18 +584,16 @@ def order_workflow(request, pk: int):
 
 
 def order_flow_context(request, pk: int):
-    order = (
+    order = _get_order_or_404(
+        request,
         Order.objects.select_related(
             "flow_definition",
             "flow_instance",
             "flow_instance__current_node",
             "flow_instance__flow_version",
         )
-        .filter(pk=pk)
-        .first()
+        .filter(pk=pk),
     )
-    if not order:
-        raise Http404()
 
     flow_status_label_map = {
         FlowStatusChoices.RUNNING: "进行中",

@@ -5,6 +5,7 @@ from django.db.models import Count
 from core.ninja_extra.api_extra import BaseApi, HttpRequest
 from order.enums import OrderDeliveryChoices
 from order.models import Order
+from site_mgmt.utils import site_util
 
 
 class DashboardDeliveryView(BaseApi):
@@ -18,8 +19,7 @@ class DashboardDeliveryView(BaseApi):
     async def api(request: HttpRequest):
         def calc_delivery():
             qs = (
-                Order.objects
-                .filter(is_delete=False)
+                site_util.admin_filter_site(request, Order.objects.filter(is_delete=False))
                 .values("delivery_method")
                 .annotate(total=Count("id"))
                 .order_by("delivery_method")

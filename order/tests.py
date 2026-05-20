@@ -1,0 +1,272 @@
+from datetime import datetime
+from decimal import Decimal
+from pathlib import Path
+from zoneinfo import ZoneInfo
+from types import SimpleNamespace
+
+from django.test import SimpleTestCase
+
+import order.services
+from order.apis import apis as order_apis
+from order.mobile_apis import apis as order_mobile_apis
+from order.models import Order
+from order.views.mobile_order_action_views import ConfirmView
+from order.views.dashboard.dashboard_trend_view import DashboardTrendView
+
+
+class _TrendQuerySet:
+    def __init__(self, rows):
+        self.rows = rows
+        self.filters = []
+        self.selected_fields = None
+
+    def filter(self, **kwargs):
+        self.filters.append(kwargs)
+        return self
+
+    def order_by(self, *fields):
+        return self
+
+    def values_list(self, *fields):
+        self.selected_fields = fields
+        return self.rows
+
+    def annotate(self, *args, **kwargs):
+        raise AssertionError("trend aggregation should not use database date truncation")
+
+
+class _ConfirmUserQuerySet:
+    def __init__(self, rows):
+        self.rows = rows
+        self.value_fields = None
+        self.expression_fields = None
+
+    def values(self, *fields, **expressions):
+        self.value_fields = fields
+        self.expression_fields = expressions
+        if "user_id" in expressions:
+            raise ValueError("The annotation 'user_id' conflicts with a field on the model.")
+        return self
+
+    def order_by(self, *fields):
+        return self
+
+    def __iter__(self):
+        return iter(self.rows)
+
+
+class DashboardTrendViewTests(SimpleTestCase):
+    def test_trend_aggregation_does_not_require_database_datetime_truncation(self):
+        tz = ZoneInfo("Asia/Shanghai")
+        start_dt = datetime(2026, 5, 11, tzinfo=tz)
+        end_dt = datetime(2026, 5, 18, tzinfo=tz)
+        rows = [
+            (datetime(2026, 5, 11, 10, tzinfo=tz), Decimal("10000.00")),
+            (datetime(2026, 5, 11, 18, tzinfo=tz), Decimal("25000.00")),
+            (datetime(2026, 5, 14, 9, tzinfo=tz), Decimal("30000.00")),
+        ]
+        qs = _TrendQuerySet(rows)
+
+        daily = DashboardTrendView._build_daily(qs, start_dt, end_dt)
+        weekly = DashboardTrendView._build_weekly(qs, start_dt, end_dt)
+
+        self.assertEqual(qs.selected_fields, ("create_time", "payable_amount"))
+        self.assertEqual(
+            daily["x"],
+            ["05-11", "05-12", "05-13", "05-14", "05-15", "05-16", "05-17"],
+        )
+        self.assertEqual(daily["count"], [2, 0, 0, 1, 0, 0, 0])
+        self.assertEqual(daily["amount"], [3.5, 0, 0, 3.0, 0, 0, 0])
+        self.assertEqual(weekly, {"x": ["第1周"], "count": [3], "amount": [6.5]})
+
+
+class ConfirmUserOptionsTests(SimpleTestCase):
+    def test_confirm_user_queryset_filters_users_with_confirm_permission(self):
+        class _StaffQuerySet:
+            def __init__(self):
+                self.select_related_args = None
+                self.filter_kwargs = None
+                self.distinct_called = False
+
+            def select_related(self, *args):
+                self.select_related_args = args
+                return self
+
+            def filter(self, **kwargs):
+                self.filter_kwargs = kwargs
+                return self
+
+            def distinct(self):
+                self.distinct_called = True
+                return self
+
+        class _StaffObjects:
+            def __init__(self, qs):
+                self.qs = qs
+
+            def select_related(self, *args):
+                return self.qs.select_related(*args)
+
+        qs = _StaffQuerySet()
+        original_objects = order.services.Staff.objects
+        order.services.Staff.objects = _StaffObjects(qs)
+        try:
+            order.services.get_confirm_user_queryset(10)
+        finally:
+            order.services.Staff.objects = original_objects
+
+        self.assertEqual(qs.select_related_args, ("user", "site"))
+        self.assertEqual(qs.filter_kwargs["site_id"], 10)
+        self.assertEqual(qs.filter_kwargs["user__is_active"], True)
+        self.assertEqual(qs.filter_kwargs["user__groups__permissions__codename"], "confirm_order")
+        self.assertEqual(
+            qs.filter_kwargs["user__groups__permissions__content_type__app_label"],
+            "order",
+        )
+        self.assertTrue(qs.distinct_called)
+
+    def test_confirm_user_options_uses_model_user_id_field_without_annotation_conflict(self):
+        rows = [
+            {
+                "user_id": 1,
+                "staff_code": "S001",
+                "full_name": "张三",
+                "phone": "13800000000",
+            }
+        ]
+        qs = _ConfirmUserQuerySet(rows)
+        original_get_queryset = order.services.get_confirm_user_queryset
+        order.services.get_confirm_user_queryset = lambda site_id: qs
+        try:
+            result = order.services.get_confirm_user_options(10)
+        finally:
+            order.services.get_confirm_user_queryset = original_get_queryset
+
+        self.assertEqual(result, rows)
+        self.assertIn("user_id", qs.value_fields)
+        self.assertNotIn("user_id", qs.expression_fields)
+
+
+class OrderAddTemplateTests(SimpleTestCase):
+    def test_confirm_user_options_use_explicit_closing_tags(self):
+        template = Path("order/templates/order/order_add.html").read_text(encoding="utf-8")
+
+        self.assertIn('key="confirm-user-random"', template)
+        self.assertIn("</el-option>", template)
+        self.assertNotIn('<el-option label="系统随机分配" :value="null" />', template)
+
+    def test_existing_order_submit_uses_confirm_endpoint(self):
+        template = Path("order/templates/order/order_add.html").read_text(encoding="utf-8")
+
+        self.assertIn('request.post("/order/confirm"', template)
+        self.assertIn("const canSubmitOrder = computed", template)
+        self.assertIn('request.post("/order/create"', template)
+
+    def test_confirm_button_requires_order_confirm_permission(self):
+        template = Path("order/templates/order/order_add.html").read_text(encoding="utf-8")
+
+        self.assertIn("hasOrderConfirmPerm", template)
+        self.assertIn('v-if="showSubmitButton"', template)
+        self.assertIn("const showSubmitButton = computed", template)
+        self.assertIn("return isEditMode && hasOrderConfirmPerm && pageData.fromData.order_status == 10", template)
+
+    def test_create_page_loads_cached_order_create_habit(self):
+        template = Path("order/templates/order/order_add.html").read_text(encoding="utf-8")
+
+        self.assertIn('request.get("/order/create_habit"', template)
+        self.assertIn("const loadCreateHabit = async () =>", template)
+        self.assertIn("pageData.fromData.confirm_user_id = habit.confirm_user_id ?? null", template)
+
+
+class OrderApiConfigTests(SimpleTestCase):
+    def test_backend_confirm_endpoint_is_registered_for_admin_order_pages(self):
+        endpoints = {item[1]: item[2] for item in order_apis[""]}
+
+        self.assertIn("confirm", endpoints)
+
+    def test_confirm_endpoint_requires_order_confirm_permission(self):
+        self.assertEqual(ConfirmView.perms_all, Order.get_perms(["confirm"]))
+
+    def test_create_habit_endpoints_are_registered_for_admin_and_mobile(self):
+        backend_endpoints = {item[1]: item[2] for item in order_apis[""]}
+        mobile_meta_endpoints = {item[1]: item[2] for item in order_mobile_apis["meta"]}
+
+        self.assertIn("create_habit", backend_endpoints)
+        self.assertIn("create_habit/", mobile_meta_endpoints)
+
+
+class OrderCreateHabitTests(SimpleTestCase):
+    def test_save_create_habit_writes_latest_payload_to_cache(self):
+        cache_calls = {}
+
+        def fake_set(key, value, timeout=None):
+            cache_calls["set"] = (key, value, timeout)
+
+        original_set = order.services.cache.set
+        order.services.cache.set = fake_set
+        try:
+            order.services.save_order_create_habit(
+                user_id=88,
+                site_id=12,
+                order_type=3,
+                delivery_method=2,
+                confirm_user_id=77,
+            )
+        finally:
+            order.services.cache.set = original_set
+
+        key, value, timeout = cache_calls["set"]
+        self.assertEqual(key, "order:create_habit:88")
+        self.assertEqual(
+            value,
+            {
+                "site_id": 12,
+                "order_type": 3,
+                "delivery_method": 2,
+                "confirm_user_id": 77,
+            },
+        )
+        self.assertGreater(timeout, 0)
+
+    def test_get_create_habit_returns_empty_payload_when_cache_missing(self):
+        original_get = order.services.cache.get
+        order.services.cache.get = lambda key, default=None: default
+        try:
+            result = order.services.get_order_create_habit(88)
+        finally:
+            order.services.cache.get = original_get
+
+        self.assertEqual(
+            result,
+            {
+                "site_id": None,
+                "order_type": None,
+                "delivery_method": None,
+                "confirm_user_id": None,
+            },
+        )
+
+
+class OrderSiteIsolationTests(SimpleTestCase):
+    def test_admin_queryset_is_filtered_by_current_user_site(self):
+        source = Path("order/admin.py").read_text(encoding="utf-8")
+
+        self.assertIn("def get_queryset(self, request):", source)
+        self.assertIn("site_util.admin_filter_site(request, qs)", source)
+
+    def test_order_page_entries_filter_by_current_user_site(self):
+        source = Path("order/page_views/order_page.py").read_text(encoding="utf-8")
+
+        self.assertIn("_get_order_or_404(request", source)
+        self.assertNotIn("Order.objects.get(id=oid)", source)
+        self.assertNotIn("Order.objects.get(pk=pk)", source)
+
+    def test_superuser_is_not_site_filtered_by_shared_helper(self):
+        from types import SimpleNamespace
+
+        from site_mgmt.utils import site_util
+
+        queryset = object()
+        request = SimpleNamespace(user=SimpleNamespace(is_authenticated=True, is_superuser=True))
+
+        self.assertIs(site_util.admin_filter_site(request, queryset), queryset)

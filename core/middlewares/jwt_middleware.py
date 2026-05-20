@@ -9,6 +9,7 @@
 """
 import logging
 
+from django.contrib.auth import get_user_model
 from django.contrib.auth import logout
 from django.http import HttpRequest, JsonResponse
 from django.shortcuts import redirect
@@ -76,9 +77,15 @@ class JWTMiddleware:
             token_client = token_payload.get("client")
             if token_client and token_client != channel:
                 raise ValueError("token client mismatch")
+            uid = token_payload.get("uid")
+            if not uid:
+                raise ValueError("token uid missing")
+            user = get_user_model().objects.filter(pk=uid, is_active=True).first()
+            if user is None:
+                raise ValueError("token user invalid")
+            request.user = user
             max_sessions = token_util.get_sso_max_sessions(channel)
             if max_sessions > 0:
-                uid = token_payload.get("uid")
                 jti = token_payload.get("jti")
                 if not uid or not token_util.is_sso_session_active(uid, channel, jti, max_sessions):
                     raise ValueError("token sso invalid")

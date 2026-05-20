@@ -11,6 +11,7 @@ from enum import StrEnum
 from functools import wraps
 import logging
 from typing import Dict, List, Tuple, cast
+from asgiref.sync import sync_to_async
 from ninja import NinjaAPI, Router, Body, Query, Path, Schema, Header, UploadedFile, File, Form
 from django.http.request import HttpRequest
 from core.exceptions.base_exceptions import (
@@ -41,6 +42,10 @@ from core.ninja_extra.base_pagination import AsyncLimitOffsetPagination, paginat
 
 
 logger = logging.getLogger(__name__)
+
+
+def _user_has_any_perm(user, perms: list[str]) -> bool:
+    return any(user.has_perm(perm) for perm in perms)
 
 
 class BaseApi:
@@ -148,11 +153,15 @@ class BaseApi:
                     user = request.user
                     # 检查必须全部拥有的权限
                     if cls.perms_all:
-                        if not user.has_perms(cls.perms_all):
+                        has_all_perms = await sync_to_async(user.has_perms)(cls.perms_all)
+                        if not has_all_perms:
                             raise BusinessException("403")
                     # 检查任意一个权限
                     if cls.perms_any:
-                        if not any(user.has_perm(p) for p in cls.perms_any):
+                        has_any_perm = await sync_to_async(_user_has_any_perm)(
+                            user, cls.perms_any
+                        )
+                        if not has_any_perm:
                             raise BusinessException("403")
                 return await func(*args, **kwargs)
 

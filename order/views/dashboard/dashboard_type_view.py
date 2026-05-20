@@ -5,6 +5,7 @@ from django.db.models import Count
 from core.ninja_extra.api_extra import BaseApi, HttpRequest
 from order.enums import OrderTypeChoices
 from order.models import Order
+from site_mgmt.utils import site_util
 
 
 class DashboardTypeView(BaseApi):
@@ -18,8 +19,7 @@ class DashboardTypeView(BaseApi):
     async def api(request: HttpRequest):
         def calc_type():
             qs = (
-                Order.objects
-                .filter(is_delete=False)
+                site_util.admin_filter_site(request, Order.objects.filter(is_delete=False))
                 .values("order_type")
                 .annotate(total=Count("id"))
                 .order_by("order_type")

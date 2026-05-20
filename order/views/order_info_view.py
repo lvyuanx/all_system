@@ -55,7 +55,11 @@ class View(BaseApi):
             "receiver_phone",
             "receiver_address",
             "receiver_company",
+            "confirm_user_id",
+            "is_auto_assign_confirm_user",
             "memo",
+            confirm_user_name=F("confirm_user__full_name"),
+            confirm_user_phone=F("confirm_user__phone"),
             flow_definition_name=F("flow_definition__name"),
             order_id=F("pk"),
         ).afirst()

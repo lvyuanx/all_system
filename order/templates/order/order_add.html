@@ -102,7 +102,7 @@
 
         <div class="header-right">
             <el-button v-if="showWorkflowEntry" type="warning" plain @click="openWorkflowEntry">进入流程</el-button>
-            <el-button type="primary" @click="onSubmit" :disabled="isDisabledMode">提交</el-button>
+            <el-button v-if="showSubmitButton" type="primary" @click="onSubmit">[[submitButtonText]]</el-button>
         </div>
     </div>
     <div class="page-container" v-loading="pageData.pageLoading">
@@ -130,6 +130,15 @@
                             :disabled="isDisabledMode">
                             <el-option v-for="item in pageData.flowDefinitionOptions" :key="item.value"
                                 :label="item.label" :value="item.value" />
+                        </el-select>
+                    </el-form-item>
+                    <el-form-item label="订单确认人" prop="confirm_user_id">
+                        <el-select v-model="pageData.fromData.confirm_user_id" placeholder="不选则系统随机分配"
+                            clearable :disabled="isDisabledMode || !pageData.fromData.site_id">
+                            <el-option key="confirm-user-random" label="系统随机分配" :value="null"></el-option>
+                            <el-option v-for="item in pageData.confirmUserOptions" :key="item.user_id"
+                                :label="`${item.full_name || '未命名'}（${item.phone || item.staff_code || '-'}）`"
+                                :value="item.user_id"></el-option>
                         </el-select>
                     </el-form-item>
                     <el-form-item label="订单配送方式" prop="delivery_method">
@@ -339,6 +348,10 @@
                     <div class="checkout-item-lable">订单备注：</div>
                     <div class="checkout-item-value">[[pageData.fromData.memo]]</div>
                 </div>
+                <div class="checkout-item-content">
+                    <div class="checkout-item-lable">确认人：</div>
+                    <div class="checkout-item-value">[[confirmUserLabel]]</div>
+                </div>
             </div>
             <div class="checkout-item-container">
                 <div class="checkout-item-title">发货方</div>
@@ -399,10 +412,22 @@
             const orderId = "{{order_id}}"
             const isEditMode = orderId != ""
             const isDisabledMode = "{{is_disabled_mode}}" == "1"
+            const hasOrderConfirmPerm = "{{has_order_confirm_perm|default:0}}" == "1"
             const hideBack = new URLSearchParams(window.location.search).get('hide_back') === '1'
             const goBack = () => {
                 window.location.href = "{{ prev_url|default:'/admin/order/order/'|escapejs }}"
             };
+            const refreshParentPage = () => {
+                if (window.parent && window.parent !== window) {
+                    try {
+                        window.parent.location.reload();
+                        return;
+                    } catch (e) {
+                        console.warn("父页面刷新失败", e);
+                    }
+                }
+                window.location.reload();
+            }
             const ElMessage = inject("ElMessage");
             const itemsRef = ref(null);
             const orderFormRef = ref(null);
@@ -412,6 +437,7 @@
                 orderTpyeOptions: [],
                 flowDefinitionOptions: [],
                 deliveryMethodOptions: [],
+                confirmUserOptions: [],
                 siteOptions: [],
                 tableData: {
                     items: [],
@@ -461,6 +487,10 @@
                     flow_definition_id: null,
                     flow_instance_id: null,
                     flow_definition_name: "",
+                    confirm_user_id: null,
+                    confirm_user_name: "",
+                    confirm_user_phone: "",
+                    is_auto_assign_confirm_user: false,
                     shipping_party: "",
                     shipping_party_company: "",
                     shipping_party_phone: "",
@@ -490,6 +520,7 @@
 
             onMounted(async () => {
                 await initPage()
+                await loadCreateHabit()
                 await getOrderById()
                 pageData.pageLoading = false
             })
@@ -517,6 +548,7 @@
                     }
                     pageData.fromData = res
                     ensureFlowOptionForCurrent()
+                    await loadConfirmUserOptions(pageData.fromData.site_id)
                     await nextTick()
                 } finally {
                     isInitializing.value = false  // 初始化完成
@@ -529,6 +561,24 @@
             const deliveryMethodLabel = computed(() => {
                 return pageData.deliveryMethodOptions.find((item) => item.value == pageData.fromData.delivery_method)?.label
             })
+            const canConfirmOrder = computed(() => {
+                return isEditMode && hasOrderConfirmPerm && pageData.fromData.order_status == 10
+            })
+            const canSubmitOrder = computed(() => {
+                if (!isEditMode) return true
+                return canConfirmOrder.value
+            })
+            const showSubmitButton = computed(() => {
+                return canSubmitOrder.value
+            })
+            const submitButtonText = computed(() => {
+                return isEditMode ? "确认订单" : "提交"
+            })
+            const confirmUserLabel = computed(() => {
+                if (!pageData.fromData.confirm_user_id) return "系统随机分配"
+                const option = pageData.confirmUserOptions.find((item) => item.user_id == pageData.fromData.confirm_user_id)
+                return option?.full_name || pageData.fromData.confirm_user_name || "已指定确认人"
+            })
             const showWorkflowEntry = computed(() => {
                 // 流程入口统一到订单列表，编辑页先隐藏该入口
                 return false
@@ -540,6 +590,30 @@
                 pageData.siteOptions = await request.get("/site_mgmt/cur_site_options")
                 pageData.flowDefinitionOptions = await request.get("/flow_engine/flow_definition_list")
                 ensureFlowOptionForCurrent()
+            }
+
+            const loadCreateHabit = async () => {
+                if (isEditMode) return
+                const habit = await request.get("/order/create_habit")
+                if (!habit) return
+                isInitializing.value = true
+                try {
+                    pageData.fromData.site_id = habit.site_id ?? ""
+                    pageData.fromData.order_type = habit.order_type ?? ""
+                    pageData.fromData.delivery_method = habit.delivery_method ?? ""
+                    pageData.fromData.confirm_user_id = habit.confirm_user_id ?? null
+                    await loadConfirmUserOptions(pageData.fromData.site_id)
+                } finally {
+                    isInitializing.value = false
+                }
+            }
+
+            const loadConfirmUserOptions = async (siteId) => {
+                if (!siteId) {
+                    pageData.confirmUserOptions = []
+                    return
+                }
+                pageData.confirmUserOptions = await request.get("/order/confirm_user_options", { site_id: siteId })
             }
 
             const openWorkflowEntry = () => {
@@ -587,6 +661,8 @@
             watch(() => pageData.fromData.site_id, (n, o) => {
                 if (isInitializing.value) return  // 初始化时不执行清空逻辑
                 dialogData.tableFilter.site_id = n
+                pageData.fromData.confirm_user_id = null
+                loadConfirmUserOptions(n)
                 pageData.fromData.shipping_party = ""
                 pageData.fromData.shipping_party_company = ""
                 pageData.fromData.shipping_party_phone = ""
@@ -819,6 +895,7 @@
             }
 
             const onSubmit = async () => {
+                if (!canSubmitOrder.value) return
                 if (!orderFormRef.value) return
                 await orderFormRef.value.validate((valid, fields) => {
                     if (valid) {
@@ -849,10 +926,18 @@
 
             const submitHandle = async () => {
                 try {
-                    let res = await request.post("/order/create", pageData.fromData);
+                    if (isEditMode) {
+                        await request.post("/order/confirm", {
+                            order_id: Number(orderId),
+                            operator_memo: pageData.fromData.memo,
+                        });
+                    } else {
+                        await request.post("/order/create", pageData.fromData);
+                    }
                     ElMessage.success("操作成功！");
                     if(hideBack) {
                         checkoutData.dialogVisible = false;
+                        refreshParentPage();
                     } else {
                         goBack();
                     }
@@ -885,7 +970,11 @@
                 checkoutData,
                 orderTypeLabel,
                 deliveryMethodLabel,
+                confirmUserLabel,
                 submitHandle,
+                submitButtonText,
+                canSubmitOrder,
+                showSubmitButton,
                 showWorkflowEntry,
                 openWorkflowEntry,
                 isEditMode,

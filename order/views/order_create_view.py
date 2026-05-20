@@ -13,6 +13,7 @@ from ninja import Body
 from core.exceptions.base_exceptions import BusinessException
 from core.ninja_extra.api_extra import BaseApi, HttpRequest
 from order.models import Order, OrderItem
+from order.services import choose_confirm_user, save_order_create_habit
 from flow_engine.models import FlowDefinition
 from flow_engine.enums import FlowVersionStatusChoices
 from django.db import transaction
@@ -29,6 +30,10 @@ def do_create(request: HttpRequest, data: schemas.OrderCreateSchema):
             discount_amount += item.discount_price
         
         with transaction.atomic():
+            confirm_user, is_auto_assign_confirm_user = choose_confirm_user(
+                data.site_id,
+                data.confirm_user_id,
+            )
             order = Order(
                 order_type=data.order_type,
                 flow_definition_id=data.flow_definition_id,
@@ -46,6 +51,8 @@ def do_create(request: HttpRequest, data: schemas.OrderCreateSchema):
                 delivery_method=data.delivery_method,
                 memo=data.memo,
                 site_id=data.site_id,
+                confirm_user=confirm_user,
+                is_auto_assign_confirm_user=is_auto_assign_confirm_user,
                 create_user=request.user
             )
             order.save()
@@ -63,6 +70,16 @@ def do_create(request: HttpRequest, data: schemas.OrderCreateSchema):
                 )
                 order_item.save()
 
+            transaction.on_commit(
+                lambda: save_order_create_habit(
+                    user_id=request.user.pk,
+                    site_id=data.site_id,
+                    order_type=data.order_type,
+                    delivery_method=data.delivery_method,
+                    confirm_user_id=data.confirm_user_id,
+                )
+            )
+
 class View(BaseApi):
     
     api_status = BaseApi.ApiStatus.DEV_IN_PROGRESS
@@ -73,6 +90,8 @@ class View(BaseApi):
         ("001", "请最少添加一个订单项"),
         ("002", "您没有该站点的订单创建权限"),
         ("003", "流程模板不存在或已停用"),
+        ("004", "指定确认人不存在或没有该站点订单确认权限"),
+        ("005", "该站点暂无可分配的订单确认人"),
     ]
 
     

@@ -3,12 +3,11 @@ from datetime import timedelta
 from decimal import Decimal
 
 from asgiref.sync import sync_to_async
-from django.db.models import Count, Sum
-from django.db.models.functions import TruncDate, TruncWeek
 from django.utils import timezone
 
 from core.ninja_extra.api_extra import BaseApi, HttpRequest
 from order.models import Order
+from site_mgmt.utils import site_util
 
 
 class DashboardTrendView(BaseApi):
@@ -23,6 +22,20 @@ class DashboardTrendView(BaseApi):
         return round(float(val or 0) / 10000, 2)
 
     @staticmethod
+    def _iter_trend_rows(base_qs, start_dt, end_dt):
+        return (
+            base_qs.filter(create_time__gte=start_dt, create_time__lt=end_dt)
+            .order_by("create_time")
+            .values_list("create_time", "payable_amount")
+        )
+
+    @staticmethod
+    def _local_date(dt):
+        if timezone.is_aware(dt):
+            dt = timezone.localtime(dt)
+        return dt.date()
+
+    @staticmethod
     def _today_range(now):
         today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
         tomorrow_start = today_start + timedelta(days=1)
@@ -30,14 +43,15 @@ class DashboardTrendView(BaseApi):
 
     @staticmethod
     def _build_daily(base_qs, start_dt, end_dt):
-        agg = (
-            base_qs.filter(create_time__gte=start_dt, create_time__lt=end_dt)
-            .annotate(day=TruncDate("create_time"))
-            .values("day")
-            .annotate(cnt=Count("id"), amt=Sum("payable_amount"))
-            .order_by("day")
-        )
-        mapping = {r["day"]: r for r in agg}
+        mapping = {}
+        for create_time, payable_amount in DashboardTrendView._iter_trend_rows(
+            base_qs, start_dt, end_dt
+        ):
+            day = DashboardTrendView._local_date(create_time)
+            row = mapping.setdefault(day, {"cnt": 0, "amt": Decimal("0")})
+            row["cnt"] += 1
+            row["amt"] += payable_amount or Decimal("0")
+
         total_days = (end_dt - start_dt).days
         xs, counts, amounts = [], [], []
         for i in range(total_days):
@@ -50,15 +64,18 @@ class DashboardTrendView(BaseApi):
 
     @staticmethod
     def _build_weekly(base_qs, start_dt, end_dt):
-        agg = (
-            base_qs.filter(create_time__gte=start_dt, create_time__lt=end_dt)
-            .annotate(week=TruncWeek("create_time"))
-            .values("week")
-            .annotate(cnt=Count("id"), amt=Sum("payable_amount"))
-            .order_by("week")
-        )
+        agg = {}
+        for create_time, payable_amount in DashboardTrendView._iter_trend_rows(
+            base_qs, start_dt, end_dt
+        ):
+            day = DashboardTrendView._local_date(create_time)
+            week = day - timedelta(days=day.weekday())
+            row = agg.setdefault(week, {"cnt": 0, "amt": Decimal("0")})
+            row["cnt"] += 1
+            row["amt"] += payable_amount or Decimal("0")
+
         xs, counts, amounts = [], [], []
-        for idx, row in enumerate(agg, start=1):
+        for idx, row in enumerate((agg[k] for k in sorted(agg)), start=1):
             xs.append(f"第{idx}周")
             counts.append(row["cnt"] or 0)
             amounts.append(DashboardTrendView._to_wan(row["amt"]))
@@ -75,7 +92,7 @@ class DashboardTrendView(BaseApi):
             start_30 = today_start - timedelta(days=29)
             start_90 = today_start - timedelta(days=89)
 
-            base_qs = Order.objects.filter(is_delete=False)
+            base_qs = site_util.admin_filter_site(request, Order.objects.filter(is_delete=False))
 
             trend_7 = DashboardTrendView._build_daily(base_qs, start_7, tomorrow_start)
             trend_30 = DashboardTrendView._build_daily(base_qs, start_30, tomorrow_start)

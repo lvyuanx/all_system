@@ -226,8 +226,10 @@ class View(BaseApi):
                 "order_status",
                 "receiver_company",
                 "receiver_phone",
+                "confirm_user_id",
                 "create_time",
                 "payable_amount_masked",
+                confirm_user_name=F("confirm_user__full_name"),
                 order_id=F("pk"),
             )
             .order_by("-pk")

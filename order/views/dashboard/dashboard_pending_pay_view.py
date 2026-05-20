@@ -4,6 +4,7 @@ from asgiref.sync import sync_to_async
 from core.ninja_extra.api_extra import BaseApi, HttpRequest
 from order.enums import OrderStatusChoices
 from order.models import Order
+from site_mgmt.utils import site_util
 
 
 class DashboardPendingPayView(BaseApi):
@@ -17,8 +18,7 @@ class DashboardPendingPayView(BaseApi):
     async def api(request: HttpRequest):
         def fetch_pending_pay():
             qs = (
-                Order.objects
-                .filter(is_delete=False)
+                site_util.admin_filter_site(request, Order.objects.filter(is_delete=False))
                 .select_related("site")
                 .order_by("-update_time")[:10]
             )

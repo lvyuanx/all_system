@@ -17,6 +17,7 @@ from order.models import Order
 from order.machine import OrderStateMachine
 from ..signals.signals import order_ship_singal
 from . import schemas
+from site_mgmt.utils import site_util
 
 
 @transaction.atomic
@@ -52,9 +53,10 @@ class View(BaseApi):
 
     @staticmethod
     async def api(request: HttpRequest, data: schemas.OrderShipSchema = Body(..., description="订单发货信息")):
-        try:
-            order = await Order.objects.aget(pk=data.order_id)
-        except Order.DoesNotExist:
+        order_manager = Order.objects.filter(pk=data.order_id, is_delete=False)
+        order_manager = await sync_to_async(site_util.admin_filter_site)(request, order_manager)
+        order = await order_manager.afirst()
+        if not order:
             raise BusinessException("001")
         
         if order.order_status != OrderStatusChoices.FINISHED:

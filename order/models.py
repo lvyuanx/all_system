@@ -166,6 +166,20 @@ class Order(
         related_name="order",
         verbose_name="所属站点",
     )
+    confirm_user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        default=None,
+        db_constraint=False,
+        related_name="order_confirm_user",
+        verbose_name="确认人",
+    )
+    is_auto_assign_confirm_user = models.BooleanField(
+        default=False,
+        verbose_name="是否自动分配确认人",
+    )
 
     # 收货信息
     receiver_name = models.CharField(

@@ -6,9 +6,11 @@ from order.views import (
     mobile_order_ship_view,
     mobile_order_pay_view,
     mobile_order_list_by_pattern_view,
+    order_confirm_user_options_view,
 )
 from order.views import mobile_order_meta_view
 from order.views import mobile_order_action_views
+from order.views import order_create_habit_view
 from order.views import order_delivery_all_list_view, order_type_all_list_view
 from order.views.pay import order_pay_ca_list_view, order_pay_method_type_all_list_view
 
@@ -44,5 +46,7 @@ apis = {
         ("C3", "pay_status_all_list/", mobile_order_meta_view.MobileOrderPayStatusAllListView, "移动端订单支付状态"),
         ("C4", "ship_status_all_list/", mobile_order_meta_view.MobileOrderShipStatusAllListView, "移动端订单发货状态"),
         ("C5", "status_flow/", mobile_order_meta_view.MobileOrderStatusFlowView, "移动端订单状态流程"),
+        ("C6", "confirm_user_options/", order_confirm_user_options_view.View, "移动端订单确认人选项"),
+        ("C7", "create_habit/", order_create_habit_view.View, "移动端订单创建习惯"),
     ],
 }

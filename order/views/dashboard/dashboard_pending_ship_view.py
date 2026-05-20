@@ -4,6 +4,7 @@ from asgiref.sync import sync_to_async
 from core.ninja_extra.api_extra import BaseApi, HttpRequest
 from order.enums import OrderStatusChoices
 from order.models import Order
+from site_mgmt.utils import site_util
 
 
 class DashboardPendingShipView(BaseApi):
@@ -17,10 +18,12 @@ class DashboardPendingShipView(BaseApi):
     async def api(request: HttpRequest):
         def fetch_pending_ship():
             qs = (
-                Order.objects
-                .filter(
-                    is_delete=False,
-                    order_status=OrderStatusChoices.FINISHED,
+                site_util.admin_filter_site(
+                    request,
+                    Order.objects.filter(
+                        is_delete=False,
+                        order_status=OrderStatusChoices.FINISHED,
+                    ),
                 )
                 .select_related("site")
                 .order_by("-create_time")[:10]

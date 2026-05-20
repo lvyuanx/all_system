@@ -9,6 +9,7 @@ from django.utils import timezone
 from core.ninja_extra.api_extra import BaseApi, HttpRequest
 from order.enums import OrderShipStatusChoices, OrderPayStatusChoices
 from order.models import Order
+from site_mgmt.utils import site_util
 
 
 class DashboardSummaryView(BaseApi):
@@ -44,7 +45,7 @@ class DashboardSummaryView(BaseApi):
                 DashboardSummaryView._time_ranges(now)
             )
 
-            base_qs = Order.objects.filter(is_delete=False)
+            base_qs = site_util.admin_filter_site(request, Order.objects.filter(is_delete=False))
 
             today_qs = base_qs.filter(create_time__gte=today_start, create_time__lt=tomorrow_start)
             today_order_count = today_qs.count()

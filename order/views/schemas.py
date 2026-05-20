@@ -29,8 +29,18 @@ class OrderCreateSchema(BaseModel):
     receiver_phone: str = Field(..., description="收货人电话")
     receiver_address: str = Field(..., description="收货人地址")
     receiver_company: str = Field(..., description="收货方公司")
+    confirm_user_id: int | None = Field(None, description="指定确认人用户ID，不传则系统随机分配")
     memo: str = Field(..., description="备注")
     items: list[OrderItemCreateSchema] = Field(..., description="订单项")
+
+
+class OrderCreateHabitSchema(BaseModel):
+    """订单创建习惯"""
+
+    site_id: int | None = Field(None, description="站点ID")
+    order_type: int | None = Field(None, description="订单类型")
+    delivery_method: int | None = Field(None, description="配送方式")
+    confirm_user_id: int | None = Field(None, description="确认人用户ID")
 
 
 class OrderInfoSchema(OrderCreateSchema):
@@ -38,8 +48,20 @@ class OrderInfoSchema(OrderCreateSchema):
 
     order_id: int = Field(..., description="订单ID")
     order_status: int | None = Field(None, description="订单状态")
+    confirm_user_name: str | None = Field(None, description="确认人姓名")
+    confirm_user_phone: str | None = Field(None, description="确认人手机号")
+    is_auto_assign_confirm_user: bool = Field(False, description="是否自动分配确认人")
     flow_instance_id: int | None = Field(None, description="流程实例ID")
     flow_definition_name: str | None = Field(None, description="流程模板名称")
+
+
+class OrderConfirmUserOptionSchema(BaseModel):
+    """订单确认人选项"""
+
+    user_id: int = Field(..., description="用户ID")
+    staff_code: str = Field(..., description="员工编号")
+    full_name: str | None = Field(None, description="姓名")
+    phone: str | None = Field(None, description="手机号")
 
 
 class OrderShipSchema(BaseModel):
@@ -93,6 +115,8 @@ class MobileOrderListItemSchema(BaseModel):
     order_status_str: str = Field(..., description="订单状态文本")
     payable_amount: Decimal = Field(..., description="应付金额")
     receiver_company: str | None = Field(None, description="收货公司")
+    confirm_user_id: int | None = Field(None, description="确认人用户ID")
+    confirm_user_name: str | None = Field(None, description="确认人姓名")
     main_images: list[str] = Field(default_factory=list, description="订单所有版式主图")
     create_time_str: str | None = Field(None, description="创建时间")
     receiver_client_id: int | None = Field(None, description="关联客户ID")
@@ -167,6 +191,10 @@ class MobileOrderInfoSchema(BaseModel):
     receiver_company: str | None = Field(None, description="收货公司")
     receiver_address: str | None = Field(None, description="收货地址")
     receiver_client_id: int | None = Field(None, description="关联客户ID")
+    confirm_user_id: int | None = Field(None, description="确认人用户ID")
+    confirm_user_name: str | None = Field(None, description="确认人姓名")
+    confirm_user_phone: str | None = Field(None, description="确认人手机号")
+    is_auto_assign_confirm_user: bool = Field(False, description="是否自动分配确认人")
     memo: str | None = Field(None, description="备注")
     create_time_str: str | None = Field(None, description="创建时间")
     flow_summary: OrderFlowSummarySchema = Field(default_factory=OrderFlowSummarySchema, description="流程摘要")

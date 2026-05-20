@@ -12,6 +12,7 @@ from core.ninja_extra.api_extra import BaseApi, HttpRequest, Body
 from order.enums import OrderStatusChoices
 from order.machine import OrderStateMachine
 from order.models import Order
+from order.services import ensure_order_confirm_user
 from order.signals.signals import order_canceled_signal, order_complete_signal
 from site_mgmt.utils import site_util
 
@@ -65,11 +66,14 @@ class ConfirmView(BaseApi):
 
     api_status = BaseApi.ApiStatus.DEV_IN_PROGRESS
     methods = ["POST"]
+    perms_all = Order.get_perms(["confirm"])
     finally_code = "000", "移动端订单确认失败"
     response_schema = None
     error_codes = [
         ("001", "未查询到订单信息"),
         ("002", "当前订单状态[{status_name}]无法进行该操作"),
+        ("004", "该订单暂未分配确认人"),
+        ("005", "只有该订单指定确认人可以确认"),
     ]
 
     @staticmethod
@@ -79,6 +83,7 @@ class ConfirmView(BaseApi):
         order = await _get_order_with_site_filter(request, data.order_id)
         if order.order_status != OrderStatusChoices.CREATED:
             raise _status_error(order.order_status)
+        ensure_order_confirm_user(order, request.user)
 
         await _apply_transition(order, request.user, data.operator_memo, "confirm")
 

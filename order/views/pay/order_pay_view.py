@@ -15,11 +15,13 @@ from order.models import Order, OrderPayCa
 from django.db import transaction
 from .. import schemas
 from ...signals.signals import order_pay_signal
+from site_mgmt.utils import site_util
 
 
 @transaction.atomic
 def do(request: HttpRequest, data: schemas.OrderPaySchema):
     order_manager = Order.objects.filter(pk=data.order_id)
+    order_manager = site_util.admin_filter_site(request, order_manager)
     if not order_manager.exists():
         raise BusinessException("001")
     

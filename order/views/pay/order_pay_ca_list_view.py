@@ -14,6 +14,8 @@ from core.utils import time_util
 from order.enums import OrderPayMehtodChoices
 from order.models import Order, OrderPayCa
 from .. import schemas
+from asgiref.sync import sync_to_async
+from site_mgmt.utils import site_util
 
 
 class View(BaseApi):
@@ -28,7 +30,9 @@ class View(BaseApi):
 
     @staticmethod
     async def api(request: HttpRequest, oid: int = Query(..., description="订单ID")):
-        if not await Order.objects.filter(pk=oid, is_delete=False).aexists():
+        order_manager = Order.objects.filter(pk=oid, is_delete=False)
+        order_manager = await sync_to_async(site_util.admin_filter_site)(request, order_manager)
+        if not await order_manager.aexists():
             raise BusinessException("001")
         
         lst = OrderPayCa.objects.filter(order_id=oid).values(

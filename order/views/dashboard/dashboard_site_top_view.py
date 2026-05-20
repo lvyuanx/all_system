@@ -4,6 +4,7 @@ from django.db.models import Sum
 
 from core.ninja_extra.api_extra import BaseApi, HttpRequest
 from order.models import Order
+from site_mgmt.utils import site_util
 
 
 class DashboardSiteTopView(BaseApi):
@@ -21,8 +22,10 @@ class DashboardSiteTopView(BaseApi):
     async def api(request: HttpRequest):
         def calc_site_top():
             qs = (
-                Order.objects
-                .filter(is_delete=False, site__isnull=False)
+                site_util.admin_filter_site(
+                    request,
+                    Order.objects.filter(is_delete=False, site__isnull=False),
+                )
                 .values("site", "site__site_name")
                 .annotate(total=Sum("payable_amount"))
                 .order_by("-total")[:5]
