@@ -15,7 +15,15 @@ from core.utils import admin_util
 from order.enums import OrderStatusChoices
 from order.machine import OrderStateMachine
 from order.models import Order
-from order.services import can_order_confirm, ensure_order_cancel_memo, ensure_order_cancel_user, ensure_order_confirm_user
+from order.services import (
+    can_order_confirm,
+    can_order_create,
+    can_order_pay,
+    ensure_order_cancel_memo,
+    ensure_order_cancel_user,
+    ensure_order_confirm_user,
+    filter_order_pool_queryset,
+)
 from site_mgmt.utils import site_util
 from .signals.signals import order_canceled_signal, order_complete_signal
 
@@ -37,9 +45,18 @@ class OrderAdmin(AdminBaseMixin, FilterChangeListMixin, OperateButtonsMixin, adm
         "create_time",
         "pay_status",
         "ship_status",
+        "order_create_user",
         "operate_buttons",
     )
     search_fields = ("receiver_name", "receiver_phone", "order_no")
+
+    def order_create_user(self, obj: Order):
+        user = obj.create_user
+        if not user:
+            return ""
+        return getattr(user, "full_name", None) or getattr(user, "username", "")
+
+    order_create_user.short_description = "订单创建人"
 
     # ------------------------------ 通用方法 ------------------------------
     def get_status_by_request(self, request: HttpRequest):
@@ -49,7 +66,11 @@ class OrderAdmin(AdminBaseMixin, FilterChangeListMixin, OperateButtonsMixin, adm
     def get_queryset(self, request):
         self._operate_buttons_request = request
         qs = super().get_queryset(request)
-        return site_util.admin_filter_site(request, qs)
+        qs = site_util.admin_filter_site(request, qs)
+        status = self.get_status_by_request(request)
+        if OrderStatusChoices.CREATED in status:
+            qs = filter_order_pool_queryset(qs, request.user)
+        return qs
 
     # ------------------------------ 基础按钮权限配置 ------------------------------
     def has_delete_permission(self, request, obj=None):
@@ -57,9 +78,7 @@ class OrderAdmin(AdminBaseMixin, FilterChangeListMixin, OperateButtonsMixin, adm
 
     def has_add_permission(self, request, obj=None):
         status = self.get_status_by_request(request)
-        if  OrderStatusChoices.CREATED in status:
-            return True
-        return False
+        return OrderStatusChoices.CREATED in status and can_order_create(request.user)
 
     # ------------------------------ 字段超链接配置 ------------------------------
     list_display_links = ["order_no"]
@@ -142,15 +161,6 @@ class OrderAdmin(AdminBaseMixin, FilterChangeListMixin, OperateButtonsMixin, adm
         request = getattr(self, "_operate_buttons_request", None)
         operate_buttons_config = [
             {
-                "name": "支付",
-                "type": "text",
-                "mode": "modal",
-                "icon": "el-icon-coin",
-                "modal_width": "75vw",
-                "modal_height": "80vh",
-                "url": lambda obj: reverse("order_pay", kwargs={"pk": obj.pk}),
-            },
-            {
                 "name": "操作日志",
                 "type": "text",
                 "mode": "modal",
@@ -161,50 +171,51 @@ class OrderAdmin(AdminBaseMixin, FilterChangeListMixin, OperateButtonsMixin, adm
             }
         ]
         if obj.order_status >= OrderStatusChoices.PRODUCING:
-            operate_buttons_config = [
-                {
-                    "name": "流程数据",
-                    "type": "text",
-                    "mode": "modal",
-                    "icon": "el-icon-data-analysis",
-                    "modal_width": "62vw",
-                    "modal_height": "82vh",
-                    "url": lambda obj: reverse("order_flow_context", kwargs={"pk": obj.pk}),
-                }
-            ] + operate_buttons_config
+            operate_buttons_config.append({
+                "name": "流程数据",
+                "type": "text",
+                "mode": "modal",
+                "icon": "el-icon-data-analysis",
+                "modal_width": "62vw",
+                "modal_height": "82vh",
+                "url": lambda obj: reverse("order_flow_context", kwargs={"pk": obj.pk}),
+            })
         if obj.order_status == OrderStatusChoices.PRODUCING and not obj.flow_definition_id:
-            operate_buttons_config = [
-                {
-                    "name": "生产完成",
-                    "type": "text",
-                    "mode": "link",
-                    "icon": "el-icon-check",
-                    "confirm": "确定将该订单标记为生产完成吗？",
-                    "url": lambda obj: reverse("admin:order_order_finish_production", args=[obj.pk]),
-                }
-            ] + operate_buttons_config
+            operate_buttons_config.append({
+                "name": "生产完成",
+                "type": "text",
+                "mode": "link",
+                "icon": "el-icon-check",
+                "confirm": "确定将该订单标记为生产完成吗？",
+                "url": lambda obj: reverse("admin:order_order_finish_production", args=[obj.pk]),
+            })
         if obj.order_status == OrderStatusChoices.PRODUCING and obj.flow_definition_id:
-            operate_buttons_config = [
-                {
-                    "name": "流程",
-                    "type": "text",
-                    "mode": "link",
-                    "icon": "el-icon-share",
-                    "url": lambda obj: reverse("order_workflow", kwargs={"pk": obj.pk}),
-                }
-            ] + operate_buttons_config
+            operate_buttons_config.append({
+                "name": "流程",
+                "type": "text",
+                "mode": "link",
+                "icon": "el-icon-share",
+                "url": lambda obj: reverse("order_workflow", kwargs={"pk": obj.pk}),
+            })
         if obj.order_status == OrderStatusChoices.FINISHED:
-            operate_buttons_config = [
-                {
-                    "name": "发货",
-                    "type": "text",
-                    "mode": "modal",
-                    "icon": "el-icon-box",
-                    "modal_width": "50vw",
-                    "modal_height": "60vh",
-                    "url": lambda obj: reverse("order_ship", kwargs={"pk": obj.pk}),
-                }
-            ] + operate_buttons_config
+            operate_buttons_config.append({
+                "name": "发货",
+                "type": "text",
+                "mode": "modal",
+                "icon": "el-icon-box",
+                "modal_width": "50vw",
+                "modal_height": "60vh",
+                "url": lambda obj: reverse("order_ship", kwargs={"pk": obj.pk}),
+            })
+        if request and self.can_confirm_order(obj, request):
+            operate_buttons_config.append({
+                "name": "确认",
+                "type": "text",
+                "mode": "link",
+                "icon": "el-icon-check",
+                "confirm": "确定确认该订单吗？",
+                "url": lambda obj: reverse("admin:order_order_confirm", args=[obj.pk]),
+            })
         if request and self.can_cancel_order(obj, request):
             operate_buttons_config.append({
                 "name": "取消",
@@ -213,14 +224,15 @@ class OrderAdmin(AdminBaseMixin, FilterChangeListMixin, OperateButtonsMixin, adm
                 "icon": "el-icon-close",
                 "url": lambda obj: self.get_cancel_order_url(obj, request),
             })
-        if request and self.can_confirm_order(obj, request):
-            operate_buttons_config.insert(0, {
-                "name": "确认",
+        if request and can_order_pay(request.user):
+            operate_buttons_config.append({
+                "name": "支付",
                 "type": "text",
-                "mode": "link",
-                "icon": "el-icon-check",
-                "confirm": "确定确认该订单吗？",
-                "url": lambda obj: reverse("admin:order_order_confirm", args=[obj.pk]),
+                "mode": "modal",
+                "icon": "el-icon-coin",
+                "modal_width": "75vw",
+                "modal_height": "80vh",
+                "url": lambda obj: reverse("order_pay", kwargs={"pk": obj.pk}),
             })
 
         return operate_buttons_config
@@ -288,7 +300,7 @@ class OrderAdmin(AdminBaseMixin, FilterChangeListMixin, OperateButtonsMixin, adm
         try:
             ensure_order_cancel_user(obj, request.user)
         except BusinessException:
-            messages.warning(request, "只有订单创建人或确认人可以取消订单")
+            messages.warning(request, "只有订单创建人可以取消订单")
             return redirect(next_url)
 
         error_message = ""
