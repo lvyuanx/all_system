@@ -1,0 +1,34 @@
+{% extends "admin/base_site.html" %}
+
+{% block content %}
+<div id="content-main">
+    <form method="post" novalidate>
+        {% csrf_token %}
+        <input type="hidden" name="next" value="{{ next_url }}">
+
+        <fieldset class="module aligned">
+            <h2>取消订单</h2>
+            <div class="form-row">
+                <div>
+                    <label>订单编号：</label>
+                    <div class="readonly">{{ original.order_no }}</div>
+                </div>
+            </div>
+            <div class="form-row{% if error_message %} errors{% endif %}">
+                <div>
+                    <label class="required" for="id_memo">备注：</label>
+                    {% if error_message %}
+                        <ul class="errorlist"><li>{{ error_message }}</li></ul>
+                    {% endif %}
+                    <textarea id="id_memo" name="memo" rows="5" style="width: 520px; max-width: 100%;" required>{{ request.POST.memo }}</textarea>
+                </div>
+            </div>
+        </fieldset>
+
+        <div class="submit-row">
+            <input type="submit" value="确认取消" class="default">
+            <a href="{{ next_url }}" class="closelink">返回</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

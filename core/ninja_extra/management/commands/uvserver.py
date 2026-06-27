@@ -145,12 +145,16 @@ class Command(BaseCommand):
         self.loop = options["loop"]
         self.log_level = options["log_level"]
 
-        # 获取本机的主机名
-        hostname = socket.gethostname()
-        # 获取主机的ip地址
-        self.ip_address = socket.gethostbyname(hostname)
+        self.ip_address = self._get_local_ip_address()
 
         asyncio.run(self._start())
+
+    def _get_local_ip_address(self):
+        # macOS may return a hostname that is not resolvable unless it is in /etc/hosts.
+        try:
+            return socket.gethostbyname(socket.gethostname())
+        except socket.gaierror:
+            return "127.0.0.1" if self.host == "0.0.0.0" else self.host
 
     async def _start(self):
         tasks = [

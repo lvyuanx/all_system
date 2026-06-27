@@ -58,11 +58,39 @@ def choose_confirm_user(site_id: int, confirm_user_id: int | None) -> tuple[User
     return User.objects.get(pk=selected_user_id), True
 
 
+def can_order_confirm(order: Order, user: User) -> bool:
+    confirm_perm = Order.get_perms(["confirm"])[0]
+    if getattr(user, "is_superuser", False):
+        return True
+
+    if not getattr(user, "has_perm", lambda perm: False)(confirm_perm):
+        return False
+
+    if not order.confirm_user_id:
+        return True
+
+    return order.confirm_user_id == user.pk
+
+
 def ensure_order_confirm_user(order: Order, user: User):
+    if can_order_confirm(order, user):
+        return
     if not order.confirm_user_id:
         raise BusinessException("004")
-    if order.confirm_user_id != user.pk:
-        raise BusinessException("005")
+    raise BusinessException("005")
+
+
+def ensure_order_cancel_user(order: Order, user: User):
+    user_id = getattr(user, "pk", None)
+    if user_id is None or user_id not in {order.create_user_id, order.confirm_user_id}:
+        raise BusinessException("006")
+
+
+def ensure_order_cancel_memo(memo: str | None) -> str:
+    memo = (memo or "").strip()
+    if not memo:
+        raise BusinessException("007")
+    return memo
 
 
 def save_order_create_habit(

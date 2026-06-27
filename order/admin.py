@@ -1,25 +1,31 @@
+from urllib.parse import urlencode
+
 from django.contrib import admin, messages
+from django.db import transaction
 from django.http import HttpRequest
-from django.shortcuts import redirect
+from django.shortcuts import redirect, render
 from django.urls import path, reverse
+from django.utils.http import url_has_allowed_host_and_scheme
 
 from core.admin_extra.base_admin import AdminBaseMixin
 from core.admin_extra.mixins.filter_change_list_mixin import FilterChangeListMixin
 from core.admin_extra.mixins.operate_buttons_mixin import OperateButtonsMixin
+from core.exceptions.base_exceptions import BusinessException
 from core.utils import admin_util
 from order.enums import OrderStatusChoices
 from order.machine import OrderStateMachine
 from order.models import Order
-from order.services import ensure_order_confirm_user
+from order.services import can_order_confirm, ensure_order_cancel_memo, ensure_order_cancel_user, ensure_order_confirm_user
 from site_mgmt.utils import site_util
-from django.db import transaction
 from .signals.signals import order_canceled_signal, order_complete_signal
 
 
 @admin.register(Order)
-class OrderAdmin(
-    AdminBaseMixin, FilterChangeListMixin, OperateButtonsMixin, admin.ModelAdmin
-):
+class OrderAdmin(AdminBaseMixin, FilterChangeListMixin, OperateButtonsMixin, admin.ModelAdmin):
+    class Media:
+        css = {
+            "all": ("order/css/order_admin.css",),
+        }
 
     list_display = (
         "order_no",
@@ -41,6 +47,7 @@ class OrderAdmin(
         return [int(item) for item in status]
 
     def get_queryset(self, request):
+        self._operate_buttons_request = request
         qs = super().get_queryset(request)
         return site_util.admin_filter_site(request, qs)
 
@@ -100,7 +107,39 @@ class OrderAdmin(
         },
     ]
 
+    def get_admin_next_url(self, request: HttpRequest):
+        next_url = (
+            request.POST.get("next")
+            or request.GET.get("next")
+            or request.META.get("HTTP_REFERER")
+        )
+        if next_url and url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()}):
+            return next_url
+        return reverse("admin:order_order_changelist")
+
+    def can_cancel_order(self, obj: Order, request: HttpRequest):
+        if obj.order_status not in [
+            OrderStatusChoices.CREATED,
+            OrderStatusChoices.CONFIRMED,
+        ]:
+            return False
+        try:
+            ensure_order_cancel_user(obj, request.user)
+        except BusinessException:
+            return False
+        return True
+
+    def can_confirm_order(self, obj: Order, request: HttpRequest):
+        if obj.order_status != OrderStatusChoices.CREATED:
+            return False
+        return can_order_confirm(obj, request.user)
+
+    def get_cancel_order_url(self, obj: Order, request: HttpRequest):
+        url = reverse("admin:order_order_cancel", args=[obj.pk])
+        return f"{url}?{urlencode({'next': request.get_full_path()})}"
+
     def get_operate_buttons_config(self, obj: Order):
+        request = getattr(self, "_operate_buttons_request", None)
         operate_buttons_config = [
             {
                 "name": "支付",
@@ -166,7 +205,24 @@ class OrderAdmin(
                     "url": lambda obj: reverse("order_ship", kwargs={"pk": obj.pk}),
                 }
             ] + operate_buttons_config
-        
+        if request and self.can_cancel_order(obj, request):
+            operate_buttons_config.append({
+                "name": "取消",
+                "type": "text",
+                "mode": "link",
+                "icon": "el-icon-close",
+                "url": lambda obj: self.get_cancel_order_url(obj, request),
+            })
+        if request and self.can_confirm_order(obj, request):
+            operate_buttons_config.insert(0, {
+                "name": "确认",
+                "type": "text",
+                "mode": "link",
+                "icon": "el-icon-check",
+                "confirm": "确定确认该订单吗？",
+                "url": lambda obj: reverse("admin:order_order_confirm", args=[obj.pk]),
+            })
+
         return operate_buttons_config
 
     def get_urls(self):
@@ -177,8 +233,89 @@ class OrderAdmin(
                 self.admin_site.admin_view(self.finish_production_view),
                 name="order_order_finish_production",
             ),
+            path(
+                "<path:object_id>/cancel/",
+                self.admin_site.admin_view(self.cancel_order_view),
+                name="order_order_cancel",
+            ),
+            path(
+                "<path:object_id>/confirm/",
+                self.admin_site.admin_view(self.confirm_order_view),
+                name="order_order_confirm",
+            ),
         ]
         return custom_urls + urls
+
+    def confirm_order_view(self, request: HttpRequest, object_id: str):
+        obj = self.get_object(request, object_id)
+        next_url = self.get_admin_next_url(request)
+        if not obj:
+            messages.error(request, "订单不存在")
+            return redirect(reverse("admin:order_order_changelist"))
+
+        if obj.order_status != OrderStatusChoices.CREATED:
+            messages.warning(request, "只有已创建状态的订单才能确认")
+            return redirect(next_url)
+
+        try:
+            ensure_order_confirm_user(obj, request.user)
+        except BusinessException:
+            messages.warning(request, "只有订单确认人可以确认订单")
+            return redirect(next_url)
+
+        with transaction.atomic():
+            sm = OrderStateMachine(obj, request.user)
+            sm.confirm()
+            sm.save_state()
+            admin_util.log_custom_actions(request, [obj], "订单确认", 2)
+        messages.success(request, f"订单 {obj.order_no} 已确认")
+        return redirect(next_url)
+
+    def cancel_order_view(self, request: HttpRequest, object_id: str):
+        obj = self.get_object(request, object_id)
+        next_url = self.get_admin_next_url(request)
+        if not obj:
+            messages.error(request, "订单不存在")
+            return redirect(reverse("admin:order_order_changelist"))
+
+        if obj.order_status not in [
+            OrderStatusChoices.CREATED,
+            OrderStatusChoices.CONFIRMED,
+        ]:
+            messages.warning(request, "只有订单未排产前才能取消")
+            return redirect(next_url)
+
+        try:
+            ensure_order_cancel_user(obj, request.user)
+        except BusinessException:
+            messages.warning(request, "只有订单创建人或确认人可以取消订单")
+            return redirect(next_url)
+
+        error_message = ""
+        if request.method == "POST":
+            try:
+                memo = ensure_order_cancel_memo(request.POST.get("memo"))
+            except BusinessException:
+                error_message = "取消订单必须填写备注！"
+            else:
+                with transaction.atomic():
+                    sm = OrderStateMachine(obj, request.user, memo)
+                    sm.cancel()
+                    sm.save_state()
+                    admin_util.log_custom_actions(request, [obj], f"订单取消：{memo}", 2)
+                    order_canceled_signal.send(sender=Order, instance=obj)
+                messages.success(request, f"订单 {obj.order_no} 已取消")
+                return redirect(next_url)
+
+        context = {
+            **self.admin_site.each_context(request),
+            "opts": self.model._meta,
+            "original": obj,
+            "title": "取消订单",
+            "next_url": next_url,
+            "error_message": error_message,
+        }
+        return render(request, "order/admin/order_cancel.html", context)
 
     def finish_production_view(self, request: HttpRequest, object_id: str):
         obj = self.get_object(request, object_id)
@@ -201,13 +338,15 @@ class OrderAdmin(
                 admin_util.log_custom_actions(request, [obj], "订单生产完成", 2)
                 messages.success(request, f"订单 {obj.order_no} 已生产完成")
 
-        next_url = request.GET.get("next") or request.META.get("HTTP_REFERER") or reverse("admin:order_order_changelist")
+        next_url = (
+            request.GET.get("next")
+            or request.META.get("HTTP_REFERER")
+            or reverse("admin:order_order_changelist")
+        )
         return redirect(next_url)
 
     # ------------------------------ 批量操作按钮配置 ------------------------------
     actions = [
-        "batch_cancel",
-        "batch_confirm",
         "batch_scheduled",
         "batch_producing",
         "batch_complete",
@@ -219,59 +358,16 @@ class OrderAdmin(
 
         status = self.get_status_by_request(request)
 
-        if (
-            OrderStatusChoices.CREATED not in status
-            and OrderStatusChoices.CONFIRMED not in status
-        ):
-            del actions["batch_cancel"]
-
-        if (
-            OrderStatusChoices.CREATED not in status
-            or not request.user.has_perm(Order.get_perms(["confirm"])[0])
-        ):
-            del actions["batch_confirm"]
-
         if OrderStatusChoices.CONFIRMED not in status:
-            del actions["batch_scheduled"]
+            actions.pop("batch_scheduled", None)
 
         if OrderStatusChoices.SCHEDULED not in status:
-            del actions["batch_producing"]
+            actions.pop("batch_producing", None)
 
         if OrderStatusChoices.SHIPPED not in status:
-            del actions["batch_complete"]
+            actions.pop("batch_complete", None)
 
         return actions
-
-    @admin_util.btn(
-        short_description="批量取消",
-        icon="fa-solid fa-power-off",
-        type="danger",
-        confirm="确定取消选中的记录吗？",
-    )
-    def batch_cancel(modeladmin, request, queryset):
-        if not queryset.filter(
-            order_status__in=[
-                OrderStatusChoices.CREATED,
-            ]
-        ).exists():
-            messages.warning(
-                request,
-                "只有订单未排产前才能批量取消,请检查勾选项！",
-            )
-            return
-        count = 0
-        with transaction.atomic():
-            for obj in queryset:
-                sm = OrderStateMachine(obj, request.user)
-                sm.cancel()
-                sm.save_state()
-                count += 1
-                admin_util.log_custom_actions(request, [obj], "订单取消", 2)
-
-                order_canceled_signal.send(sender=Order, instance=obj)
-                
-        messages.success(request, f"{count} 条记录已批量取消。")
-        return redirect(request.get_full_path())
 
     @admin_util.btn(
         short_description="批量确认",

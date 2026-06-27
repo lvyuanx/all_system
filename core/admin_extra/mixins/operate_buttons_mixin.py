@@ -102,12 +102,13 @@ class OperateButtonsMixin:
                 onclick = wrap_confirm(f"{modal_call};")
                 btn_html = format_html(
                     """
-                        <button type="button" class="{}"
+                        <button type="button" class="{}" data-action="{}"
                             onclick="{}">
                             {}<span>{}</span>
                         </button>
                     """,
                     btn_class,
+                    label,
                     onclick,
                     format_html('<i class="{}"></i>', icon) if icon else "",
                     label,
@@ -118,11 +119,12 @@ class OperateButtonsMixin:
                 onclick = wrap_confirm(f"{js_call};")
                 btn_html = format_html(
                     """
-                    <button type="button" class="{}" onclick="{}">
+                    <button type="button" class="{}" data-action="{}" onclick="{}">
                         {}<span>{}</span>
                     </button>
                 """,
                     btn_class,
+                    label,
                     onclick,
                     format_html('<i class="{}"></i>', icon) if icon else "",
                     label,
@@ -133,11 +135,12 @@ class OperateButtonsMixin:
                 onclick = wrap_confirm(f"{jump_call};")
                 btn_html = format_html(
                     """
-                    <button type="button" class="{}" onclick="{}">
+                    <button type="button" class="{}" data-action="{}" onclick="{}">
                         {}<span>{}</span>
                     </button>
                 """,
                     btn_class,
+                    label,
                     onclick,
                     format_html('<i class="{}"></i>', icon) if icon else "",
                     label,
@@ -146,7 +149,11 @@ class OperateButtonsMixin:
             buttons.append(btn_html)
 
         # 返回所有按钮 HTML
-        return format_html_join(" ", "{}", ((btn,) for btn in buttons))
+        joined_buttons = format_html_join("", "{}", ((btn,) for btn in buttons))
+        return format_html(
+            '<span class="admin-operate-buttons">{}</span>',
+            joined_buttons,
+        )
 
     operate_buttons.short_description = "操作"
     operate_buttons.allow_tags = True

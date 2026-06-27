@@ -12,7 +12,7 @@ from core.ninja_extra.api_extra import BaseApi, HttpRequest, Body
 from order.enums import OrderStatusChoices
 from order.machine import OrderStateMachine
 from order.models import Order
-from order.services import ensure_order_confirm_user
+from order.services import ensure_order_cancel_memo, ensure_order_cancel_user, ensure_order_confirm_user
 from order.signals.signals import order_canceled_signal, order_complete_signal
 from site_mgmt.utils import site_util
 
@@ -48,6 +48,8 @@ class CancelView(BaseApi):
     error_codes = [
         ("001", "未查询到订单信息"),
         ("002", "当前订单状态[{status_name}]无法进行该操作"),
+        ("006", "只有订单创建人或确认人可以取消订单"),
+        ("007", "取消订单必须填写备注"),
     ]
 
     @staticmethod
@@ -57,8 +59,10 @@ class CancelView(BaseApi):
         order = await _get_order_with_site_filter(request, data.order_id)
         if order.order_status not in [OrderStatusChoices.CREATED, OrderStatusChoices.CONFIRMED]:
             raise _status_error(order.order_status)
+        ensure_order_cancel_user(order, request.user)
+        memo = ensure_order_cancel_memo(data.operator_memo)
 
-        await _apply_transition(order, request.user, data.operator_memo, "cancel")
+        await _apply_transition(order, request.user, memo, "cancel")
         await sync_to_async(order_canceled_signal.send, thread_sensitive=True)(sender=Order, instance=order)
 
 

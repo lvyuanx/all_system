@@ -1,0 +1,67 @@
+{% extends "admin/change_list.html" %}
+
+{% block extrastyle %}
+    {{ block.super }}
+    <style>
+        /* 操作列固定在右侧 + 按钮一行显示 */
+        #changelist-form .results {
+            position: relative;
+            overflow-x: auto;
+        }
+
+        #result_list {
+            width: max-content;
+            min-width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+
+        #result_list th.column-operate_buttons,
+        #result_list td.field-operate_buttons,
+        #result_list thead th:last-child,
+        #result_list tbody td:last-child {
+            position: sticky !important;
+            right: 0 !important;
+            z-index: 5;
+            width: 1%;
+            white-space: nowrap !important;
+            text-align: right;
+            background: #fff !important;
+            background-clip: padding-box;
+            box-shadow: -8px 0 12px -12px rgba(0, 0, 0, 0.45);
+        }
+
+        #result_list th.column-operate_buttons,
+        #result_list thead th:last-child {
+            z-index: 6;
+            background: #f8f8f8 !important;
+        }
+
+        #result_list tr:hover td.field-operate_buttons,
+        #result_list tbody tr:hover td:last-child {
+            background: #ebf5ff !important;
+        }
+
+        #result_list td.field-operate_buttons .admin-operate-buttons,
+        #result_list tbody td:last-child .admin-operate-buttons {
+            display: flex !important;
+            flex-wrap: nowrap !important;
+            justify-content: flex-start;
+            gap: 4px 6px;
+            white-space: nowrap !important;
+            align-items: center;
+        }
+
+        #result_list td.field-operate_buttons .admin-operate-buttons button,
+        #result_list tbody td:last-child .admin-operate-buttons button {
+            flex-shrink: 0;
+            white-space: nowrap !important;
+        }
+
+        #result_list td.field-operate_buttons .admin-operate-buttons button[data-action="取消"],
+        #result_list tbody td:last-child .admin-operate-buttons button[data-action="取消"] {
+            margin-left: auto;
+            color: #f56c6c !important;
+        }
+    </style>
+{% endblock %}
