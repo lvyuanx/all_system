@@ -15,6 +15,7 @@ from order.apis import apis as order_apis
 from order.mobile_apis import apis as order_mobile_apis
 from order.models import Order
 from order.views.mobile_order_action_views import ConfirmView
+from order.views import mobile_order_list_view
 from order.views.dashboard.dashboard_trend_view import DashboardTrendView
 
 
@@ -293,6 +294,21 @@ class OrderAdminListDisplayTests(SimpleTestCase):
         self.assertEqual(admin_instance.list_display[-1], "operate_buttons")
         self.assertEqual(admin_instance.order_create_user(order_obj), "张三")
         self.assertEqual(admin_instance.order_create_user.short_description, "订单创建人")
+
+
+class MobileOrderListPermissionTests(SimpleTestCase):
+    def test_mobile_order_list_detects_order_pool_filter_from_request_body(self):
+        request = SimpleNamespace(
+            body=b'{"filter":"{\\"order_status\\":[10]}"}',
+        )
+
+        self.assertTrue(mobile_order_list_view.is_order_pool_list_request(request))
+
+    def test_mobile_order_list_uses_shared_order_pool_scope(self):
+        source = Path("order/views/mobile_order_list_view.py").read_text(encoding="utf-8")
+
+        self.assertIn("filter_order_pool_queryset(base_qs, cur_user)", source)
+        self.assertIn("is_order_pool_list_request(request)", source)
 
 
 class OrderCancelPermissionTests(SimpleTestCase):
