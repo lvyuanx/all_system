@@ -15,6 +15,7 @@ from order.apis import apis as order_apis
 from order.mobile_apis import apis as order_mobile_apis
 from order.models import Order
 from order.views.mobile_order_action_views import ConfirmView
+from order.views import mobile_order_list_view
 from order.views.dashboard.dashboard_trend_view import DashboardTrendView
 
 
@@ -133,13 +134,13 @@ class OrderConfirmPermissionTests(SimpleTestCase):
         def has_perm(self, perm):
             return self._has_confirm_perm
 
-    def test_confirm_permission_allows_assigned_user_unassigned_or_superuser(self):
+    def test_confirm_permission_allows_assigned_user_or_superuser_only(self):
         assigned_order = SimpleNamespace(order_status=OrderStatusChoices.CREATED, confirm_user_id=2)
         unassigned_order = SimpleNamespace(order_status=OrderStatusChoices.CREATED, confirm_user_id=None)
         other_order = SimpleNamespace(order_status=OrderStatusChoices.CONFIRMED, confirm_user_id=2)
 
         self.assertTrue(order.services.can_order_confirm(assigned_order, self._User(2)))
-        self.assertTrue(order.services.can_order_confirm(unassigned_order, self._User(3)))
+        self.assertFalse(order.services.can_order_confirm(unassigned_order, self._User(3)))
         self.assertTrue(order.services.can_order_confirm(assigned_order, self._User(9, has_confirm_perm=False, is_superuser=True)))
         self.assertFalse(order.services.can_order_confirm(assigned_order, self._User(3)))
 
@@ -150,7 +151,7 @@ class OrderConfirmPermissionTests(SimpleTestCase):
         other_order = SimpleNamespace(order_status=OrderStatusChoices.CONFIRMED, confirm_user_id=2)
 
         self.assertTrue(admin_instance.can_confirm_order(assigned_order, SimpleNamespace(user=self._User(2))))
-        self.assertTrue(admin_instance.can_confirm_order(unassigned_order, SimpleNamespace(user=self._User(3))))
+        self.assertFalse(admin_instance.can_confirm_order(unassigned_order, SimpleNamespace(user=self._User(3))))
         self.assertTrue(
             admin_instance.can_confirm_order(
                 assigned_order,
@@ -282,7 +283,44 @@ class OrderCreateHabitTests(SimpleTestCase):
         )
 
 
+class OrderAdminListDisplayTests(SimpleTestCase):
+    def test_order_list_displays_order_creator_column(self):
+        admin_instance = OrderAdmin(Order, admin.site)
+        creator = SimpleNamespace(full_name="张三", username="creator")
+        order_obj = SimpleNamespace(create_user=creator)
+
+        self.assertIn("order_create_user", admin_instance.list_display)
+        self.assertEqual(admin_instance.list_display[-2], "order_create_user")
+        self.assertEqual(admin_instance.list_display[-1], "operate_buttons")
+        self.assertEqual(admin_instance.order_create_user(order_obj), "张三")
+        self.assertEqual(admin_instance.order_create_user.short_description, "订单创建人")
+
+
+class MobileOrderListPermissionTests(SimpleTestCase):
+    def test_mobile_order_list_detects_order_pool_filter_from_request_body(self):
+        request = SimpleNamespace(
+            body=b'{"filter":"{\\"order_status\\":[10]}"}',
+        )
+
+        self.assertTrue(mobile_order_list_view.is_order_pool_list_request(request))
+
+    def test_mobile_order_list_uses_shared_order_pool_scope(self):
+        source = Path("order/views/mobile_order_list_view.py").read_text(encoding="utf-8")
+
+        self.assertIn("filter_order_pool_queryset(base_qs, cur_user)", source)
+        self.assertIn("is_order_pool_list_request(request)", source)
+
+
 class OrderCancelPermissionTests(SimpleTestCase):
+    class _User:
+        def __init__(self, pk, perms=None, is_superuser=False):
+            self.pk = pk
+            self._perms = set(perms or [])
+            self.is_superuser = is_superuser
+
+        def has_perm(self, perm):
+            return perm in self._perms
+
     def test_cancel_memo_is_required_and_stripped(self):
         self.assertEqual(order.services.ensure_order_cancel_memo("  客户要求取消  "), "客户要求取消")
 
@@ -291,14 +329,18 @@ class OrderCancelPermissionTests(SimpleTestCase):
 
         self.assertEqual(cm.exception.error_code, "007")
 
-    def test_cancel_permission_allows_creator_or_confirm_user_only(self):
+    def test_cancel_permission_allows_creator_only(self):
         creator = SimpleNamespace(pk=1)
         confirm_user = SimpleNamespace(pk=2)
         outsider = SimpleNamespace(pk=3)
         order_obj = SimpleNamespace(create_user_id=creator.pk, confirm_user_id=confirm_user.pk)
 
         order.services.ensure_order_cancel_user(order_obj, creator)
-        order.services.ensure_order_cancel_user(order_obj, confirm_user)
+
+        with self.assertRaises(BusinessException) as cm:
+            order.services.ensure_order_cancel_user(order_obj, confirm_user)
+
+        self.assertEqual(cm.exception.error_code, "006")
 
         with self.assertRaises(BusinessException) as cm:
             order.services.ensure_order_cancel_user(order_obj, outsider)
@@ -311,7 +353,7 @@ class OrderCancelPermissionTests(SimpleTestCase):
         with self.assertRaises(BusinessException):
             order.services.ensure_order_cancel_user(order_obj, SimpleNamespace(pk=None))
 
-    def test_cancel_entrypoints_apply_creator_or_confirm_user_rule(self):
+    def test_cancel_entrypoints_apply_creator_rule(self):
         admin_source = Path("order/admin.py").read_text(encoding="utf-8")
         mobile_action_source = Path("order/views/mobile_order_action_views.py").read_text(encoding="utf-8")
         status_action_source = Path("order/views/mobile_order_status_action_view.py").read_text(encoding="utf-8")
@@ -320,6 +362,80 @@ class OrderCancelPermissionTests(SimpleTestCase):
         self.assertIn("ensure_order_cancel_user(order, request.user)", mobile_action_source)
         self.assertIn('if data.action == "cancel":', status_action_source)
         self.assertIn("ensure_order_cancel_user(order, request.user)", status_action_source)
+
+    def test_order_pool_visibility_allows_creator_or_confirm_user_and_superuser(self):
+        order_obj = SimpleNamespace(create_user_id=1, confirm_user_id=2)
+
+        self.assertTrue(order.services.can_order_pool_view(order_obj, SimpleNamespace(pk=1, is_superuser=False)))
+        self.assertTrue(order.services.can_order_pool_view(order_obj, SimpleNamespace(pk=2, is_superuser=False)))
+        self.assertTrue(order.services.can_order_pool_view(order_obj, SimpleNamespace(pk=9, is_superuser=True)))
+        self.assertFalse(order.services.can_order_pool_view(order_obj, SimpleNamespace(pk=3, is_superuser=False)))
+
+    def test_admin_add_button_requires_order_create_permission_in_order_pool(self):
+        admin_instance = OrderAdmin(Order, admin.site)
+        add_perm = Order.get_perms(["add"])[0]
+
+        class _Get:
+            def getlist(self, key):
+                return [str(OrderStatusChoices.CREATED)] if key == "order_status" else []
+
+        creator_request = SimpleNamespace(GET=_Get(), user=self._User(1, perms={add_perm}))
+        confirm_request = SimpleNamespace(GET=_Get(), user=self._User(2, perms={Order.get_perms(["confirm"])[0]}))
+        super_request = SimpleNamespace(GET=_Get(), user=self._User(9, is_superuser=True))
+
+        self.assertTrue(admin_instance.has_add_permission(creator_request))
+        self.assertFalse(admin_instance.has_add_permission(confirm_request))
+        self.assertTrue(admin_instance.has_add_permission(super_request))
+
+    def test_admin_operate_buttons_start_with_log_and_follow_identity_permissions(self):
+        admin_instance = OrderAdmin(Order, admin.site)
+        confirm_perm = Order.get_perms(["confirm"])[0]
+        pay_perm = Order.get_perms(["pay"])[0]
+        order_obj = SimpleNamespace(
+            pk=10,
+            order_status=OrderStatusChoices.CREATED,
+            create_user_id=1,
+            confirm_user_id=2,
+        )
+
+        confirm_request = SimpleNamespace(user=self._User(2, perms={confirm_perm}), get_full_path=lambda: "/admin/order/order/filter/?order_status=10")
+        admin_instance._operate_buttons_request = confirm_request
+        names = [item["name"] for item in admin_instance.get_operate_buttons_config(order_obj)]
+        self.assertEqual(names[0], "操作日志")
+        self.assertIn("确认", names)
+        self.assertNotIn("取消", names)
+        self.assertNotIn("支付", names)
+
+        creator_request = SimpleNamespace(user=self._User(1), get_full_path=lambda: "/admin/order/order/filter/?order_status=10")
+        admin_instance._operate_buttons_request = creator_request
+        names = [item["name"] for item in admin_instance.get_operate_buttons_config(order_obj)]
+        self.assertEqual(names[0], "操作日志")
+        self.assertIn("取消", names)
+        self.assertNotIn("确认", names)
+        self.assertNotIn("支付", names)
+
+        pay_request = SimpleNamespace(user=self._User(3, perms={pay_perm}), get_full_path=lambda: "/admin/order/order/filter/?order_status=10")
+        admin_instance._operate_buttons_request = pay_request
+        names = [item["name"] for item in admin_instance.get_operate_buttons_config(order_obj)]
+        self.assertEqual(names[0], "操作日志")
+        self.assertIn("支付", names)
+
+    def test_payment_permission_helper_requires_pay_permission_or_superuser(self):
+        pay_perm = Order.get_perms(["pay"])[0]
+
+        self.assertTrue(order.services.can_order_pay(self._User(1, perms={pay_perm})))
+        self.assertTrue(order.services.can_order_pay(self._User(9, is_superuser=True)))
+        self.assertFalse(order.services.can_order_pay(self._User(2)))
+
+    def test_admin_queryset_and_payment_api_use_shared_permission_helpers(self):
+        admin_source = Path("order/admin.py").read_text(encoding="utf-8")
+        pay_source = Path("order/views/pay/order_pay_view.py").read_text(encoding="utf-8")
+        mobile_pay_source = Path("order/views/mobile_order_pay_view.py").read_text(encoding="utf-8")
+
+        self.assertIn("filter_order_pool_queryset(qs, request.user)", admin_source)
+        self.assertIn("can_order_pay(request.user)", pay_source)
+        self.assertIn('("003", "暂无订单支付权限")', pay_source)
+        self.assertIn("do_pay", mobile_pay_source)
 
     def test_admin_cancel_uses_row_button_and_dedicated_memo_view(self):
         admin_source = Path("order/admin.py").read_text(encoding="utf-8")

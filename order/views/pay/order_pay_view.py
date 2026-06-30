@@ -12,6 +12,7 @@ from core.exceptions.base_exceptions import BusinessException
 from core.ninja_extra.api_extra import BaseApi, HttpRequest, Body
 from core.utils import time_util
 from order.models import Order, OrderPayCa
+from order.services import can_order_pay
 from django.db import transaction
 from .. import schemas
 from ...signals.signals import order_pay_signal
@@ -26,6 +27,9 @@ def do(request: HttpRequest, data: schemas.OrderPaySchema):
         raise BusinessException("001")
     
     order = order_manager.first()
+    if not can_order_pay(request.user):
+        raise BusinessException("003")
+
     payable_amount = order.payable_amount
     paid_amount = order.paid_amount  
 
@@ -71,6 +75,7 @@ class View(BaseApi):
     error_codes = [
         ("001", "未查询到订单信息"),
         ("002", "超过该订单最大可支付金额"),
+        ("003", "暂无订单支付权限"),
     ]
 
     @staticmethod

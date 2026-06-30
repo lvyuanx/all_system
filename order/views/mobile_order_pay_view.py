@@ -25,6 +25,7 @@ class View(BaseApi):
     error_codes = [
         ("001", "未查询到订单信息"),
         ("002", "超过该订单最大可支付金额"),
+        ("003", "暂无订单支付权限"),
     ]
 
     @staticmethod

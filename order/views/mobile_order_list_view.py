@@ -14,11 +14,13 @@ from ninja import Body
 
 from core.ninja_extra.api_extra import BaseApi, HttpRequest
 from core.ninja_extra.base_pagination import AsyncLimitOffsetPagination
+from core.utils.orjson_util import json
 from core.utils import time_util, common_util
 from order.enums import (
     OrderStatusChoices,
 )
 from order.models import Order, OrderItem
+from order.services import filter_order_pool_queryset
 from pattern_library.models import Pattern
 from client_mgmt.models import Client
 from site_mgmt.utils import site_util
@@ -26,16 +28,49 @@ from site_mgmt.utils import site_util
 from . import schemas
 
 
+def _normalize_list(value: Any) -> list:
+    if value is None:
+        return []
+    if isinstance(value, (list, tuple, set)):
+        return list(value)
+    return [value]
+
+
+def get_mobile_order_input_filter(request: HttpRequest) -> dict:
+    try:
+        payload = json.loads(getattr(request, "body", b"") or b"{}")
+    except Exception:
+        return {}
+    if not isinstance(payload, dict):
+        return {}
+
+    input_filter = payload.get("filter") or {}
+    if isinstance(input_filter, str):
+        try:
+            input_filter = json.loads(input_filter)
+        except Exception:
+            return {}
+    return input_filter if isinstance(input_filter, dict) else {}
+
+
+def is_order_pool_list_request(request: HttpRequest) -> bool:
+    input_filter = get_mobile_order_input_filter(request)
+    order_statuses = _normalize_list(input_filter.get("order_status"))
+    for status in order_statuses:
+        try:
+            if int(status) == OrderStatusChoices.CREATED:
+                return True
+        except (TypeError, ValueError):
+            continue
+    return False
+
+
 class Pagination(AsyncLimitOffsetPagination):
     InputSource = Body
 
     @staticmethod
     def _normalize_list(value: Any) -> list:
-        if value is None:
-            return []
-        if isinstance(value, (list, tuple, set)):
-            return list(value)
-        return [value]
+        return _normalize_list(value)
 
     @staticmethod
     def _to_datetime(value: Any):
@@ -212,8 +247,13 @@ class View(BaseApi):
                 permission_packs__pack_code__in=amount_perm_packs
             ).exists
         )()
+        base_qs = Order.objects.filter(is_delete=False)
+        base_qs = await sync_to_async(site_util.admin_filter_site)(request, base_qs)
+        if is_order_pool_list_request(request):
+            base_qs = filter_order_pool_queryset(base_qs, cur_user)
+
         qs = (
-            Order.objects.filter(is_delete=False)
+            base_qs
             .annotate(
                 payable_amount_masked=(
                     F("payable_amount")
@@ -234,5 +274,4 @@ class View(BaseApi):
             )
             .order_by("-pk")
         )
-        qs = await sync_to_async(site_util.admin_filter_site)(request, qs)
         return qs
